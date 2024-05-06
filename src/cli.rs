@@ -19,9 +19,9 @@ pub struct Cli {
 }
 
 impl Cli {
-    pub fn run() -> miette::Result<()> {
+    pub async fn run() -> miette::Result<()> {
         let cli = Cli::parse();
-        cli.command.run()
+        cli.command.run().await
     }
 }
 
@@ -45,12 +45,12 @@ pub enum Command {
 }
 
 impl Command {
-    pub fn run(&self) -> miette::Result<()> {
+    pub async fn run(&self) -> miette::Result<()> {
         match self {
             Command::New(command) => command.new()?,
             Command::Publish => todo!("publish"),
             Command::Record => todo!("record"),
-            Command::Run(command) => command.run()?,
+            Command::Run(command) => command.run().await?,
             Command::Serve => todo!("serve"),
             Command::ListThemes(command) => command.list_themes()?,
             Command::Validate => todo!("validate"),
