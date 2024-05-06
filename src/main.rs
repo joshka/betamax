@@ -1,10 +1,10 @@
 mod cli;
-mod list_themes;
-mod run;
+mod commands;
 
 use cli::Cli;
 
 fn main() -> miette::Result<()> {
+    tracing_subscriber::fmt::init();
     Cli::run()?;
     Ok(())
 }

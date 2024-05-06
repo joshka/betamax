@@ -2,7 +2,13 @@ use clap::Parser;
 use clap_stdin::FileOrStdin;
 use miette::IntoDiagnostic;
 
-use crate::{list_themes::ListThemesCommand, run::RunCommand};
+mod list_themes;
+mod new;
+mod run;
+
+use list_themes::ListThemesCommand;
+use new::NewCommand;
+use run::RunCommand;
 
 #[derive(Debug, Parser)]
 #[clap(version, author, about)]
@@ -20,9 +26,9 @@ impl Cli {
 }
 
 #[derive(Debug, Parser)]
-enum Command {
+pub enum Command {
     /// Create a new tape file with example tape file contents and documentation
-    New,
+    New(NewCommand),
     /// Publish your GIF to vhs.charm.sh and get a shareable URL
     Publish,
     /// Create a new tape file by recording your actions
@@ -39,9 +45,9 @@ enum Command {
 }
 
 impl Command {
-    fn run(&self) -> miette::Result<()> {
+    pub fn run(&self) -> miette::Result<()> {
         match self {
-            Command::New => todo!("new"),
+            Command::New(command) => command.new()?,
             Command::Publish => todo!("publish"),
             Command::Record => todo!("record"),
             Command::Run(command) => command.run()?,
