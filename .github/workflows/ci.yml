@@ -1,0 +1,168 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  lint:
+    name: Lint, docs, and validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Install nightly rustfmt
+        run: rustup toolchain install nightly --component rustfmt
+
+      - name: Install mise tools
+        uses: jdx/mise-action@v2
+        with:
+          install: true
+
+      - name: Cache Rust builds
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: just fmt-check
+
+      - name: Check clippy
+        run: just clippy
+
+      - name: Check documentation builds
+        run: just doc
+
+      - name: Run doc tests
+        run: just doc-test
+
+      - name: Lint Markdown
+        run: just lint-md
+
+      - name: Validate tapes
+        run: just validate
+
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install mise tools
+        uses: jdx/mise-action@v2
+        with:
+          install: true
+
+      - name: Cache Rust builds
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check workspace
+        run: mise exec -- cargo check --workspace --all-targets
+
+      - name: Test workspace
+        run: mise exec -- cargo test --workspace --all-targets
+
+      - name: Validate tape syntax through CLI
+        run: mise exec -- cargo run -p betamax -- validate "examples/*.tape" docs.tape
+
+      - name: Check CLI version command
+        run: mise exec -- cargo run -p betamax -- --version
+
+  package:
+    name: Package and smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install nightly rustfmt
+        run: rustup toolchain install nightly --component rustfmt
+
+      - name: Install mise tools
+        uses: jdx/mise-action@v2
+        with:
+          install: true
+
+      - name: Cache Rust builds
+        uses: Swatinem/rust-cache@v2
+
+      - name: Package crates
+        run: just package
+
+      - name: Install CLI from path
+        run: just install-smoke
+
+      - name: Render smoke tape
+        run: just smoke
+
+  dependencies:
+    name: Dependency checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install nightly Rust
+        run: rustup toolchain install nightly
+
+      - name: Install mise tools
+        uses: jdx/mise-action@v2
+        with:
+          install: true
+
+      - name: Cache Rust builds
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo maintenance tools
+        run: cargo install cargo-audit cargo-outdated cargo-minimal-versions cargo-hack cargo-udeps --locked
+
+      - name: Audit dependencies
+        run: just audit
+
+      - name: Check feature combinations
+        run: just feature-check
+
+      - name: Check direct minimal versions
+        run: just minimal-versions
+
+      - name: Check outdated direct dependencies
+        run: just outdated
+
+      - name: Check unused dependencies
+        continue-on-error: true
+        run: just udeps

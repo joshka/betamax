@@ -1,0 +1,44 @@
+[package]
+name = "betamax"
+description = "Rust-first VHS-style terminal capture CLI"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+readme = "README.md"
+build = "build.rs"
+keywords = ["terminal", "capture", "gif", "cli", "vhs"]
+categories = ["command-line-utilities", "development-tools::testing", "multimedia"]
+include = [
+    "Cargo.toml",
+    "README.md",
+    "build.rs",
+    "src/**/*.rs",
+    "src/commands/new.tape",
+]
+
+[[bin]]
+name = "betamax"
+path = "src/main.rs"
+
+[dependencies]
+betamax-core.workspace = true
+clap.workspace = true
+clap-stdin.workspace = true
+glob.workspace = true
+interpolator.workspace = true
+libghostty-vt-sys.workspace = true
+miette = { workspace = true, features = ["fancy"] }
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[build-dependencies]
+anyhow.workspace = true
+vergen.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,4 @@
+disallowed-methods = [
+    { path = "std::iter::Iterator::for_each", reason = "prefer `for` for side effects" },
+    { path = "std::iter::Iterator::try_for_each", reason = "prefer `for` for side effects" },
+]

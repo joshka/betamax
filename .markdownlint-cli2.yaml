@@ -1,0 +1,9 @@
+config:
+  MD013:
+    line_length: 100
+    tables: false
+  MD055:
+    style: leading_and_trailing
+  MD060:
+    style: aligned
+    aligned_delimiter: true

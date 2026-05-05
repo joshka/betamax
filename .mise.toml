@@ -1,2 +1,5 @@
 [tools]
+just = "latest"
+"npm:markdownlint-cli2" = "latest"
 node = "lts"
+zig = "0.15.2"

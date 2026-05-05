@@ -1,35 +1,46 @@
-[package]
-name = "betamax"
+[workspace]
+members = [
+    "crates/betamax",
+    "crates/betamax-core",
+]
+default-members = ["crates/betamax"]
+resolver = "2"
+
+[workspace.package]
 version = "0.1.0"
 edition = "2021"
-build = "build.rs"
+rust-version = "1.93"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/joshka/betamax"
+homepage = "https://github.com/joshka/betamax"
+documentation = "https://docs.rs/betamax-core"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-axum = "0.7.5"
-clap = { version = "4.5.4", features = ["derive"] }
-clap-stdin = "0.4.0"
-interpolator = "0.5.0"
-miette = { version = "7.2.0", features = ["fancy"] }
-serde = { version = "1.0.199", features = ["derive"] }
-serde_json = "1.0.116"
-thiserror = "1.0.59"
-tokio = { version = "1.37.0", features = ["net", "rt-multi-thread"] }
-tower-http = { version = "0.5.2", features = ["trace", "fs"] }
+[workspace.dependencies]
+anyhow = "1.0.100"
+betamax-core = { path = "crates/betamax-core", version = "0.1.0" }
+clap = { version = "4.5.20", features = ["derive"] }
+clap-stdin = "0.8"
+cosmic-text = "0.19"
+gif = "0.14"
+glob = "0.3"
+interpolator = "0.5"
+libghostty-vt = "0.1.1"
+libghostty-vt-sys = "0.1.1"
+miette = "7"
+png = "0.18"
+portable-pty = "0.9"
+regex = "1.12.2"
+serde = { version = "1.0.220", features = ["derive"] }
+serde_json = "1.0.142"
+shell-words = "1.1"
 tracing = "0.1.40"
-tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+vergen = { version = "9.1.0", features = ["build", "cargo"] }
 
-[build-dependencies]
-anyhow = "1.0.82"
-vergen = { version = "8.3.1", features = [
-    "build",
-    "cargo",
-    "git",
-    "git2",
-    "rustc",
-    "si",
-] }
+[workspace.lints.rust]
+missing_debug_implementations = "warn"
+unsafe_op_in_unsafe_fn = "warn"
 
-[lints.rust]
-unused = "allow"
+[workspace.lints.clippy]
+undocumented_unsafe_blocks = "warn"
+unused_result_ok = "warn"

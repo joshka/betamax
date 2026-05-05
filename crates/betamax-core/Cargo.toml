@@ -1,0 +1,37 @@
+[package]
+name = "betamax-core"
+description = "Core library for Rust-first VHS-style terminal capture"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+readme = "README.md"
+keywords = ["terminal", "capture", "testing", "ghostty", "vhs"]
+categories = ["development-tools::testing", "multimedia", "command-line-utilities"]
+include = [
+    "Cargo.toml",
+    "README.md",
+    "THIRD_PARTY.md",
+    "src/**/*.rs",
+    "tests/**/*.rs",
+    "resources/ghostty/themes/**",
+]
+
+[dependencies]
+cosmic-text.workspace = true
+gif.workspace = true
+libghostty-vt.workspace = true
+miette.workspace = true
+png.workspace = true
+portable-pty.workspace = true
+regex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+shell-words.workspace = true
+tracing.workspace = true
+
+[lints]
+workspace = true
