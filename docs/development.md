@@ -65,8 +65,9 @@ Configure a trusted publisher for each published crate:
 - environment: `release`
 
 The workflow has two jobs. `release-plz-release` publishes crate versions that exist on `main` but
-are not yet on crates.io, then creates GitHub releases and tags. `release-plz-pr` opens or updates
-the release PR that prepares the next version and changelog entry.
+are not yet on crates.io, then creates GitHub releases and tags. It installs the repo's mise tools
+because package verification builds `libghostty-vt-sys`, which requires Zig. `release-plz-pr` opens
+or updates the release PR that prepares the next version and changelog entry.
 
 ## Platform And Tooling Notes
 
