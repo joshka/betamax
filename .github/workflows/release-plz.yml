@@ -21,13 +21,18 @@ jobs:
     steps:
       - &checkout
         name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
       - &install-rust
         name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+      - &install-mise
+        name: Install mise tools
+        uses: jdx/mise-action@v2
+        with:
+          install: true
       - name: Run release-plz
         uses: release-plz/action@v0.5
         with:
@@ -48,6 +53,7 @@ jobs:
     steps:
       - *checkout
       - *install-rust
+      - *install-mise
       - name: Run release-plz
         uses: release-plz/action@v0.5
         with:
