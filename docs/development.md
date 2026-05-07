@@ -50,6 +50,24 @@ can add an rpath for the vendored native `libghostty-vt` library. That keeps loc
 `cargo install --path crates/betamax --locked` installs runnable with the current upstream sys
 crate.
 
+## Releases
+
+Releases are managed by release-plz in
+[`.github/workflows/release-plz.yml`](../.github/workflows/release-plz.yml). The release job uses
+crates.io Trusted Publishing, so it does not read `CARGO_REGISTRY_TOKEN` and must be configured on
+crates.io before it can publish a crate version.
+
+Configure a trusted publisher for each published crate:
+
+- crate: `betamax-core` and `betamax`
+- repository: `joshka/betamax`
+- workflow: `release-plz.yml`
+- environment: `release`
+
+The workflow has two jobs. `release-plz-release` publishes crate versions that exist on `main` but
+are not yet on crates.io, then creates GitHub releases and tags. `release-plz-pr` opens or updates
+the release PR that prepares the next version and changelog entry.
+
 ## Platform And Tooling Notes
 
 `libghostty-vt-sys` is a native dependency and currently determines Betamax's platform support.

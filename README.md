@@ -13,7 +13,7 @@ intentionally does not include `serve`, `record`, `source`, or `publish`.
 Betamax currently supports macOS and Linux. Windows is not supported because the upstream
 `libghostty-vt-sys` native build does not support Windows.
 
-Install the CLI from crates.io once `0.1.0` is published:
+Install the CLI from crates.io once `0.1.1` is published:
 
 ```sh
 cargo install betamax --locked
