@@ -9,7 +9,14 @@ config:
     aligned_delimiter: true
   MD033:
     allowed_elements:
+      - a
       - Card
       - CardGrid
+      - div
+      - h1
+      - img
+      - p
+      - section
+      - span
   MD024:
     siblings_only: true
