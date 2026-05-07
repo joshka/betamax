@@ -2,4 +2,5 @@
 just = "latest"
 "npm:markdownlint-cli2" = "latest"
 node = "lts"
+pnpm = "10.33.2"
 zig = "0.15.2"

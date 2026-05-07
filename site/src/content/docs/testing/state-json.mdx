@@ -1,0 +1,39 @@
+---
+title: State JSON
+description: Compact terminal snapshots for viewport, scrollback, text, and styles.
+---
+
+State JSON captures terminal state as text-oriented data instead of raw pixels. It is designed for
+snapshot tests and debugging.
+
+The format keeps common data compact:
+
+- plain strings represent text with the default style
+- `["text", style_index]` represents styled text
+- rows are arrays of text spans
+- styles are stored once in a shared array
+- default values are omitted where possible
+
+Conceptually:
+
+```json
+{
+  "version": 1,
+  "size": [80, 24],
+  "styles": [
+    ["fg", "#d0d0d0"],
+    ["fg", "#ffcc66", "bold"]
+  ],
+  "viewport": [
+    ["plain text", ["highlighted", 1]],
+    ["next row"]
+  ],
+  "scrollback": [
+    ["earlier output"]
+  ]
+}
+```
+
+The exact schema may evolve while Betamax is still early. The important design goal is to make
+normal terminal output readable and diffable, while still preserving enough style information for
+meaningful tests.

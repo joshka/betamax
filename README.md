@@ -165,6 +165,13 @@ workflow and state snapshot format.
 - [Contributing](CONTRIBUTING.md)
 - [Development](docs/development.md)
 
+The Starlight docs site lives under `site/` and can be run locally with:
+
+```sh
+pnpm install
+just docs-site-dev
+```
+
 [basic-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/basic.gif
 [hide-show-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/hide-show.gif
 [themes-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/themes.gif

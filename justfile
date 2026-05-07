@@ -22,7 +22,7 @@ doc:
     mise exec -- cargo doc --workspace --no-deps --document-private-items
 
 lint-md:
-    mise exec -- markdownlint-cli2 '**/*.md' '#target'
+    mise exec -- markdownlint-cli2 '**/*.md' '**/*.mdx' '#target' '#node_modules'
 
 outdated:
     mise exec -- cargo outdated --workspace --root-deps-only
@@ -50,6 +50,15 @@ render-examples:
 
 upload-readme-assets:
     mise exec -- scripts/upload-readme-assets.sh
+
+docs-site-dev:
+    mise exec -- pnpm docs:dev
+
+docs-site-check:
+    mise exec -- pnpm docs:check
+
+docs-site-build:
+    mise exec -- pnpm docs:build
 
 package-core:
     mise exec -- cargo package -p betamax-core --allow-dirty
@@ -79,6 +88,6 @@ install-smoke:
     CARGO_HOME="$tmp/cargo-home" mise exec -- cargo install --path crates/betamax --locked --root "$tmp/install"
     "$tmp/install/bin/betamax" --version
 
-check: fmt-check clippy test doc-test doc lint-md validate
+check: fmt-check clippy test doc-test doc lint-md validate docs-site-check docs-site-build
 
 release-check: check audit feature-check outdated minimal-versions package install-smoke smoke

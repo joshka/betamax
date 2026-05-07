@@ -1,0 +1,26 @@
+---
+title: Differences From VHS
+description: What Betamax keeps, changes, and intentionally omits.
+---
+
+Betamax aims for the common VHS authoring flow, but the implementation is intentionally smaller and
+Ghostty-first.
+
+| Area              | Betamax status                                       |
+| ----------------- | ---------------------------------------------------- |
+| Architecture      | PTY plus `libghostty-vt`, no browser/server/xterm.js |
+| GIF/PNG/state     | In process                                           |
+| MP4/WebM          | Supported through `ffmpeg`                           |
+| Themes            | Copied Ghostty themes plus inline JSON themes        |
+| Window styling    | Rust composition                                     |
+| Testing snapshots | JSON state with viewport, scrollback, and styles     |
+| `Source`          | Parsed but intentionally not executed                |
+| `record`/`serve`  | Intentionally not implemented                        |
+| `publish`         | Intentionally not implemented                        |
+
+The main tradeoff today is video output. MP4 and WebM use `ffmpeg` as a focused encoder bridge.
+Terminal execution and rasterization stay in process; video container encoding does not.
+
+See the full
+[`docs/vhs-differences.md`](https://github.com/joshka/betamax/blob/main/docs/vhs-differences.md)
+document for parity details.

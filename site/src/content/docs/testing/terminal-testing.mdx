@@ -1,0 +1,38 @@
+---
+title: Terminal Testing
+description: Use Betamax tapes as snapshot-style tests for terminal programs.
+---
+
+Betamax can run interactive terminal programs, wait for expected output, and write structured state
+for assertions. This makes it useful for testing CLIs and TUIs in addition to producing GIFs.
+
+```text
+Output target/snapshots/app.gif
+
+Type "my-app --demo"
+Enter
+Wait+Screen "Ready"
+State target/snapshots/ready.state.json
+Screenshot target/snapshots/ready.png
+```
+
+The tape fails if the expected text does not appear before the configured timeout. The PNG helps
+with visual review, while state JSON can be compared in snapshot tests.
+
+## What To Assert
+
+Prefer asserting text and important style spans instead of every pixel. Pixel assertions are useful
+for renderer work, but they can be brittle for application behavior tests.
+
+Good assertions include:
+
+- expected viewport text
+- expected scrollback text
+- selected style spans
+- whether a prompt or status line appears
+- whether hidden setup avoided extra frames
+
+## Rust Test Shape
+
+The `betamax-core` crate is the natural place for a future library-first testing API. Today, the CLI
+already writes artifacts that Rust tests can compare with tools such as `insta`.

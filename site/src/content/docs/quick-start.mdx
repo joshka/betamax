@@ -1,0 +1,65 @@
+---
+title: Quick Start
+description: Install Betamax and render your first tape.
+---
+
+Betamax currently supports macOS and Linux. Windows is not supported because the upstream
+`libghostty-vt-sys` native build does not support Windows.
+
+## Install
+
+```sh
+cargo install betamax --locked
+```
+
+MP4 and WebM output require `ffmpeg` on `PATH`. GIF, PNG, screenshot, and state JSON outputs are
+written in process.
+
+```sh
+# macOS
+brew install ffmpeg
+
+# Debian/Ubuntu
+sudo apt-get update
+sudo apt-get install ffmpeg
+```
+
+## Create A Tape
+
+```sh
+betamax new demo.tape
+```
+
+Edit the generated tape, then render it:
+
+```sh
+betamax run demo.tape
+```
+
+Validate one tape or a group of tapes without rendering:
+
+```sh
+betamax validate demo.tape
+betamax validate "examples/*.tape"
+```
+
+List available themes:
+
+```sh
+betamax themes
+betamax themes --json
+```
+
+## Repository Examples
+
+Clone the repository to render the checked-in examples:
+
+```sh
+git clone https://github.com/joshka/betamax
+cd betamax
+pnpm install
+scripts/render-examples.sh
+```
+
+Rendered outputs are written under `examples/output` and copied to `target/betamax-examples` for
+local inspection.

@@ -1,0 +1,20 @@
+---
+title: Roadmap
+description: Follow-up work that is not part of the VHS differences list.
+---
+
+Betamax is useful today for GIFs, screenshots, video files, and terminal state snapshots. The main
+follow-up work is about fidelity, API shape, and long-term renderer direction.
+
+## Near-Term Areas
+
+1. Improve renderer fidelity around wide glyphs, combining marks, emoji, and fallback fonts.
+2. Feed live terminal mode state into `libghostty-vt::key::Encoder`.
+3. Decide whether the library API should expose structured artifacts without writing files.
+4. Introduce mockable runtime boundaries if library-first testing becomes a core use case.
+5. Add targeted benchmarks after renderer and state formats settle.
+6. Keep MP4/WebM on optional `ffmpeg` unless native encoding becomes worth the packaging cost.
+7. Track upstream libghostty APIs for renderer frame capture.
+
+The full roadmap lives in
+[`docs/roadmap.md`](https://github.com/joshka/betamax/blob/main/docs/roadmap.md).

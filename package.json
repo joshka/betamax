@@ -1,0 +1,24 @@
+{
+  "name": "betamax-docs",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.2",
+  "scripts": {
+    "docs:build": "astro build --root site",
+    "docs:check": "astro check --root site",
+    "docs:dev": "astro dev --root site",
+    "docs:preview": "astro preview --root site"
+  },
+  "dependencies": {
+    "@astrojs/check": "0.9.4",
+    "@astrojs/starlight": "0.39.0",
+    "astro": "6.2.2",
+    "typescript": "5.9.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp"
+    ]
+  }
+}

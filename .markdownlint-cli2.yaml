@@ -7,3 +7,9 @@ config:
   MD060:
     style: aligned
     aligned_delimiter: true
+  MD033:
+    allowed_elements:
+      - Card
+      - CardGrid
+  MD024:
+    siblings_only: true

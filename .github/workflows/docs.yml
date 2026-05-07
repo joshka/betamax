@@ -1,0 +1,66 @@
+name: Docs
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/docs.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "site/**"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/docs.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "site/**"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  build:
+    name: Build docs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install mise tools
+        uses: jdx/mise-action@v2
+        with:
+          install: true
+
+      - name: Install pnpm dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check docs
+        run: just docs-site-check
+
+      - name: Build docs
+        run: just docs-site-build
+
+      - name: Upload Pages artifact
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site/dist
+
+  deploy:
+    name: Deploy docs
+    needs: build
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

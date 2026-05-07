@@ -1,0 +1,36 @@
+---
+title: Development
+description: Local commands and release notes for contributors.
+---
+
+Betamax uses Rust for the CLI and core crates, pnpm for the Starlight docs site, and mise for local
+tool versions.
+
+```sh
+mise install
+just check
+pnpm install
+just docs-site-check
+```
+
+Useful Rust commands:
+
+```sh
+just fmt-check
+just clippy
+just test
+just doc
+just validate
+just package
+```
+
+Docs site commands:
+
+```sh
+just docs-site-dev
+just docs-site-check
+just docs-site-build
+```
+
+Releases are managed by release-plz and crates.io Trusted Publishing. The release workflow installs
+mise tools because package verification builds `libghostty-vt-sys`, which requires Zig.

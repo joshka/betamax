@@ -1,0 +1,35 @@
+---
+title: Themes And Styling
+description: Ghostty themes, window borders, padding, prompt defaults, and layout controls.
+---
+
+Betamax ships copied Ghostty themes and can read user Ghostty theme directories. Theme lookup
+searches user themes first, then the copied themes bundled with `betamax-core`.
+
+```sh
+betamax themes
+betamax themes --json
+```
+
+Use a theme by name:
+
+```text
+Set Theme "Aardvark Blue"
+```
+
+## Common Styling Settings
+
+| Setting        | Example                   | Purpose                        |
+| -------------- | ------------------------- | ------------------------------ |
+| `Width`        | `Set Width 900`           | Output image width             |
+| `Height`       | `Set Height 480`          | Output image height            |
+| `FontSize`     | `Set FontSize 28`         | Terminal font size             |
+| `Margin`       | `Set Margin 12`           | Outer transparent/image margin |
+| `Padding`      | `Set Padding 16`          | Inner terminal padding         |
+| `WindowBar`    | `Set WindowBar Colorful`  | Top window decoration          |
+| `BorderRadius` | `Set BorderRadius 8`      | Rounded window corners         |
+| `Fill`         | `Set Fill "#101820"`      | Background fill color          |
+| `Prompt`       | `Set Prompt ">"`          | Synthetic prompt text          |
+
+The default prompt is intentionally simple and VHS-like. Use a real shell prompt only when that is
+important to the recording.

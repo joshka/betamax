@@ -1,0 +1,33 @@
+---
+title: Outputs
+description: GIFs, screenshots, video files, frame directories, and terminal state.
+---
+
+A tape can write multiple outputs from the same captured session.
+
+| Output             | Command example                       | Notes                              |
+| ------------------ | ------------------------------------- | ---------------------------------- |
+| GIF                | `Output demo.gif`                     | Encoded in process                 |
+| PNG final frame    | `Output demo.png`                     | Final visible frame                |
+| State JSON         | `Output demo.state.json`              | Final terminal state               |
+| MP4 or WebM        | `Output demo.mp4`                     | Encoded through `ffmpeg`           |
+| Screenshot         | `Screenshot checkpoint.png`           | Captures the current visible frame |
+| Checkpoint state   | `State checkpoint.state.json`         | Captures state at that point       |
+| Frame directory    | `OutputFrames target/betamax-frames`  | Writes individual rendered frames  |
+
+MP4 and WebM deliberately use `ffmpeg` for the first cut. Terminal execution, terminal parsing, GIF
+encoding, PNG encoding, and JSON state writing are in process; video container encoding is the one
+external boundary.
+
+## Testing Outputs
+
+For terminal tests, pair a wait with a state or screenshot checkpoint:
+
+```text
+Wait+Screen "Saved profile"
+Screenshot target/snapshots/profile.png
+State target/snapshots/profile.state.json
+```
+
+The screenshot is useful for human review. The state JSON is useful for deterministic snapshot
+assertions.

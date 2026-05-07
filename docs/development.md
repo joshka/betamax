@@ -4,6 +4,7 @@ Common development commands are available through the root [justfile](../justfil
 
 ```sh
 mise install
+pnpm install
 just check
 ```
 
@@ -30,6 +31,8 @@ just doc-test
 just doc
 just lint-md
 just validate
+just docs-site-check
+just docs-site-build
 ```
 
 Release-oriented checks are kept in `just` so local and CI behavior stay aligned:

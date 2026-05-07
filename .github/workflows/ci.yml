@@ -31,6 +31,9 @@ jobs:
         with:
           install: true
 
+      - name: Install pnpm dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Cache Rust builds
         uses: Swatinem/rust-cache@v2
 

@@ -1,0 +1,49 @@
+---
+title: Tape Reference
+description: Common tape commands and settings.
+---
+
+This page summarizes the tape surface. The repository still keeps the detailed Markdown reference
+in [`docs/tape-reference.md`](https://github.com/joshka/betamax/blob/main/docs/tape-reference.md).
+
+## Outputs
+
+| Command        | Example                           | Behavior                       |
+| -------------- | --------------------------------- | ------------------------------ |
+| `Output`       | `Output examples/output/demo.gif` | Writes an output artifact      |
+| `Screenshot`   | `Screenshot checkpoint.png`       | Writes a checkpoint screenshot |
+| `State`        | `State checkpoint.state.json`     | Writes checkpoint state JSON   |
+| `OutputFrames` | `OutputFrames target/frames`      | Writes individual frames       |
+
+## Settings
+
+| Setting         | Example                     |
+| --------------- | --------------------------- |
+| `Shell`         | `Set Shell "bash"`          |
+| `Theme`         | `Set Theme "Aardvark Blue"` |
+| `Width`         | `Set Width 900`             |
+| `Height`        | `Set Height 480`            |
+| `FontSize`      | `Set FontSize 28`           |
+| `TypingSpeed`   | `Set TypingSpeed 50ms`      |
+| `PlaybackSpeed` | `Set PlaybackSpeed 1.0`     |
+| `WindowBar`     | `Set WindowBar Colorful`    |
+| `BorderRadius`  | `Set BorderRadius 8`        |
+
+## Actions
+
+| Command       | Behavior                           |
+| ------------- | ---------------------------------- |
+| `Type`        | Types text into the PTY            |
+| `Enter`       | Sends Enter                        |
+| `Key`         | Sends a named key                  |
+| `Ctrl+C`      | Sends interrupt                    |
+| `Wait`        | Waits for default readiness        |
+| `Wait+Line`   | Waits for a line of output         |
+| `Wait+Screen` | Waits for text anywhere on screen  |
+| `Wait+Regex`  | Waits for a regular expression     |
+| `Hide`        | Stops recording visible frames     |
+| `Show`        | Resumes recording visible frames   |
+| `Copy`        | Sets Betamax's clipboard buffer    |
+| `Paste`       | Pastes Betamax's clipboard buffer  |
+| `Env`         | Sets an environment variable       |
+| `Require`     | Fails early if a command is absent |

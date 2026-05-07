@@ -1,0 +1,49 @@
+---
+title: Tape Files
+description: The shape of a Betamax tape and the command flow it describes.
+---
+
+A tape is a line-oriented script. Settings describe the terminal, output commands describe the
+artifacts to write, and action commands type keys, wait for output, or capture checkpoints.
+
+```text
+Output examples/output/basic.gif
+
+Set Shell "bash"
+Set Theme "Aardvark Blue"
+Set Width 900
+Set Height 480
+Set FontSize 28
+
+Type "printf 'hello\n'"
+Enter
+Wait+Screen "hello"
+```
+
+## Command Groups
+
+| Group      | Examples                              | Purpose                                  |
+| ---------- | ------------------------------------- | ---------------------------------------- |
+| Outputs    | `Output`, `Screenshot`, `State`       | Choose files to write                    |
+| Settings   | `Set Width`, `Set Theme`, `Set Shell` | Configure terminal and render behavior   |
+| Input      | `Type`, `Enter`, `Key`, `Ctrl+C`      | Send text and keys to the PTY            |
+| Timing     | `Wait`, `Wait+Screen`, `Sleep`        | Synchronize with terminal output         |
+| Visibility | `Hide`, `Show`                        | Exclude setup or cleanup from rendering  |
+| Clipboard  | `Copy`, `Paste`                       | Exercise clipboard-like terminal flows   |
+| Process    | `Env`, `Require`                      | Configure or validate execution context  |
+
+## Hidden Work
+
+`Hide` and `Show` are the main authoring tools for polished demos. Hidden periods still run in the
+PTY and can still wait for output; they simply do not add frames to the final animation.
+
+```text
+Hide
+Type "cargo build --quiet"
+Enter
+Wait
+Show
+```
+
+This keeps compilation or setup out of the GIF while preserving the terminal state that setup
+created.
