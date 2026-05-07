@@ -4,6 +4,18 @@
 
 ### Other
 
+- release
+
+## [0.1.2](https://github.com/joshka/betamax/compare/betamax-core-v0.1.1...betamax-core-v0.1.2) - 2026-05-07
+
+### Other
+
+- Slow main example GIF dwell
+
+## [0.1.4](https://github.com/joshka/betamax/compare/betamax-v0.1.3...betamax-v0.1.4) - 2026-05-07
+
+### Other
+
 - updated the following local packages: betamax-core
 
 ## [0.1.3](https://github.com/joshka/betamax/compare/betamax-v0.1.2...betamax-v0.1.3) - 2026-05-07
