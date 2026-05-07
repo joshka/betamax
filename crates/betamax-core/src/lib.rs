@@ -13,8 +13,8 @@
 //!
 //! Most applications should start with [`Tape`] and [`Runner`]:
 //!
-//! The full tape language is documented in the repository's
-//! [`docs/tape-reference.md`](https://github.com/joshka/betamax/blob/main/docs/tape-reference.md),
+//! The full tape language is documented on the
+//! [Betamax documentation site](https://www.joshka.net/betamax/reference/tape-reference/),
 //! including each command's behavior and each setting's default value.
 //!
 //! ```no_run

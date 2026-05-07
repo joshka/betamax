@@ -3,28 +3,87 @@ title: Examples
 description: Small tapes that exercise the core Betamax behavior.
 ---
 
-The repository examples are intentionally small. They are useful as smoke tests and as copyable
-starting points for your own tapes.
+The repository examples are intentionally small. They are smoke tests for core behavior and
+copyable starting points for your own tapes. Render all examples from a checkout with:
 
-| Tape                          | Demonstrates                                   |
-| ----------------------------- | ---------------------------------------------- |
-| `examples/basic.tape`         | typing, wait, theme, window bar, border radius |
-| `examples/hide-show.tape`     | hidden setup and hidden trailing cleanup       |
-| `examples/waits.tape`         | line, screen, regex, and default prompt waits  |
-| `examples/keys.tape`          | key commands, repeats, editing, and interrupt  |
-| `examples/clipboard-env.tape` | `Env`, `Copy`, and `Paste`                     |
-| `examples/outputs.tape`       | GIF, PNG, JSON, screenshot, state, frame dir   |
-| `examples/scrollback.tape`    | scrollback-inclusive state JSON                |
-| `examples/text-styles.tape`   | ANSI styles, truecolor, and styled state spans |
-| `examples/layout.tape`        | padding, margin, fill, window bar, radius      |
-| `examples/themes.tape`        | copied Ghostty themes and palette mapping      |
-| `examples/screenshot.tape`    | screenshots and terminal state JSON            |
-| `examples/video.tape`         | GIF, MP4, and WebM from one capture            |
+```sh
+scripts/render-examples.sh
+```
+
+Generated files are written under `examples/output` and copied to `target/betamax-examples` for
+local inspection. README and site GIF previews are hosted as GitHub Release assets so generated
+media does not need to live in the source tree.
+
+## Example Index
+
+| Tape                                      | Demonstrates                                    | Useful docs                                                            |
+| ----------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------- |
+| [`basic.tape`][basic-src]                 | typing, waits, theme, window bar, border radius | [Tape files](../authoring/tape-files/), [themes](../authoring/themes/) |
+| [`hide-show.tape`][hide-show-src]         | hidden setup and hidden trailing cleanup        | [Hidden work](../authoring/tape-files/#hidden-work)                    |
+| [`waits.tape`][waits-src]                 | line, screen, regex, and default prompt waits   | [Wait commands](../reference/tape-reference/#waitduration-regextext)   |
+| [`keys.tape`][keys-src]                   | key commands, repeats, editing, and interrupt   | [Key commands](../reference/tape-reference/#key-commands)              |
+| [`clipboard-env.tape`][clipboard-env-src] | `Env`, `Copy`, and `Paste`                      | [Tape reference](../reference/tape-reference/#copy-text-and-paste)     |
+| [`outputs.tape`][outputs-src]             | GIF, PNG, JSON, screenshot, state, frame dir    | [Outputs](../authoring/outputs/)                                       |
+| [`scrollback.tape`][scrollback-src]       | scrollback-inclusive state JSON                 | [State JSON](../testing/state-json/)                                   |
+| [`text-styles.tape`][text-styles-src]     | ANSI styles, truecolor, and styled state spans  | [State JSON](../testing/state-json/#styles-and-spans)                  |
+| [`layout.tape`][layout-src]               | padding, margin, fill, window bar, radius       | [Themes and styling](../authoring/themes/)                             |
+| [`themes.tape`][themes-src]               | copied Ghostty themes and palette mapping       | [Theme lookup](../authoring/themes/#theme-lookup)                      |
+| [`screenshot.tape`][screenshot-src]       | screenshots and terminal state JSON             | [Checkpoints](../authoring/outputs/#checkpoints)                       |
+| [`video.tape`][video-src]                 | GIF, MP4, and WebM from one capture             | [Video encoding](../authoring/outputs/#video-encoding)                 |
 
 ## Preview GIFs
 
+These previews come from the example tapes above.
+
+### Basic
+
 ![Basic Betamax GIF](https://github.com/joshka/betamax/releases/download/readme-assets/basic.gif)
+
+`basic.tape` is the smallest useful demo: it sets a portable shell, chooses `Aardvark Blue`, types
+one command, waits for the result, and hides shell cleanup.
+
+### Hide And Show
 
 ![Hide and Show Betamax GIF](https://github.com/joshka/betamax/releases/download/readme-assets/hide-show.gif)
 
+`hide-show.tape` demonstrates the most important authoring trick. Hidden setup still runs and
+updates terminal state, but the animation starts only when `Show` reveals the prepared screen.
+
+### Themes
+
 ![Ghostty theme Betamax GIF](https://github.com/joshka/betamax/releases/download/readme-assets/themes.gif)
+
+`themes.tape` shows ANSI colors mapped through a bundled Ghostty theme. Use `betamax themes` to
+list the names available to `Set Theme`.
+
+### Video
+
+![Video output Betamax GIF](https://github.com/joshka/betamax/releases/download/readme-assets/video.gif)
+
+`video.tape` writes GIF, MP4, and WebM from one capture. The GIF is encoded in process; MP4 and
+WebM are handed to `ffmpeg`.
+
+## Example Patterns
+
+Use `examples/outputs.tape` when checking artifact behavior. It writes a GIF, a PNG, final state
+JSON, a PNG frame directory, a checkpoint screenshot, and checkpoint state JSON.
+
+Use `examples/scrollback.tape` and `examples/text-styles.tape` when evaluating terminal testing.
+Together they exercise the parts of state JSON that matter for snapshot tests: viewport text,
+scrollback text, default style, non-default style table entries, and styled spans.
+
+Use `examples/waits.tape` when debugging timing. It shows the three wait targets and a custom
+`WaitPattern`, which is usually preferable to adding sleeps.
+
+[basic-src]: https://github.com/joshka/betamax/blob/main/examples/basic.tape
+[clipboard-env-src]: https://github.com/joshka/betamax/blob/main/examples/clipboard-env.tape
+[hide-show-src]: https://github.com/joshka/betamax/blob/main/examples/hide-show.tape
+[keys-src]: https://github.com/joshka/betamax/blob/main/examples/keys.tape
+[layout-src]: https://github.com/joshka/betamax/blob/main/examples/layout.tape
+[outputs-src]: https://github.com/joshka/betamax/blob/main/examples/outputs.tape
+[screenshot-src]: https://github.com/joshka/betamax/blob/main/examples/screenshot.tape
+[scrollback-src]: https://github.com/joshka/betamax/blob/main/examples/scrollback.tape
+[text-styles-src]: https://github.com/joshka/betamax/blob/main/examples/text-styles.tape
+[themes-src]: https://github.com/joshka/betamax/blob/main/examples/themes.tape
+[video-src]: https://github.com/joshka/betamax/blob/main/examples/video.tape
+[waits-src]: https://github.com/joshka/betamax/blob/main/examples/waits.tape

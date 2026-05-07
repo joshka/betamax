@@ -9,8 +9,38 @@ export default defineConfig({
       title: 'Betamax',
       description: 'Rust-first terminal captures, GIFs, screenshots, and terminal snapshots.',
       customCss: ['./src/styles/custom.css'],
+      head: [
+        {
+          tag: 'meta',
+          attrs: {
+            property: 'og:image',
+            content: 'https://www.joshka.net/betamax/og.png',
+          },
+        },
+        {
+          tag: 'meta',
+          attrs: {
+            property: 'og:image:width',
+            content: '1200',
+          },
+        },
+        {
+          tag: 'meta',
+          attrs: {
+            property: 'og:image:height',
+            content: '630',
+          },
+        },
+        {
+          tag: 'meta',
+          attrs: {
+            name: 'twitter:image',
+            content: 'https://www.joshka.net/betamax/og.png',
+          },
+        },
+      ],
       editLink: {
-        baseUrl: 'https://github.com/joshka/betamax/edit/main/site/src/content/docs/',
+        baseUrl: 'https://github.com/joshka/betamax/edit/main/',
       },
       social: [
         {

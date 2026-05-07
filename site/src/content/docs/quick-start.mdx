@@ -12,8 +12,8 @@ Betamax currently supports macOS and Linux. Windows is not supported because the
 cargo install betamax --locked
 ```
 
-MP4 and WebM output require `ffmpeg` on `PATH`. GIF, PNG, screenshot, and state JSON outputs are
-written in process.
+GIF, PNG, screenshot, and state JSON outputs are written in process. MP4 and WebM output require
+`ffmpeg` on `PATH`:
 
 ```sh
 # macOS
@@ -30,11 +30,23 @@ sudo apt-get install ffmpeg
 betamax new demo.tape
 ```
 
-Edit the generated tape, then render it:
+The starter tape includes a compact command summary and writes `demo.gif` by default. Render it
+with:
 
 ```sh
 betamax run demo.tape
 ```
+
+Append an extra output from the CLI without editing the tape:
+
+```sh
+betamax run demo.tape --output target/demo.png
+```
+
+The output path is appended as another `Output` command. It does not replace outputs already in the
+tape.
+
+## Validate Tapes
 
 Validate one tape or a group of tapes without rendering:
 
@@ -43,12 +55,19 @@ betamax validate demo.tape
 betamax validate "examples/*.tape"
 ```
 
-List available themes:
+Validation parses syntax and enforces command ordering. It does not start a shell, load a theme, run
+`Require` checks, or write output files. Use `betamax run` for a full execution check.
+
+## List Themes
 
 ```sh
 betamax themes
 betamax themes --json
+betamax themes --markdown
 ```
+
+Use the exact theme name with `Set Theme "..."`. See [Themes And Styling](../authoring/themes/) for
+lookup behavior, layout settings, and frame decoration.
 
 ## Repository Examples
 
@@ -62,4 +81,5 @@ scripts/render-examples.sh
 ```
 
 Rendered outputs are written under `examples/output` and copied to `target/betamax-examples` for
-local inspection.
+local inspection. The [Examples](../examples/) page explains what each tape demonstrates. The
+[Tape Reference](../reference/tape-reference/) documents every command and setting.

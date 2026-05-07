@@ -3,33 +3,92 @@ title: Themes And Styling
 description: Ghostty themes, window borders, padding, prompt defaults, and layout controls.
 ---
 
-Betamax ships copied Ghostty themes and can read user Ghostty theme directories. Theme lookup
-searches user themes first, then the copied themes bundled with `betamax-core`.
+Betamax uses Ghostty-style theme files to map terminal color indexes and named colors into rendered
+RGB values. It searches user Ghostty theme directories first, then the copied themes bundled with
+`betamax-core`.
 
 ```sh
 betamax themes
 betamax themes --json
+betamax themes --markdown
 ```
 
-Use a theme by name:
+Use the exact listed name in a tape:
 
 ```text
 Set Theme "Aardvark Blue"
 ```
 
-## Common Styling Settings
+## Theme Lookup
 
-| Setting        | Example                   | Purpose                        |
-| -------------- | ------------------------- | ------------------------------ |
-| `Width`        | `Set Width 900`           | Output image width             |
-| `Height`       | `Set Height 480`          | Output image height            |
-| `FontSize`     | `Set FontSize 28`         | Terminal font size             |
-| `Margin`       | `Set Margin 12`           | Outer transparent/image margin |
-| `Padding`      | `Set Padding 16`          | Inner terminal padding         |
-| `WindowBar`    | `Set WindowBar Colorful`  | Top window decoration          |
-| `BorderRadius` | `Set BorderRadius 8`      | Rounded window corners         |
-| `Fill`         | `Set Fill "#101820"`      | Background fill color          |
-| `Prompt`       | `Set Prompt ">"`          | Synthetic prompt text          |
+Bundled themes make tapes portable across machines. User Ghostty themes make local experimentation
+convenient. Because user themes are searched first, a local theme with the same name as a bundled
+theme can change a recording on that machine. For reproducible project assets, prefer a bundled
+theme name and run examples in CI or a consistent environment.
 
-The default prompt is intentionally simple and VHS-like. Use a real shell prompt only when that is
-important to the recording.
+The default theme is `Aardvark Blue`. It was chosen as a readable, VHS-like default for examples,
+not because it has special behavior in the renderer.
+
+## Layout Settings
+
+These settings affect the raw terminal canvas and PTY grid:
+
+| Setting         | Default          | Purpose                                     |
+| --------------- | ---------------- | ------------------------------------------- |
+| `Width`         | `1200`           | Raw terminal canvas width in pixels         |
+| `Height`        | `600`            | Raw terminal canvas height in pixels        |
+| `Padding`       | `60`             | Space between cells and the raw canvas edge |
+| `FontFamily`    | `JetBrains Mono` | Preferred font family                       |
+| `FontSize`      | `22`             | Font size in pixels                         |
+| `LetterSpacing` | `1`              | Extra pixels between terminal cells         |
+| `LineHeight`    | `1`              | Multiplier applied to font size             |
+
+Betamax derives PTY columns and rows from these values. Increasing padding or font size usually
+reduces the terminal grid size; increasing width or height usually increases it.
+
+## Frame Decoration
+
+These settings are applied after the raw terminal frame is rendered:
+
+| Setting         | Default          | Purpose                      |
+| --------------- | ---------------- | ---------------------------- |
+| `Margin`        | `0`              | Outer frame margin in pixels |
+| `MarginFill`    | theme background | Outer margin color           |
+| `WindowBar`     | empty / disabled | Synthetic window bar mode    |
+| `WindowBarSize` | `30`             | Window bar height in pixels  |
+| `BorderRadius`  | `0`              | Rounded-corner mask radius   |
+
+`WindowBar` currently treats any non-empty value as enabled. Modes ending in `Right`, such as
+`RingsRight` and `ColorfulRight`, place the window buttons on the right. Other non-empty values
+place them on the left.
+
+```text
+Set Margin 12
+Set MarginFill "#111111"
+Set WindowBar Colorful
+Set WindowBarSize 34
+Set BorderRadius 8
+```
+
+## Timing And Cursor Styling
+
+`Framerate` controls capture cadence. `PlaybackSpeed` changes output playback speed without
+speeding up shell execution. `LoopOffset` rotates animated frames so a GIF loop can begin at a less
+jarring point.
+
+`CursorBlink` defaults to `true`. Set it to `false` for deterministic demos where a blinking cursor
+would create unnecessary frame differences.
+
+```text
+Set Framerate 50
+Set PlaybackSpeed 1.0
+Set LoopOffset 10%
+Set CursorBlink false
+```
+
+## Current Theme Boundary
+
+Betamax applies the selected theme in its Rust renderer. The `libghostty-vt` terminal parser is not
+initialized with the selected palette yet, which mostly matters for future work where parser state
+may expose palette-aware data directly. The renderer path used for GIFs, PNGs, videos, and state
+style serialization uses Betamax's loaded theme.

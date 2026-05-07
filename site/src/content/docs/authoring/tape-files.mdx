@@ -1,13 +1,19 @@
 ---
 title: Tape Files
-description: The shape of a Betamax tape and the command flow it describes.
+description: How Betamax parses, validates, and executes terminal capture scripts.
 ---
 
-A tape is a line-oriented script. Settings describe the terminal, output commands describe the
-artifacts to write, and action commands type keys, wait for output, or capture checkpoints.
+A tape is a small script that describes one terminal session. It names output artifacts, configures
+the terminal, starts a shell in a PTY, sends text and keys, waits for stable terminal states, and
+optionally writes checkpoint screenshots or state JSON.
+
+Start here for authoring concepts. Use the [Tape Reference](../../reference/tape-reference/) for
+the exact command surface and [Examples](../../examples/) for copyable tapes.
 
 ```text
 Output examples/output/basic.gif
+
+Require printf
 
 Set Shell "bash"
 Set Theme "Aardvark Blue"
@@ -20,22 +26,60 @@ Enter
 Wait+Screen "hello"
 ```
 
-## Command Groups
+## File Structure
 
-| Group      | Examples                              | Purpose                                  |
-| ---------- | ------------------------------------- | ---------------------------------------- |
-| Outputs    | `Output`, `Screenshot`, `State`       | Choose files to write                    |
-| Settings   | `Set Width`, `Set Theme`, `Set Shell` | Configure terminal and render behavior   |
-| Input      | `Type`, `Enter`, `Key`, `Ctrl+C`      | Send text and keys to the PTY            |
-| Timing     | `Wait`, `Wait+Screen`, `Sleep`        | Synchronize with terminal output         |
-| Visibility | `Hide`, `Show`                        | Exclude setup or cleanup from rendering  |
-| Clipboard  | `Copy`, `Paste`                       | Exercise clipboard-like terminal flows   |
-| Process    | `Env`, `Require`                      | Configure or validate execution context  |
+Most tapes follow this order:
+
+1. Declare `Output` files.
+1. Declare `Require` checks for external commands used by the tape.
+1. Apply `Env` and `Set` startup configuration.
+1. Run terminal actions such as `Type`, key presses, waits, screenshots, and state captures.
+1. Hide trailing cleanup with `Hide`, then type `exit` if the shell should close cleanly.
+
+Startup commands must appear before runtime commands. This is intentional: Betamax needs to know
+the shell argv, terminal dimensions, theme, environment, and output requirements before it starts
+the PTY or creates capture state.
+
+## Tokenization
+
+Tapes use shell-like tokenization for each non-comment line. Quote strings that contain spaces,
+newlines, regex characters, ANSI escapes, or shell syntax:
+
+```text
+Type "printf 'hello from betamax\n'"
+Wait+Screen "hello from betamax"
+Wait+Screen "/item-[0-9]+/"
+```
+
+Blank lines are ignored. Lines whose trimmed form starts with `#` are comments. Multiple commands
+may appear on one line, which is useful for compact generated tapes:
+
+```text
+Type "printf 'done\n'" Enter Wait+Screen "done"
+```
+
+For hand-written tapes, one command per line is usually easier to review.
+
+## Synchronization
+
+Prefer waits over long sleeps. A sleep records whatever happens for a fixed amount of time; a wait
+records until the expected terminal text exists or the timeout expires.
+
+```text
+Type "cargo test --quiet"
+Enter
+Wait+Screen "test result:"
+```
+
+Use `Wait+Line` or bare `Wait` for prompts. Use `Wait+Screen` for command output, full-screen TUIs,
+and text that may not be on the cursor line. Use regex waits when the output contains changing
+numbers, paths, durations, or identifiers.
 
 ## Hidden Work
 
-`Hide` and `Show` are the main authoring tools for polished demos. Hidden periods still run in the
-PTY and can still wait for output; they simply do not add frames to the final animation.
+`Hide` and `Show` are visibility controls, not execution controls. Hidden commands still run in the
+PTY, still update terminal state, and can still be waited on. They simply do not append frames to
+animated outputs.
 
 ```text
 Hide
@@ -43,7 +87,42 @@ Type "cargo build --quiet"
 Enter
 Wait
 Show
+
+Type "my-cli --demo"
+Enter
+Wait+Screen "Ready"
 ```
 
-This keeps compilation or setup out of the GIF while preserving the terminal state that setup
-created.
+`Show` immediately captures the current terminal frame. That avoids a visible flicker from a hidden
+shell prompt to the useful output.
+
+## Outputs During A Tape
+
+`Output` describes final artifacts written after execution. `Screenshot` and `State` write
+checkpoint artifacts immediately at their position in the tape.
+
+```text
+Wait+Screen "Saved profile"
+Screenshot target/snapshots/profile.png
+State target/snapshots/profile.state.json
+```
+
+For testing, pair a wait with a checkpoint state file. For documentation, pair a GIF with a final
+PNG or checkpoint screenshot so reviewers can inspect one frame without opening an animation.
+
+## Shell Defaults
+
+For common shells such as `bash`, `zsh`, and `fish`, Betamax starts a clean recording-oriented
+environment where possible. The default prompt behavior aims for VHS-like output: a simple `>`
+prompt rather than host-specific prompts such as `bash-5.3$`.
+
+Set `Shell` explicitly when a tape depends on shell syntax:
+
+```text
+Set Shell "bash"
+Set Shell "zsh -f"
+Set Shell "fish --private"
+```
+
+Shell argv is split with shell-like rules, so a single `Set Shell` string can contain the program
+and arguments.

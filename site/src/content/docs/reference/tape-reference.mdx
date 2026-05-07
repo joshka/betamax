@@ -1,49 +1,200 @@
 ---
 title: Tape Reference
-description: Common tape commands and settings.
+description: Commands, settings, defaults, parsing rules, and execution behavior.
 ---
 
-This page summarizes the tape surface. The repository still keeps the detailed Markdown reference
-in [`docs/tape-reference.md`](https://github.com/joshka/betamax/blob/main/docs/tape-reference.md).
+This is the canonical reference for Betamax tape files. Use it with
+[Tape Files](../../authoring/tape-files/), [Outputs](../../authoring/outputs/), and
+[Examples](../../examples/) when authoring tapes.
+
+Betamax parses a tape before it starts a shell. Syntax errors, unknown commands, invalid regexes,
+unknown settings, type mismatches, unsupported output extensions, and startup-command ordering
+errors fail before the PTY is spawned.
+
+## Parsing Rules
+
+- A tape is line oriented.
+- Blank lines are ignored.
+- Lines whose trimmed form starts with `#` are comments.
+- Tokens are parsed with shell-like quoting and escaping through `shell_words`.
+- One physical line may contain more than one command, such as `Type "echo hi" Enter`.
+- Startup commands must appear before runtime commands.
+
+Startup commands are `Output`, `Require`, `Set`, and `Env`. Runtime commands include typing, keys,
+waits, sleeps, screenshots, state checkpoints, `Hide`, `Show`, `Copy`, and `Paste`.
 
 ## Outputs
 
-| Command        | Example                           | Behavior                       |
-| -------------- | --------------------------------- | ------------------------------ |
-| `Output`       | `Output examples/output/demo.gif` | Writes an output artifact      |
-| `Screenshot`   | `Screenshot checkpoint.png`       | Writes a checkpoint screenshot |
-| `State`        | `State checkpoint.state.json`     | Writes checkpoint state JSON   |
-| `OutputFrames` | `OutputFrames target/frames`      | Writes individual frames       |
+| Command                 | Behavior                                      | Notes                                       |
+| ----------------------- | --------------------------------------------- | ------------------------------------------- |
+| `Output <path>.gif`     | Write an animated GIF                         | Encoded in process                          |
+| `Output <path>.png`     | Write a final-frame PNG                       | Encoded in process                          |
+| `Output <path>.json`    | Write final terminal state                    | See [State JSON](../../testing/state-json/) |
+| `Output <path>.mp4`     | Write MP4 video                               | Requires `ffmpeg` on `PATH`                 |
+| `Output <path>.webm`    | Write WebM video                              | Requires `ffmpeg` on `PATH`                 |
+| `Output <dir>`          | Write numbered PNG frames into a directory    | Extensionless path only                     |
+| `Screenshot <path>.png` | Write a checkpoint screenshot at this command | Only `.png` is supported                    |
+| `State <path>.json`     | Write checkpoint terminal state               | Only `.json` is supported                   |
+
+Primary `Output` paths are grouped by output kind when written, not returned in source order.
+Checkpoint `Screenshot` and `State` commands are side effects at their position in the tape.
 
 ## Settings
 
-| Setting         | Example                     |
-| --------------- | --------------------------- |
-| `Shell`         | `Set Shell "bash"`          |
-| `Theme`         | `Set Theme "Aardvark Blue"` |
-| `Width`         | `Set Width 900`             |
-| `Height`        | `Set Height 480`            |
-| `FontSize`      | `Set FontSize 28`           |
-| `TypingSpeed`   | `Set TypingSpeed 50ms`      |
-| `PlaybackSpeed` | `Set PlaybackSpeed 1.0`     |
-| `WindowBar`     | `Set WindowBar Colorful`    |
-| `BorderRadius`  | `Set BorderRadius 8`        |
+Settings use `Set <name> <value>`. Values are parsed before the setting name is interpreted:
+percentages become numbers in `0.0..=1.0`, then numbers, booleans, durations, and finally strings
+are attempted in that order. Known settings reject the wrong value kind, so `Set Width "wide"` is
+an error rather than a quiet fallback.
 
-## Actions
+| Setting         | Value kind            | Default          | Behavior                                                              |
+| --------------- | --------------------- | ---------------- | --------------------------------------------------------------------- |
+| `Shell`         | string                | `$SHELL` or `sh` | Shell command and optional arguments; split with shell-like rules     |
+| `Theme`         | string                | `Aardvark Blue`  | Theme name loaded from user Ghostty themes or bundled themes          |
+| `FontFamily`    | string                | `JetBrains Mono` | Preferred font family passed to the renderer                          |
+| `FontSize`      | number                | `22`             | Font size in pixels                                                   |
+| `LetterSpacing` | number                | `1`              | Extra pixels between terminal cells                                   |
+| `LineHeight`    | number                | `1`              | Multiplier applied to the font size                                   |
+| `Width`         | number                | `1200`           | Raw terminal canvas width before margin/window decoration             |
+| `Height`        | number                | `600`            | Raw terminal canvas height before margin/window decoration            |
+| `Padding`       | number                | `60`             | Inner padding between the terminal cells and raw canvas edge          |
+| `Framerate`     | number                | `50`             | Capture cadence in frames per second                                  |
+| `TypingSpeed`   | duration              | `50ms`           | Delay between characters typed by `Type`                              |
+| `PlaybackSpeed` | number                | `1.0`            | Output playback multiplier; does not speed up command execution       |
+| `LoopOffset`    | number or percentage  | `0.0`            | Rotates animated output frames to move the loop boundary              |
+| `CursorBlink`   | bool                  | `true`           | Simulates cursor blink in captured frames                             |
+| `WaitTimeout`   | duration or number    | `15s`            | Default timeout for wait commands; bare numbers are seconds           |
+| `WaitPattern`   | regex string          | `>$`             | Regex used by bare `Wait`                                             |
+| `Margin`        | number                | `0`              | Outer decoration margin in pixels                                     |
+| `MarginFill`    | `#rrggbb` string      | theme background | Fill color for the outer margin; invalid colors fall back to theme bg |
+| `WindowBar`     | string                | empty / disabled | Non-empty values draw a synthetic window bar                          |
+| `WindowBarSize` | number                | `30`             | Window bar height in pixels                                           |
+| `BorderRadius`  | number                | `0`              | Rounded-corner mask radius in pixels                                  |
 
-| Command       | Behavior                           |
-| ------------- | ---------------------------------- |
-| `Type`        | Types text into the PTY            |
-| `Enter`       | Sends Enter                        |
-| `Key`         | Sends a named key                  |
-| `Ctrl+C`      | Sends interrupt                    |
-| `Wait`        | Waits for default readiness        |
-| `Wait+Line`   | Waits for a line of output         |
-| `Wait+Screen` | Waits for text anywhere on screen  |
-| `Wait+Regex`  | Waits for a regular expression     |
-| `Hide`        | Stops recording visible frames     |
-| `Show`        | Resumes recording visible frames   |
-| `Copy`        | Sets Betamax's clipboard buffer    |
-| `Paste`       | Pastes Betamax's clipboard buffer  |
-| `Env`         | Sets an environment variable       |
-| `Require`     | Fails early if a command is absent |
+The terminal grid is derived after all settings are applied. Width, height, padding, font size,
+letter spacing, and line height determine the PTY columns and rows. Extremely small dimensions are
+clamped to at least one row and one column.
+
+## Command Reference
+
+### `Output <path>`
+
+Adds a primary output. Supported extensions are `.gif`, `.png`, `.json`, `.mp4`, and `.webm`.
+An extensionless output path is treated as a directory for numbered PNG frames. Unsupported
+extensions fail before shell startup.
+
+### `Require <program>`
+
+Fails early if a program is not present on `PATH`. This is useful for tapes that call optional
+tools such as `git`, `rg`, `cargo`, or `ffmpeg`. The check runs before output files are written.
+
+### `Set <name> <value>`
+
+Applies one setting from the table above. `Set` commands must appear before runtime commands because
+they affect shell startup, PTY size, capture timing, rendering, or output decoration.
+
+### `Env <key> <value>`
+
+Adds or overrides an environment variable for the spawned shell. Betamax applies its terminal
+defaults first, then tape `Env` values, so a tape can intentionally override variables such as
+`TERM`, `COLORTERM`, `NO_COLOR`, or application-specific flags.
+
+### `Type[@duration] <text>`
+
+Types text into the PTY one Unicode scalar at a time. `Type@25ms "hello"` overrides the default
+typing speed for that command. Use `Type` for printable text and key commands for terminal control
+keys such as arrows, tab, delete, and interrupt.
+
+### Key Commands
+
+Key commands send terminal key sequences to the PTY. They accept an optional `@duration` suffix and
+an optional repeat count:
+
+```text
+Enter
+Enter@250ms
+Down 3
+Shift+Tab
+Ctrl+C
+Alt+F
+Ctrl+Alt+Shift+X
+F5
+```
+
+Supported named keys are `Escape`, `Backspace`, `Delete`, `Insert`, `Down`, `Enter`, `Space`,
+`Tab`, `Left`, `Right`, `Up`, `PageUp`, `PageDown`, `Home`, `End`, and `F1` through `F25`.
+Single-character key tokens are accepted for modified combinations such as `Ctrl+C`.
+
+### `Sleep <duration>`
+
+Pauses tape execution while continuing to drain PTY output and capture frames. Durations accept
+compact forms such as `500ms`, `1s`, and `2m`, split forms such as `500 ms`, and bare numbers as
+seconds.
+
+### `Wait[@duration] [/regex/|text]`
+
+Waits for terminal text while continuing to drain output and capture frames. A bare `Wait` checks
+the current cursor line with `WaitPattern`, which defaults to the VHS-style prompt regex `>$`.
+`Wait@5s` overrides the timeout for that command.
+
+Use `/.../` for regex patterns and plain text for substring patterns.
+
+### `Wait+Line[@duration] [/regex/|text]`
+
+Waits against the current cursor line. This is equivalent to bare `Wait` with an explicit target,
+and it is useful when the tape should make the target obvious.
+
+### `Wait+Screen[@duration] [/regex/|text]`
+
+Waits against all visible viewport text. Use this for command output, full-screen TUIs, status
+lines, or any situation where cursor position should not matter.
+
+### `Hide`
+
+Stops appending frames to animated outputs. The PTY still runs, terminal state still updates, waits
+still work, and checkpoint outputs still see the current terminal. Use this for compilation, setup,
+or teardown that should not appear in the final GIF/video.
+
+### `Show`
+
+Resumes frame capture and immediately captures the current terminal. This reveals the prepared
+state without showing the hidden commands that produced it.
+
+### `Screenshot <path>.png`
+
+Writes an immediate PNG screenshot using the same theme and frame decoration as primary outputs.
+Only `.png` checkpoint screenshots are supported.
+
+### `State <path>.json`
+
+Writes an immediate terminal-state snapshot. The state includes viewport text, scrollback text,
+cursor metadata, a default style, compact style deltas, and styled text spans. See
+[State JSON](../../testing/state-json/) for the schema and snapshot-testing tradeoffs.
+
+### `Copy <text>` And `Paste`
+
+`Copy` stores text in Betamax's tape-local clipboard. `Paste` writes that clipboard into the PTY.
+This does not touch the host operating system clipboard, which keeps tapes deterministic and safe
+for CI.
+
+### `Source <path>.tape`
+
+`Source` is parsed for VHS-language compatibility, but execution is intentionally not implemented.
+A tape containing `Source` returns a targeted error instead of silently skipping the include.
+
+## CLI Commands
+
+Betamax currently exposes these CLI commands:
+
+| Command                            | Behavior                                               |
+| ---------------------------------- | ------------------------------------------------------ |
+| `betamax new <path>`               | Write a starter tape with an inline command summary    |
+| `betamax run <path>`               | Parse, execute, render, and write requested outputs    |
+| `betamax run -`                    | Read a tape from standard input                        |
+| `betamax run -o out.gif demo.tape` | Append one CLI-provided output to the tape             |
+| `betamax validate <path-or-glob>`  | Parse tapes without starting shells or writing outputs |
+| `betamax themes`                   | List theme names available to `Set Theme`              |
+| `betamax themes --json`            | Print theme names as JSON                              |
+| `betamax themes --markdown`        | Print theme names as Markdown bullets                  |
+
+`publish`, `record`, and `serve` remain explicit not-implemented commands so users migrating from
+VHS get a clear error message.

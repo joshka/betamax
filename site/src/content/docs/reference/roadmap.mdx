@@ -9,12 +9,21 @@ follow-up work is about fidelity, API shape, and long-term renderer direction.
 ## Near-Term Areas
 
 1. Improve renderer fidelity around wide glyphs, combining marks, emoji, and fallback fonts.
-2. Feed live terminal mode state into `libghostty-vt::key::Encoder`.
-3. Decide whether the library API should expose structured artifacts without writing files.
-4. Introduce mockable runtime boundaries if library-first testing becomes a core use case.
-5. Add targeted benchmarks after renderer and state formats settle.
-6. Keep MP4/WebM on optional `ffmpeg` unless native encoding becomes worth the packaging cost.
-7. Track upstream libghostty APIs for renderer frame capture.
-
-The full roadmap lives in
-[`docs/roadmap.md`](https://github.com/joshka/betamax/blob/main/docs/roadmap.md).
+   The current renderer is good enough for ordinary CLI output, but terminal UI tests will become
+   more valuable as glyph edge cases get closer to real terminal behavior.
+1. Feed live terminal mode state into `libghostty-vt::key::Encoder`.
+   Key encoding works for common keys today, but richer mode-aware encoding would reduce fallback
+   logic for applications that switch keypad or cursor modes.
+1. Decide whether the library API should expose structured artifacts without writing files.
+   The CLI naturally writes files. Library users may want final frames, state, and media bytes
+   returned directly for tests or custom pipelines.
+1. Introduce mockable runtime boundaries if library-first testing becomes a core use case.
+   The current public traits are enough for focused tests. A larger API should make PTY, capture,
+   and output writing explicit without making normal CLI code harder to read.
+1. Add targeted benchmarks after renderer and state formats settle.
+   Performance tests are useful once the format and renderer behavior stop moving quickly.
+1. Keep MP4/WebM on optional `ffmpeg` unless native encoding becomes worth the packaging cost.
+   Native video encoding would remove a tool dependency but add platform and codec complexity.
+1. Track upstream libghostty APIs for renderer frame capture.
+   If Ghostty exposes an off-screen renderer path, Betamax should prefer that over maintaining a
+   parallel Rust rasterizer long term.

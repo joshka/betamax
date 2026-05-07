@@ -45,8 +45,8 @@ for documentation or tests.
     Terminal output is interpreted by `libghostty-vt`, with copied Ghostty themes available by name.
   </Card>
   <Card title="Small Architecture" icon="puzzle">
-    No xterm.js, no browser, no Axum server, no ttyd process. MP4 and WebM use `ffmpeg` only for
-    video encoding.
+    No xterm.js, no browser, no terminal server, no ttyd process. MP4 and WebM use `ffmpeg` only
+    for video encoding.
   </Card>
 </CardGrid>
 
@@ -116,3 +116,16 @@ Screenshot examples/output/checkpoint.png
 
 `Hide` and `Show` keep setup work out of the rendered output, while waits make tapes stable when
 programs do real work.
+
+## Where To Go Next
+
+- [Quick Start](./quick-start/) covers installation, `betamax new`, `betamax run`, validation, and
+  theme listing.
+- [Examples](./examples/) links every checked-in tape to the behavior it demonstrates.
+- [Tape Files](./authoring/tape-files/) explains tape structure, command ordering, tokenization,
+  waits, hidden work, and shell defaults.
+- [Outputs](./authoring/outputs/) explains GIF, PNG, video, frame-directory, screenshot, and state
+  artifacts.
+- [Tape Reference](./reference/tape-reference/) is the command, setting, default, and CLI reference.
+- [Terminal Testing](./testing/terminal-testing/) and [State JSON](./testing/state-json/) cover the
+  snapshot-testing use case.

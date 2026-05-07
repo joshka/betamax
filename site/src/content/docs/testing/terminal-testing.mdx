@@ -4,7 +4,7 @@ description: Use Betamax tapes as snapshot-style tests for terminal programs.
 ---
 
 Betamax can run interactive terminal programs, wait for expected output, and write structured state
-for assertions. This makes it useful for testing CLIs and TUIs in addition to producing GIFs.
+for assertions. This makes it useful as a terminal test harness in addition to a GIF generator.
 
 ```text
 Output target/snapshots/app.gif
@@ -12,27 +12,72 @@ Output target/snapshots/app.gif
 Type "my-app --demo"
 Enter
 Wait+Screen "Ready"
-State target/snapshots/ready.state.json
+State target/snapshots/ready.json
 Screenshot target/snapshots/ready.png
 ```
 
-The tape fails if the expected text does not appear before the configured timeout. The PNG helps
-with visual review, while state JSON can be compared in snapshot tests.
+The tape fails if expected text does not appear before the configured timeout. The PNG helps with
+visual review, while [State JSON](../state-json/) can be compared in snapshot tests.
 
 ## What To Assert
 
 Prefer asserting text and important style spans instead of every pixel. Pixel assertions are useful
-for renderer work, but they can be brittle for application behavior tests.
+for renderer work, but they are often brittle for application behavior tests.
 
 Good assertions include:
 
 - expected viewport text
 - expected scrollback text
-- selected style spans
-- whether a prompt or status line appears
-- whether hidden setup avoided extra frames
+- selected style spans for important colors or attributes
+- cursor visibility and location when it affects behavior
+- whether a prompt, status line, or selected row appears
+- whether hidden setup avoided extra visible frames
 
-## Rust Test Shape
+## Stable Tapes
 
-The `betamax-core` crate is the natural place for a future library-first testing API. Today, the CLI
-already writes artifacts that Rust tests can compare with tools such as `insta`.
+Use waits as synchronization points:
+
+```text
+Type "my-tui --scripted"
+Enter
+Wait+Screen "Loaded 12 rows"
+```
+
+Prefer `Wait+Screen` for TUIs because cursor location may move as the program draws. Use regex waits
+for dynamic output:
+
+```text
+Wait+Screen "/Loaded [0-9]+ rows/"
+```
+
+Use `Env` to make application behavior deterministic:
+
+```text
+Env NO_COLOR 1
+Env TZ UTC
+Env BETAMAX_TEST 1
+```
+
+Use `Set CursorBlink false` when animation frame differences do not matter to the test.
+
+## Snapshot Workflow
+
+A common Rust test shape is:
+
+1. Run `betamax run tests/fixtures/profile.tape`.
+1. Read `target/snapshots/profile.json`.
+1. Deserialize it with `serde_json`.
+1. Assert targeted fields directly, or snapshot the whole file with `insta`.
+
+The CLI is enough for this workflow today. The `betamax-core` crate already exposes tape parsing,
+running, artifacts, and terminal state types, so a more ergonomic library-first test API can grow on
+top of the same primitives.
+
+## Choosing Artifacts For Tests
+
+State JSON should be the primary assertion artifact. Screenshots are best as debugging attachments
+when a snapshot changes. GIFs are useful when reviewing interaction timing, but they should usually
+not be the only automated assertion.
+
+See [Examples](../../examples/) for `scrollback.tape`, `text-styles.tape`, and `outputs.tape`,
+which exercise the most useful testing paths.

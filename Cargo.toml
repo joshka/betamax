@@ -12,8 +12,8 @@ edition = "2021"
 rust-version = "1.93"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/joshka/betamax"
-homepage = "https://github.com/joshka/betamax"
-documentation = "https://docs.rs/betamax-core"
+homepage = "https://www.joshka.net/betamax/"
+documentation = "https://www.joshka.net/betamax/"
 
 [workspace.dependencies]
 anyhow = "1.0.100"

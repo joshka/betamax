@@ -6,8 +6,8 @@
 //! live in the runner and output-classification modules so tests can validate the CLI language
 //! without spawning a PTY.
 //!
-//! For user-facing command behavior and setting defaults, see the repository's
-//! [`docs/tape-reference.md`](https://github.com/joshka/betamax/blob/main/docs/tape-reference.md).
+//! For user-facing command behavior and setting defaults, see the
+//! [Betamax tape reference](https://www.joshka.net/betamax/reference/tape-reference/).
 //!
 //! # Examples
 //!

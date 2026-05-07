@@ -4,36 +4,110 @@ description: Compact terminal snapshots for viewport, scrollback, text, and styl
 ---
 
 State JSON captures terminal state as text-oriented data instead of raw pixels. It is designed for
-snapshot tests and debugging.
+snapshot tests, debugging, and future library use where callers want terminal assertions without
+having to inspect images.
 
-The format keeps common data compact:
+Write final state with `Output <path>.json` or checkpoint state with `State <path>.json`. See
+[Outputs](../../authoring/outputs/) for when each one is written.
 
-- plain strings represent text with the default style
-- `["text", style_index]` represents styled text
-- rows are arrays of text spans
-- styles are stored once in a shared array
-- default values are omitted where possible
-
-Conceptually:
+## Top-Level Shape
 
 ```json
 {
-  "version": 1,
   "size": [80, 24],
-  "styles": [
-    ["fg", "#d0d0d0"],
-    ["fg", "#ffcc66", "bold"]
-  ],
-  "viewport": [
-    ["plain text", ["highlighted", 1]],
-    ["next row"]
-  ],
-  "scrollback": [
-    ["earlier output"]
-  ]
+  "total_rows": 31,
+  "scrollback_rows": 7,
+  "cursor": {
+    "x": 2,
+    "y": 10,
+    "visible": true
+  },
+  "default_style": {
+    "fg": "#dddddd",
+    "bg": "#102040"
+  },
+  "styles": [{ "fg": "#5a56e0" }, { "fg": "#ffcc66", "bold": true }],
+  "viewport_text": "> echo ok\nok\n> ",
+  "scrollback_text": "cargo build\n...",
+  "viewport": [[["> ", 0], "echo ok"], ["ok"], [["> ", 0]]],
+  "scrollback": [["cargo build"], ["..."]]
 }
 ```
 
-The exact schema may evolve while Betamax is still early. The important design goal is to make
-normal terminal output readable and diffable, while still preserving enough style information for
-meaningful tests.
+Important fields:
+
+- `size` is `[columns, rows]` for the PTY grid.
+- `total_rows` is the total rows reported by `libghostty-vt`, including scrollback and viewport.
+- `scrollback_rows` is the number of rows currently available above the viewport.
+- `title` and `working_directory` are included only when non-empty.
+- `cursor` is zero-based within the visible viewport.
+- `viewport_text` and `scrollback_text` are the easiest fields to assert in tests.
+- `viewport` and `scrollback` contain compact styled spans for the same trimmed rows.
+
+## Text Fields
+
+`viewport_text` contains visible viewport text after trailing blank rows are trimmed.
+`scrollback_text` contains rows above the viewport, also trimmed. Non-empty text fields include a
+trailing newline because they represent terminal rows rather than a single logical string.
+
+For many tests, these fields are enough:
+
+```rust
+let state: serde_json::Value = serde_json::from_str(&json)?;
+assert!(state["viewport_text"].as_str().unwrap().contains("Saved profile"));
+```
+
+Use styled spans only when color or attributes are part of the behavior being tested.
+
+## Styles And Spans
+
+Rows are arrays of spans:
+
+- `"text"` means text using `default_style`.
+- `["text", 0]` means text using `styles[0]`.
+- Empty rows are represented as `[]`.
+- Adjacent cells with the same style are merged into one span.
+- Trailing empty rows are omitted because they are implied by `size`.
+
+`default_style` is fully expanded so plain strings are self-describing. Entries in `styles` are
+deltas from `default_style`; fields that match the default are omitted.
+
+Style objects may include:
+
+| Field           | Meaning                                                    |
+| --------------- | ---------------------------------------------------------- |
+| `fg`            | Foreground color as `#rrggbb`                              |
+| `bg`            | Background color as `#rrggbb`                              |
+| `bold`          | Bold text attribute                                        |
+| `italic`        | Italic text attribute                                      |
+| `faint`         | Faint text attribute                                       |
+| `blink`         | Blink text attribute                                       |
+| `inverse`       | Inverse text after style/color resolution                  |
+| `invisible`     | Invisible text attribute                                   |
+| `strikethrough` | Strikethrough text attribute                               |
+| `overline`      | Overline text attribute                                    |
+| `underline`     | `single`, `double`, `curly`, `dotted`, `dashed`, or `none` |
+
+Boolean fields are omitted when false. `underline` is omitted when it is `none`.
+
+## Why This Encoding
+
+The chosen encoding keeps no-style text short while still preserving styles:
+
+```json
+[["plain text"], [["styled", 0], " normal again"]]
+```
+
+Earlier options were rejected because they were either too verbose for style-heavy output or too
+hard to read in diffs:
+
+- Cell-by-cell JSON repeated default style data and made ordinary terminal output noisy.
+- Fully referential spans with row/column positions were compact for sparse styles but verbose when
+  styles changed often.
+- Object spans such as `{ "text": "foo", "style": 1 }` were readable but much larger than
+  `["foo", 1]`.
+- YAML, TOML, and JSONC each add parsing tradeoffs. Betamax writes strict JSON so tests can consume
+  snapshots with standard parsers.
+
+The format is still early, but the design goal is stable: keep normal terminal output readable and
+diffable while preserving enough style data for meaningful terminal UI tests.

@@ -3,24 +3,59 @@ title: Differences From VHS
 description: What Betamax keeps, changes, and intentionally omits.
 ---
 
-Betamax aims for the common VHS authoring flow, but the implementation is intentionally smaller and
-Ghostty-first.
+Betamax follows the useful parts of the VHS authoring model: tape files, typed input, waits,
+themes, frame styling, GIF output, screenshots, and simple examples. The differences below focus on
+actual user-visible behavior, not implementation details that produce the same result.
 
-| Area              | Betamax status                                       |
-| ----------------- | ---------------------------------------------------- |
-| Architecture      | PTY plus `libghostty-vt`, no browser/server/xterm.js |
-| GIF/PNG/state     | In process                                           |
-| MP4/WebM          | Supported through `ffmpeg`                           |
-| Themes            | Copied Ghostty themes plus inline JSON themes        |
-| Window styling    | Rust composition                                     |
-| Testing snapshots | JSON state with viewport, scrollback, and styles     |
-| `Source`          | Parsed but intentionally not executed                |
-| `record`/`serve`  | Intentionally not implemented                        |
-| `publish`         | Intentionally not implemented                        |
+## Summary
 
-The main tradeoff today is video output. MP4 and WebM use `ffmpeg` as a focused encoder bridge.
-Terminal execution and rasterization stay in process; video container encoding does not.
+| Area            | VHS                          | Betamax                                                  |
+| --------------- | ---------------------------- | -------------------------------------------------------- |
+| Terminal stack  | Browser terminal stack       | PTY plus `libghostty-vt`, rendered in process            |
+| GIF and PNG     | Supported                    | Supported in process                                     |
+| MP4 and WebM    | Supported                    | Supported through `ffmpeg`                               |
+| State snapshots | Not a primary feature        | JSON viewport, scrollback, cursor, and styles            |
+| `Source`        | Executes included tapes      | Parsed, then rejected with a clear not-implemented error |
+| `record`        | Records interactive sessions | Intentionally not implemented                            |
+| `serve`         | Starts a server workflow     | Intentionally not implemented                            |
+| `publish`       | Upload/share workflow        | Intentionally not implemented                            |
 
-See the full
-[`docs/vhs-differences.md`](https://github.com/joshka/betamax/blob/main/docs/vhs-differences.md)
-document for parity details.
+## Same Authoring Ideas
+
+The core tape flow should feel familiar if you know VHS:
+
+- `Output` declares artifacts.
+- `Set` controls dimensions, theme, timing, typography, and frame styling.
+- `Type`, `Enter`, key commands, `Sleep`, and waits drive the terminal.
+- `Hide` and `Show` keep setup or teardown out of the final animation.
+- `Screenshot` writes checkpoint PNGs.
+
+Betamax also keeps the simple recording-shell idea. Common shells are started in a cleaner
+recording environment where possible so the default prompt is stable and VHS-like instead of a
+host-specific shell prompt.
+
+## Intentional Omissions
+
+`record`, `serve`, and `publish` are not planned for the first stable shape. They add product and
+service surface area that is separate from Betamax's primary goal: deterministic local rendering and
+terminal testing.
+
+`Source` is parsed because existing VHS tapes may contain it. Betamax fails explicitly when running
+such a tape so users get a targeted migration error instead of an unknown command or silent skip.
+
+## Betamax Additions
+
+State JSON is the main addition. `Output demo.json` writes final terminal state, and
+`State checkpoint.json` writes state at a specific point in the tape. The format includes plain text
+for easy assertions plus compact styled spans for style-aware snapshot tests.
+
+See [Terminal Testing](../../testing/terminal-testing/) and
+[State JSON](../../testing/state-json/) for that workflow.
+
+## Video Tradeoff
+
+MP4 and WebM use `ffmpeg`. That keeps container encoding reliable and avoids adding native video
+encoder complexity to the first cut. GIF, PNG, screenshots, terminal parsing, rasterization, and
+state JSON are still handled in process.
+
+Use [Outputs](../../authoring/outputs/) for installation notes and output selection guidance.

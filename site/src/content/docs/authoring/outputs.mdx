@@ -3,31 +3,70 @@ title: Outputs
 description: GIFs, screenshots, video files, frame directories, and terminal state.
 ---
 
-A tape can write multiple outputs from the same captured session.
+A single tape can write several artifacts from the same captured terminal session. This is useful
+when one run should produce a README GIF, a final-frame PNG for quick inspection, and state JSON for
+snapshot tests.
 
-| Output             | Command example                       | Notes                              |
-| ------------------ | ------------------------------------- | ---------------------------------- |
-| GIF                | `Output demo.gif`                     | Encoded in process                 |
-| PNG final frame    | `Output demo.png`                     | Final visible frame                |
-| State JSON         | `Output demo.state.json`              | Final terminal state               |
-| MP4 or WebM        | `Output demo.mp4`                     | Encoded through `ffmpeg`           |
-| Screenshot         | `Screenshot checkpoint.png`           | Captures the current visible frame |
-| Checkpoint state   | `State checkpoint.state.json`         | Captures state at that point       |
-| Frame directory    | `OutputFrames target/betamax-frames`  | Writes individual rendered frames  |
+See the [Tape Reference](../../reference/tape-reference/#outputs) for extension validation and the
+exact command syntax.
 
-MP4 and WebM deliberately use `ffmpeg` for the first cut. Terminal execution, terminal parsing, GIF
-encoding, PNG encoding, and JSON state writing are in process; video container encoding is the one
-external boundary.
+| Output             | Command example                      | Written when               | Encoder         |
+| ------------------ | ------------------------------------ | -------------------------- | --------------- |
+| GIF                | `Output demo.gif`                    | After the tape finishes    | In process      |
+| PNG final frame    | `Output demo.png`                    | After the tape finishes    | In process      |
+| State JSON         | `Output demo.json`                   | After the tape finishes    | In process      |
+| MP4                | `Output demo.mp4`                    | After the tape finishes    | `ffmpeg`        |
+| WebM               | `Output demo.webm`                   | After the tape finishes    | `ffmpeg`        |
+| Frame directory    | `Output target/frames`               | After the tape finishes    | In process PNGs |
+| Screenshot         | `Screenshot checkpoint.png`          | At that command            | In process      |
+| Checkpoint state   | `State checkpoint.json`              | At that command            | In process      |
 
-## Testing Outputs
+## Choosing Outputs
 
-For terminal tests, pair a wait with a state or screenshot checkpoint:
+Use GIF for documentation and release notes. Use PNG screenshots when a human needs to review a
+single stable state. Use state JSON when a test should compare text, scrollback, cursor metadata,
+and styles without doing pixel comparisons.
 
-```text
-Wait+Screen "Saved profile"
-Screenshot target/snapshots/profile.png
-State target/snapshots/profile.state.json
+Frame directories are useful when debugging capture timing or feeding rendered frames to custom
+tooling. The path must not have an extension; `Output target/frames` writes numbered PNG files under
+that directory.
+
+## Video Encoding
+
+MP4 and WebM use `ffmpeg` as a focused encoder boundary. Terminal execution, terminal parsing,
+rendering, GIF encoding, PNG encoding, and state JSON writing are in process. Betamax only requires
+`ffmpeg` when the tape requests `.mp4` or `.webm`.
+
+Install it with:
+
+```sh
+# macOS
+brew install ffmpeg
+
+# Debian/Ubuntu
+sudo apt-get update
+sudo apt-get install ffmpeg
 ```
 
-The screenshot is useful for human review. The state JSON is useful for deterministic snapshot
-assertions.
+Use `Require ffmpeg` if the tape should fail before doing any other work:
+
+```text
+Output examples/output/demo.mp4
+Require ffmpeg
+```
+
+## Checkpoints
+
+Checkpoint outputs happen in the middle of a run. They are the right tool for tests and for
+documenting multi-step workflows.
+
+```text
+Type "my-app --demo"
+Enter
+Wait+Screen "Ready"
+Screenshot target/snapshots/ready.png
+State target/snapshots/ready.json
+```
+
+The screenshot preserves the decorated visual frame. The state JSON preserves terminal text and
+styles in a compact comparison format.

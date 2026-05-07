@@ -13,7 +13,7 @@ intentionally does not include `serve`, `record`, `source`, or `publish`.
 Betamax currently supports macOS and Linux. Windows is not supported because the upstream
 `libghostty-vt-sys` native build does not support Windows.
 
-Install the CLI from crates.io once `0.1.1` is published:
+Install the CLI from crates.io:
 
 ```sh
 cargo install betamax --locked
@@ -75,7 +75,7 @@ Enter
 ```
 
 `Hide` and `Show` are useful for VHS-style tapes that hide setup or compile work and only reveal the
-interesting terminal state. See the [Tape Reference](docs/tape-reference.md) for the full command
+interesting terminal state. See the [Tape Reference][tape-reference] for the full command
 and settings behavior.
 
 ## Examples
@@ -129,7 +129,7 @@ Theme lookup searches user Ghostty theme directories first, then the copied them
 ## Differences From VHS
 
 Betamax aims for the common VHS authoring flow, but the architecture is intentionally smaller and
-Ghostty-first. See [Differences From VHS](docs/vhs-differences.md) for the full comparison and
+Ghostty-first. See [Differences From VHS][vhs-differences] for the full comparison and
 remaining parity notes.
 
 | Area              | Betamax status                                       |
@@ -153,15 +153,16 @@ Betamax can also be used as a terminal testing harness. A tape can run an intera
 program, wait for text on the screen, capture PNG screenshots at checkpoints, write structured
 terminal state, and fail when expected terminal output does not appear before a timeout.
 
-See [Terminal Testing](docs/terminal-testing.md) and [State JSON](docs/state-json.md) for the test
+See [Terminal Testing][terminal-testing] and [State JSON][state-json] for the test
 workflow and state snapshot format.
 
 ## Documentation
 
-- [Tape Reference](docs/tape-reference.md)
-- [Terminal Testing](docs/terminal-testing.md)
-- [State JSON](docs/state-json.md)
-- [Differences From VHS](docs/vhs-differences.md)
+- [Documentation Site][docs-site]
+- [Tape Reference][tape-reference]
+- [Terminal Testing][terminal-testing]
+- [State JSON][state-json]
+- [Differences From VHS][vhs-differences]
 - [Contributing](CONTRIBUTING.md)
 - [Development](docs/development.md)
 
@@ -173,6 +174,11 @@ just docs-site-dev
 ```
 
 [basic-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/basic.gif
+[docs-site]: https://www.joshka.net/betamax/
 [hide-show-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/hide-show.gif
+[state-json]: https://www.joshka.net/betamax/testing/state-json/
+[tape-reference]: https://www.joshka.net/betamax/reference/tape-reference/
+[terminal-testing]: https://www.joshka.net/betamax/testing/terminal-testing/
 [themes-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/themes.gif
 [video-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/video.gif
+[vhs-differences]: https://www.joshka.net/betamax/reference/vhs-differences/

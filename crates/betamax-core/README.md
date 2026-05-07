@@ -30,6 +30,6 @@ Betamax currently supports macOS and Linux. Windows is not supported because the
 `libghostty-vt-sys` native build does not support Windows. MP4 and WebM output require `ffmpeg` on
 `PATH`.
 
-See the repository
-[Tape Reference](https://github.com/joshka/betamax/blob/main/docs/tape-reference.md) for command
-behavior, settings, and defaults.
+See the [Betamax documentation site](https://www.joshka.net/betamax/) for command behavior,
+settings, defaults, testing workflows, and examples. See
+[`docs.rs/betamax-core`](https://docs.rs/betamax-core) for the Rust API reference.

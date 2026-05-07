@@ -165,6 +165,7 @@ See [Differences From VHS][vhs-differences] for the full comparison.
 
 ## Documentation
 
+- [Documentation Site][docs-site]
 - [Tape Reference][tape-reference]
 - [Terminal Testing][terminal-testing]
 - [State JSON][state-json]
@@ -172,10 +173,11 @@ See [Differences From VHS][vhs-differences] for the full comparison.
 - [Repository README][repo-readme]
 
 [basic-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/basic.gif
+[docs-site]: https://www.joshka.net/betamax/
 [hide-show-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/hide-show.gif
 [repo-readme]: https://github.com/joshka/betamax
-[state-json]: https://github.com/joshka/betamax/blob/main/docs/state-json.md
-[tape-reference]: https://github.com/joshka/betamax/blob/main/docs/tape-reference.md
-[terminal-testing]: https://github.com/joshka/betamax/blob/main/docs/terminal-testing.md
+[state-json]: https://www.joshka.net/betamax/testing/state-json/
+[tape-reference]: https://www.joshka.net/betamax/reference/tape-reference/
+[terminal-testing]: https://www.joshka.net/betamax/testing/terminal-testing/
 [themes-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/themes.gif
-[vhs-differences]: https://github.com/joshka/betamax/blob/main/docs/vhs-differences.md
+[vhs-differences]: https://www.joshka.net/betamax/reference/vhs-differences/
