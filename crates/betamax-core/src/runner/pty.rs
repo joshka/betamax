@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 use miette::{miette, Context, IntoDiagnostic};
 use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 
-use super::capture::{capture_frame, CaptureState};
+use super::capture::{append_visible_frame, capture_frame, CaptureState};
 use super::settings::Settings;
 use crate::runner::TerminalSession;
 use crate::shell::{apply_terminal_environment, ShellLaunch};
@@ -169,16 +169,20 @@ impl PtySession {
     ) -> Result<()> {
         let started = Instant::now();
         let capture_interval = settings.capture_interval();
-        let frame_delay = settings.frame_delay();
+        let mut last_capture_at = started;
         while started.elapsed() < duration {
             let remaining = duration.saturating_sub(started.elapsed());
             let wait = remaining.min(capture_interval);
             self.drain_into(terminal, wait)?;
             if capture.visible {
-                capture.frames.push((
+                let captured_at = Instant::now();
+                let frame_delay = captured_at.saturating_duration_since(last_capture_at);
+                append_visible_frame(
+                    capture,
                     capture_frame(terminal, settings, capture.frames.len())?,
                     frame_delay,
-                ));
+                );
+                last_capture_at = captured_at;
             }
         }
         self.drain_into(terminal, POST_DURATION_IDLE)?;
@@ -200,14 +204,18 @@ impl PtySession {
     ) -> Result<()> {
         let started = Instant::now();
         let capture_interval = settings.capture_interval();
-        let frame_delay = settings.frame_delay();
+        let mut last_capture_at = started;
         while started.elapsed() < timeout {
             self.drain_into(terminal, capture_interval)?;
             if capture.visible {
-                capture.frames.push((
+                let captured_at = Instant::now();
+                let frame_delay = captured_at.saturating_duration_since(last_capture_at);
+                append_visible_frame(
+                    capture,
                     capture_frame(terminal, settings, capture.frames.len())?,
                     frame_delay,
-                ));
+                );
+                last_capture_at = captured_at;
             }
             let text = wait_target_text(terminal, target)?;
             if wait_pattern_matches(pattern, &text)? {

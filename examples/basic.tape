@@ -16,7 +16,7 @@ Set CursorBlink false
 Type "printf 'hello from betamax\n'"
 Enter
 Wait+Screen "hello from betamax"
-Sleep 700ms
+Sleep 2s
 Hide
 Type "exit"
 Enter

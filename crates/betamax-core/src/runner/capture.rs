@@ -46,19 +46,28 @@ pub(super) fn capture_frame(
     terminal.capture_frame_with_cursor(settings.cursor_visible(frame_index))
 }
 
+/// Append one visible frame or extend the previous frame when pixels have not changed.
+///
+/// This preserves wall-clock dwell time for static terminal states. Without delay coalescing, a
+/// `Sleep 2s` after the final output only contributes as many nominal frame delays as the renderer
+/// can sample during those two seconds, which can make GIFs play much faster than the tape timing.
+pub(super) fn append_visible_frame(capture: &mut CaptureState, frame: Frame, delay: Duration) {
+    if let Some((last_frame, last_delay)) = capture.frames.last_mut() {
+        if frames_equal(last_frame, &frame) {
+            *last_delay += delay;
+            return;
+        }
+    }
+    capture.frames.push((frame, delay));
+}
+
 /// Append the final still frame for animated outputs when it differs from the last visible frame.
 ///
 /// If the tape ended hidden, this intentionally avoids exposing cleanup-shell output. If no frames
 /// were captured at all, the final frame is still added so animated outputs are non-empty.
 pub(super) fn append_final_gif_frame(capture: &mut CaptureState, frame: Frame, delay: Duration) {
-    if capture.visible
-        && capture
-            .frames
-            .last()
-            .map(|(last_frame, _)| !frames_equal(last_frame, &frame))
-            .unwrap_or(true)
-    {
-        capture.frames.push((frame.clone(), delay));
+    if capture.visible {
+        append_visible_frame(capture, frame.clone(), delay);
     }
     if capture.frames.is_empty() {
         capture.frames.push((frame, delay));
@@ -67,8 +76,10 @@ pub(super) fn append_final_gif_frame(capture: &mut CaptureState, frame: Frame, d
 
 /// Compare frames byte-for-byte.
 ///
-/// This compares the stored byte representation rather than normalized RGBA output. The runner only
-/// uses it after decoration, where frames are guaranteed to have the same packed RGBA format.
+/// This compares the stored byte representation rather than normalized RGBA output.
+///
+/// Captured frames from a single renderer path share the same byte order before decoration, and all
+/// frames share packed RGBA after decoration.
 pub(super) fn frames_equal(left: &Frame, right: &Frame) -> bool {
     left.width == right.width
         && left.height == right.height

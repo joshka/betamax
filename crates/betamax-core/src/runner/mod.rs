@@ -49,7 +49,7 @@ mod settings;
 
 #[doc(inline)]
 pub use artifacts::RunArtifacts;
-use capture::{append_final_gif_frame, capture_frame, CaptureState};
+use capture::{append_final_gif_frame, append_visible_frame, capture_frame, CaptureState};
 #[doc(inline)]
 pub use options::RunOptions;
 use pty::PtySession;
@@ -459,10 +459,11 @@ where
             Command::Hide => capture.visible = false,
             Command::Show => {
                 capture.visible = true;
-                capture.frames.push((
+                append_visible_frame(
+                    capture,
                     capture_frame(terminal, settings, capture.frames.len())?,
                     settings.frame_delay(),
-                ));
+                );
             }
             Command::Env { .. }
             | Command::Output(_)
@@ -652,6 +653,20 @@ mod tests {
 
         assert_eq!(capture.frames.len(), 1);
         assert!(frames_equal(&capture.frames[0].0, &visible_frame));
+    }
+
+    #[test]
+    fn repeated_visible_frames_extend_delay() {
+        let frame = test_frame([255, 0, 0, 255]);
+        let mut capture = CaptureState::default();
+
+        append_visible_frame(&mut capture, frame.clone(), Duration::from_millis(20));
+        append_visible_frame(&mut capture, frame.clone(), Duration::from_millis(20));
+        append_final_gif_frame(&mut capture, frame.clone(), Duration::from_millis(20));
+
+        assert_eq!(capture.frames.len(), 1);
+        assert_eq!(capture.frames[0].1, Duration::from_millis(60));
+        assert!(frames_equal(&capture.frames[0].0, &frame));
     }
 
     fn test_frame(pixel: [u8; 4]) -> Frame {
