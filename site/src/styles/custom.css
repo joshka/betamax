@@ -75,9 +75,11 @@
 
 .betamax-hero h1 {
   margin: 0;
-  font-size: clamp(3rem, 8vw, 7rem);
+  max-width: 100%;
+  font-size: 5.75rem;
   line-height: 0.92;
   letter-spacing: 0;
+  white-space: nowrap;
   background: linear-gradient(180deg, #fff9e8 5%, #b9ad99 42%, #6c5d50 52%, #fff0c8 92%);
   -webkit-background-clip: text;
   background-clip: text;
@@ -90,6 +92,18 @@
   -webkit-background-clip: text;
   background-clip: text;
   text-shadow: 0 12px 28px rgba(84, 57, 35, 0.24);
+}
+
+@media (min-width: 90rem) {
+  .betamax-hero h1 {
+    font-size: 6.5rem;
+  }
+}
+
+@media (max-width: 64rem) {
+  .betamax-hero h1 {
+    font-size: 4.75rem;
+  }
 }
 
 .betamax-tagline {
@@ -207,7 +221,17 @@
     grid-template-columns: 1fr;
   }
 
+  .betamax-hero h1 {
+    font-size: 5.25rem;
+  }
+
   .betamax-demo img {
     min-height: 12rem;
+  }
+}
+
+@media (max-width: 34rem) {
+  .betamax-hero h1 {
+    font-size: 4rem;
   }
 }
