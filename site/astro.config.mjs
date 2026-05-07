@@ -2,7 +2,7 @@ import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 
 export default defineConfig({
-  site: 'https://joshka.github.io',
+  site: 'https://www.joshka.net',
   base: '/betamax',
   integrations: [
     starlight({
