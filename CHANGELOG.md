@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/joshka/betamax/compare/betamax-v0.1.0...betamax-v0.1.1) - 2026-05-07
+
+### Other
+
+- Bump CLI crate version
+- Implement Ghostty-first tape runner
+
 ## 0.1.0 - Unreleased
 
 Initial Betamax release.
