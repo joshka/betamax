@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/joshka/betamax/compare/betamax-v0.1.1...betamax-v0.1.2) - 2026-05-07
+
+### Other
+
+- Fix CLI documentation link
+- Expand CLI crate README
+
 ## [0.1.1](https://github.com/joshka/betamax/compare/betamax-v0.1.0...betamax-v0.1.1) - 2026-05-07
 
 ### Other
