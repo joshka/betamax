@@ -1,5 +1,8 @@
 //! Ghostty-backed terminal capture sessions.
 
+use std::cell::Cell;
+use std::rc::Rc;
+
 use libghostty_vt::{Terminal, TerminalOptions};
 
 use super::renderer::RasterRenderer;
@@ -117,7 +120,15 @@ impl FrameCapture for GhosttyFrameCapture {
 /// over feeding terminal bytes.
 pub struct GhosttySession {
     /// libghostty-vt terminal model receiving PTY bytes.
-    terminal: Terminal<'static, 'static>,
+    ///
+    /// Boxed to work around libghostty-vt 0.1.1 unsoundness: `on_pty_write`
+    /// records `&self.vtable` (an interior field) as C userdata, so moving the
+    /// `Terminal` after install — e.g. returning it from this constructor —
+    /// dangles the pointer and segfaults on the next callback fire. Fixed
+    /// upstream by Uzaaft/libghostty-rs#24 (boxes the VTable internally); drop
+    /// this `Box` once we depend on a release containing that PR.
+    terminal: Box<Terminal<'static, 'static>>,
+    pending_pty_reply: Rc<Cell<Vec<u8>>>,
     /// Software renderer and reusable render iterators.
     renderer: RasterRenderer,
 }
@@ -141,12 +152,14 @@ impl GhosttySession {
         let cell_width = request.text.cell_width();
         let cell_height = request.text.cell_height();
 
-        let mut terminal = Terminal::new(TerminalOptions {
-            cols: request.grid.columns.max(1),
-            rows: request.grid.rows.max(1),
-            max_scrollback: MAX_SCROLLBACK_ROWS,
-        })
-        .map_err(vt_error("failed to create libghostty-vt terminal"))?;
+        let mut terminal = Box::new(
+            Terminal::new(TerminalOptions {
+                cols: request.grid.columns.max(1),
+                rows: request.grid.rows.max(1),
+                max_scrollback: MAX_SCROLLBACK_ROWS,
+            })
+            .map_err(vt_error("failed to create libghostty-vt terminal"))?,
+        );
         terminal
             .resize(
                 request.grid.columns.max(1),
@@ -156,8 +169,21 @@ impl GhosttySession {
             )
             .map_err(vt_error("failed to size libghostty-vt terminal"))?;
 
+        let pending_pty_reply = Rc::new(Cell::new(Vec::new()));
+        let reply_for_callback = Rc::clone(&pending_pty_reply);
+        terminal
+            .on_pty_write(move |_terminal, bytes| {
+                let mut buf = reply_for_callback.take();
+                buf.extend_from_slice(bytes);
+                reply_for_callback.set(buf);
+            })
+            .map_err(vt_error(
+                "failed to install libghostty-vt write_pty callback",
+            ))?;
+
         Ok(Self {
             terminal,
+            pending_pty_reply,
             renderer: RasterRenderer::new(request, cell_width, cell_height),
         })
     }
@@ -179,6 +205,10 @@ impl TerminalSession for GhosttySession {
 
     fn terminal_state(&mut self) -> Result<TerminalState> {
         self.renderer.terminal_state(&mut self.terminal)
+    }
+
+    fn take_pending_pty_reply(&mut self) -> Vec<u8> {
+        self.pending_pty_reply.take()
     }
 }
 
@@ -234,4 +264,28 @@ impl GhosttySession {
 
 fn vt_error(context: &'static str) -> impl Fn(libghostty_vt::Error) -> miette::Report {
     move |error| miette::miette!("{context}: {error}")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn small_request() -> CaptureRequest {
+        CaptureRequest {
+            canvas: PixelSize::new(640, 360),
+            grid: TerminalGrid::new(80, 24),
+            text: TextSettings::default(),
+            theme: TerminalTheme::default(),
+        }
+    }
+
+    #[test]
+    fn cpr_query_produces_forwardable_reply() {
+        // We assert shape (CSI...R), not exact bytes — libghostty owns the format.
+        let mut session = GhosttySession::new(small_request()).expect("open session");
+        session.write_vt(b"\x1b[6n");
+        let reply = session.take_pending_pty_reply();
+        assert!(reply.starts_with(b"\x1b["), "reply must begin with CSI, got {reply:?}");
+        assert!(reply.ends_with(b"R"), "CPR reply must end with R, got {reply:?}");
+    }
 }

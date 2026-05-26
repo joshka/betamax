@@ -125,7 +125,8 @@ impl PtySession {
     ///
     /// Returns whether any bytes were observed. After the first blocking receive succeeds, all
     /// immediately available chunks are drained without additional waits so bursty output stays
-    /// grouped into the same terminal update.
+    /// grouped into the same terminal update. Replies from the emulator (e.g. CPR responses)
+    /// are forwarded to the master writer so the child unblocks on its host queries.
     pub(super) fn drain_into(
         &mut self,
         terminal: &mut impl TerminalSession,
@@ -137,6 +138,10 @@ impl PtySession {
             saw_output = true;
             while let Ok(bytes) = self.reader.try_recv() {
                 terminal.write_vt(&bytes);
+            }
+            let reply = terminal.take_pending_pty_reply();
+            if !reply.is_empty() {
+                self.writer.write_all(&reply).into_diagnostic()?;
             }
         }
         Ok(saw_output)

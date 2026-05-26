@@ -93,6 +93,13 @@ pub trait TerminalSession {
     ///
     /// Returns an error when the terminal backend cannot expose structured state.
     fn terminal_state(&mut self) -> Result<crate::ghostty::TerminalState>;
+
+    /// Take reply bytes the emulator wants written back to the PTY master,
+    /// e.g. the response to a cursor position query (`ESC[6n`). Default is
+    /// empty for backends that don't model device queries.
+    fn take_pending_pty_reply(&mut self) -> Vec<u8> {
+        Vec::new()
+    }
 }
 
 /// Opens terminal sessions for captured tape runs.
