@@ -4,6 +4,18 @@
 
 ### Other
 
+- release ([#14](https://github.com/joshka/betamax/pull/14))
+
+## [0.1.3](https://github.com/joshka/betamax/compare/betamax-core-v0.1.2...betamax-core-v0.1.3) - 2026-06-12
+
+### Added
+
+- forward terminal-to-host PTY replies back to child
+
+## [0.1.5](https://github.com/joshka/betamax/compare/betamax-v0.1.4...betamax-v0.1.5) - 2026-06-12
+
+### Other
+
 - updated the following local packages: betamax-core
 
 ## [0.1.4](https://github.com/joshka/betamax/compare/betamax-v0.1.3...betamax-v0.1.4) - 2026-05-07
