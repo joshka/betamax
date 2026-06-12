@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.5](https://github.com/joshka/betamax/compare/betamax-v0.1.4...betamax-v0.1.5) - 2026-06-12
+
+### Other
+
+- updated the following local packages: betamax-core
+
 ## [0.1.4](https://github.com/joshka/betamax/compare/betamax-v0.1.3...betamax-v0.1.4) - 2026-05-07
 
 ### Other
