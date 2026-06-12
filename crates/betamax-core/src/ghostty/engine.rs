@@ -285,7 +285,13 @@ mod tests {
         let mut session = GhosttySession::new(small_request()).expect("open session");
         session.write_vt(b"\x1b[6n");
         let reply = session.take_pending_pty_reply();
-        assert!(reply.starts_with(b"\x1b["), "reply must begin with CSI, got {reply:?}");
-        assert!(reply.ends_with(b"R"), "CPR reply must end with R, got {reply:?}");
+        assert!(
+            reply.starts_with(b"\x1b["),
+            "reply must begin with CSI, got {reply:?}"
+        );
+        assert!(
+            reply.ends_with(b"R"),
+            "CPR reply must end with R, got {reply:?}"
+        );
     }
 }
