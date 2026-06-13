@@ -19,7 +19,7 @@ Install the CLI from crates.io:
 cargo install betamax --locked
 ```
 
-Until then, run from the workspace:
+For local development or source checkouts, run from the workspace:
 
 ```sh
 cargo run -- run examples/basic.tape
