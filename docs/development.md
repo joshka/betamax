@@ -55,6 +55,20 @@ Dependency policy is enforced with cargo-deny:
 just dependency-policy
 ```
 
+Docs dependencies are intentionally limited to Astro, Starlight, Astro's checker, and TypeScript.
+Prefer normal grouped pnpm updates first:
+
+```sh
+pnpm update
+just docs-site-check
+just docs-site-build
+just pnpm-audit
+```
+
+Use `pnpm.overrides` only when upstream packages still resolve vulnerable transitive versions after
+a normal update. Remove overrides once the direct docs dependencies naturally resolve patched
+versions.
+
 Release-oriented checks are kept in `just` so local and CI behavior stay aligned:
 
 ```sh

@@ -21,3 +21,14 @@ updates:
       rust:
         patterns:
           - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    groups:
+      docs:
+        patterns:
+          - "*"

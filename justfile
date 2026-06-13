@@ -63,6 +63,9 @@ docs-site-check:
 docs-site-build:
     mise exec -- pnpm docs:build
 
+pnpm-audit:
+    mise exec -- pnpm audit --audit-level low
+
 package-core:
     mise exec -- cargo package -p betamax-core --allow-dirty
 
@@ -93,4 +96,4 @@ install-smoke:
 
 check: fmt-check clippy clippy-beta test doc-test doc lint-md validate docs-site-check docs-site-build
 
-release-check: check dependency-policy feature-check outdated minimal-versions package install-smoke smoke
+release-check: check dependency-policy pnpm-audit feature-check outdated minimal-versions package install-smoke smoke
