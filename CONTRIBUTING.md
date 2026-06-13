@@ -27,8 +27,10 @@ mise install
 ```
 
 The checked-in `.mise.toml` installs `just`, `markdownlint-cli2`, Node, and Zig. Zig is present for
-native dependency work around Ghostty tooling. Rust itself is managed with `rustup`; the workspace
-currently declares Rust `1.93` in `Cargo.toml`.
+native dependency work around Ghostty tooling. Rust itself is managed with `rustup`.
+
+The workspace `rust-version` is a compatibility floor, not a separately tested MSRV lane. It
+should move only when Betamax code or dependency requirements need a newer compiler.
 
 Rust formatting uses nightly rustfmt because `rustfmt.toml` enables unstable formatting options:
 
@@ -50,15 +52,15 @@ Run the same broad check used by CI:
 just check
 ```
 
-This runs formatting, tests, doctests, documentation generation, Markdown linting, and tape
-validation. For release-oriented changes, run the larger check:
+This runs nightly formatting, stable and beta clippy, tests, doctests, documentation generation,
+Markdown linting, and tape validation. For release-oriented changes, run the larger check:
 
 ```sh
 just release-check
 ```
 
-`just release-check` also checks direct dependency freshness, direct minimal versions, packaging,
-install smoke testing, and rendering the basic smoke tape.
+`just release-check` also checks dependency policy, direct dependency freshness, direct minimal
+versions, packaging, install smoke testing, and rendering the basic smoke tape.
 
 ## Useful Checks
 
@@ -67,6 +69,8 @@ Use narrower commands while iterating:
 ```sh
 just fmt
 just fmt-check
+just clippy
+just clippy-beta
 just test
 just doc-test
 just doc
@@ -78,6 +82,7 @@ just smoke
 Dependency maintenance has dedicated recipes:
 
 ```sh
+just dependency-policy
 just outdated
 just minimal-versions
 ```
@@ -85,7 +90,7 @@ just minimal-versions
 If those checks require missing Cargo subcommands, install them with Cargo:
 
 ```sh
-cargo install cargo-outdated cargo-minimal-versions cargo-hack --locked
+cargo install cargo-deny cargo-outdated cargo-minimal-versions cargo-hack --locked
 ```
 
 ## Tape Behavior

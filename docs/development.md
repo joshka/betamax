@@ -18,8 +18,22 @@ requires nightly rustfmt:
 just fmt-check
 ```
 
+Clippy runs on stable and beta. Stable is the baseline, and beta catches new lints before they
+reach the next stable release:
+
+```sh
+just clippy
+just clippy-beta
+```
+
 Markdown linting uses [.markdownlint-cli2.yaml](../.markdownlint-cli2.yaml). It enforces aligned
 table columns via `MD060/table-column-style` and ignores table rows for line-length checks.
+
+## Rust Version Policy
+
+The workspace `rust-version` is a compatibility floor, not a separately tested MSRV lane. It should
+move only when Betamax code or dependency requirements need a newer compiler. Routine CI follows
+the current stable compiler, with beta clippy used as an early warning for upcoming lint changes.
 
 ## Checks
 
@@ -33,6 +47,12 @@ just lint-md
 just validate
 just docs-site-check
 just docs-site-build
+```
+
+Dependency policy is enforced with cargo-deny:
+
+```sh
+just dependency-policy
 ```
 
 Release-oriented checks are kept in `just` so local and CI behavior stay aligned:

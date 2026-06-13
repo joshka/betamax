@@ -37,6 +37,9 @@ jobs:
       - name: Install nightly rustfmt
         run: rustup toolchain install nightly --component rustfmt
 
+      - name: Install beta clippy
+        run: rustup toolchain install beta --component clippy
+
       - name: Install mise tools
         uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac # v2.4.4
         with:
@@ -53,6 +56,9 @@ jobs:
 
       - name: Check clippy
         run: just clippy
+
+      - name: Check beta clippy
+        run: just clippy-beta
 
       - name: Check documentation builds
         run: just doc
@@ -162,9 +168,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: audit
-            tools: cargo-audit
-            command: just audit
+          - name: dependency policy
+            tools: cargo-deny
+            command: just dependency-policy
             allow-failure: false
           - name: features
             tools: cargo-hack

@@ -15,6 +15,9 @@ test:
 clippy:
     mise exec -- cargo clippy --workspace --all-targets -- -D warnings
 
+clippy-beta:
+    mise exec -- cargo +beta clippy --workspace --all-targets -- -D warnings
+
 doc-test:
     mise exec -- cargo test --workspace --doc
 
@@ -30,8 +33,8 @@ outdated:
 minimal-versions:
     mise exec -- cargo minimal-versions --direct --workspace check
 
-audit:
-    mise exec -- cargo audit
+dependency-policy:
+    mise exec -- cargo deny check advisories licenses bans sources
 
 feature-check:
     mise exec -- cargo hack check --workspace --all-targets
@@ -88,6 +91,6 @@ install-smoke:
     CARGO_HOME="$tmp/cargo-home" mise exec -- cargo install --path crates/betamax --locked --root "$tmp/install"
     "$tmp/install/bin/betamax" --version
 
-check: fmt-check clippy test doc-test doc lint-md validate docs-site-check docs-site-build
+check: fmt-check clippy clippy-beta test doc-test doc lint-md validate docs-site-check docs-site-build
 
-release-check: check audit feature-check outdated minimal-versions package install-smoke smoke
+release-check: check dependency-policy feature-check outdated minimal-versions package install-smoke smoke
