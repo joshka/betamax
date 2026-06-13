@@ -1,0 +1,31 @@
+name: Feature request
+description: Suggest focused behavior, syntax, output, or documentation improvements.
+title: "Feature: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What workflow is hard or unsupported today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: Describe the behavior or API you want Betamax to provide.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+      description: What workarounds or other designs did you consider?
+  - type: checkboxes
+    id: docs
+    attributes:
+      label: Documentation impact
+      options:
+        - label: This would need tape reference, examples, or docs site updates.

@@ -165,6 +165,8 @@ workflow and state snapshot format.
 - [Differences From VHS][vhs-differences]
 - [Contributing](CONTRIBUTING.md)
 - [Development](docs/development.md)
+- [Security Policy](SECURITY.md)
+- [Support](SUPPORT.md)
 
 The Starlight docs site lives under `site/` and can be run locally with:
 
