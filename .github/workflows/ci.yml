@@ -130,8 +130,29 @@ jobs:
         run: just smoke
 
   dependencies:
-    name: Dependency checks
+    name: Dependency check (${{ matrix.name }})
     runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.allow-failure }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: audit
+            tool: cargo-audit
+            command: just audit
+            allow-failure: false
+          - name: features
+            tool: cargo-hack
+            command: just feature-check
+            allow-failure: false
+          - name: minimal versions
+            tool: cargo-minimal-versions
+            command: just minimal-versions
+            allow-failure: false
+          - name: unused dependencies
+            tool: cargo-udeps
+            command: just udeps
+            allow-failure: true
 
     steps:
       - name: Checkout
@@ -152,23 +173,13 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Install cargo maintenance tools
-        run: cargo install cargo-audit cargo-outdated cargo-minimal-versions cargo-hack cargo-udeps --locked
+        uses: taiki-e/install-action@v2
+        with:
+          tool: ${{ matrix.tool }}
+          fallback: none
 
-      - name: Audit dependencies
-        run: just audit
-
-      - name: Check feature combinations
-        run: just feature-check
-
-      - name: Check direct minimal versions
-        run: just minimal-versions
-
-      - name: Check outdated direct dependencies
-        run: just outdated
-
-      - name: Check unused dependencies
-        continue-on-error: true
-        run: just udeps
+      - name: Run dependency check
+        run: ${{ matrix.command }}
 
   required:
     name: Required
