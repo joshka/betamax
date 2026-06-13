@@ -13,10 +13,17 @@ config:
       - Card
       - CardGrid
       - div
+      - footer
       - h1
+      - h2
       - img
+      - kbd
+      - nav
       - p
+      - polygon
+      - rect
       - section
       - span
+      - svg
   MD024:
     siblings_only: true

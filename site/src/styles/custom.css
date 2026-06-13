@@ -1,20 +1,28 @@
 :root {
   --sl-color-white: #f8f0dd;
-  --sl-color-gray-1: #f1e5ca;
-  --sl-color-gray-2: #d8c6a1;
-  --sl-color-gray-3: #a9906d;
-  --sl-color-gray-4: #765e47;
-  --sl-color-gray-5: #4b3a31;
-  --sl-color-gray-6: #261f1d;
-  --sl-color-black: #151211;
-  --sl-color-accent-low: #4c1d15;
-  --sl-color-accent: #d75b26;
-  --sl-color-accent-high: #ffd0a2;
-  --sl-color-text-accent: #c1461d;
-  --sl-color-bg-nav: #171312;
-  --sl-color-bg-sidebar: #1b1614;
-  --sl-color-hairline: #5f4d3f;
+  --sl-color-gray-1: #ead8b8;
+  --sl-color-gray-2: #cdb184;
+  --sl-color-gray-3: #9b744e;
+  --sl-color-gray-4: #68472f;
+  --sl-color-gray-5: #352419;
+  --sl-color-gray-6: #1a120e;
+  --sl-color-black: #0b0806;
+  --sl-color-accent-low: #351109;
+  --sl-color-accent: #e36b2c;
+  --sl-color-accent-high: #f1c28b;
+  --sl-color-text-accent: #ff9a50;
+  --sl-color-bg-nav: #0d0907;
+  --sl-color-bg-sidebar: #140d09;
+  --sl-color-hairline: #6b4428;
   --sl-font-system: Inter, ui-sans-serif, system-ui, sans-serif;
+  /* Wider content column than the Starlight default (45rem) */
+  --sl-content-width: 57rem;
+}
+
+/* Center the content column instead of pinning it to the right
+   (Starlight sets margin-inline-start: auto, dumping all slack on the left). */
+.content-panel .sl-container {
+  margin-inline: auto;
 }
 
 :root[data-theme='light'] {
@@ -38,23 +46,130 @@
 
 .page {
   background:
-    radial-gradient(circle at 18% 12%, rgba(215, 91, 38, 0.18), transparent 28rem),
-    radial-gradient(circle at 72% 4%, rgba(196, 176, 136, 0.14), transparent 24rem);
+    radial-gradient(circle at 18% 12%, rgba(122, 42, 18, 0.07), transparent 34rem),
+    radial-gradient(circle at 72% 4%, rgba(112, 72, 39, 0.06), transparent 30rem);
+}
+
+:root:not([data-theme='light']) main a code {
+  color: var(--sl-color-accent-high);
+}
+
+:root:not([data-theme='light']) .page > .header {
+  border-bottom: 1px solid #151211;
+  background: #171312;
+  box-shadow: inset 0 -1px rgba(0, 0, 0, 0.35);
+}
+
+:root:not([data-theme='light']) .header .header {
+  background: transparent;
+}
+
+:root:not([data-theme='light']) .social-icons a::after {
+  content: 'GitHub';
+  margin-inline-start: 0.45rem;
+  color: var(--sl-color-gray-2);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+:root:not([data-theme='light']) .site-title {
+  gap: 0.55rem;
+  color: var(--sl-color-gray-1);
+  font-family: var(--sl-font-system);
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+:root:not([data-theme='light']) .site-title::before {
+  content: '';
+  display: block;
+  flex: none;
+  width: 2.15rem;
+  height: 1.45rem;
+  background: url('/betamax/assets/betamax-nav-mark.svg') center / contain no-repeat;
+  box-shadow: 0 0 1.2rem rgba(227, 107, 44, 0.1);
+}
+
+:root:not([data-theme='light']) .sidebar-pane {
+  border-right-color: #151211;
+  background: #1b1614;
+}
+
+:root:not([data-theme='light']) .main-pane {
+  border-inline: 0;
+  background: transparent;
+}
+
+:root:not([data-theme='light']) .right-sidebar {
+  border-left-color: #4a301f;
+  background: rgba(12, 9, 8, 0.42);
+}
+
+:root:not([data-theme='light']) .content-panel {
+  border-bottom-color: #2a1b13;
+  background: transparent;
+}
+
+:root:not([data-theme='light']) [aria-current='page'] {
+  color: #201109;
+  background: linear-gradient(180deg, #ee8d49, #d55724);
+  box-shadow:
+    inset 0 1px rgba(255, 219, 170, 0.45),
+    inset 0 -1px rgba(87, 27, 13, 0.45);
+}
+
+:root:not([data-theme='light']) :is(h1, h2, h3) {
+  color: #f4e2c2;
+}
+
+:root:not([data-theme='light']) main :not(pre) > code {
+  color: #f0d0a0;
+  background: #3b281c;
+}
+
+:root:not([data-theme='light']) main :not(pre) > a code {
+  color: var(--sl-color-accent-high);
+}
+
+/* Code blocks: match the deployed Expressive Code styling (lighter,
+   lifted warm-brown body so blocks separate cleanly from the page). */
+:root:not([data-theme='light']) {
+  --ec-frm-edBg: #261f1d;
+  --ec-frm-trmBg: #261f1d;
+  --ec-brdCol: color-mix(in srgb, #4b3a31, transparent 25%);
+}
+
+:root:not([data-theme='light']) main table :is(th, td) {
+  border-color: #4a301f;
+}
+
+main:has(.betamax-hero) > .content-panel:first-child {
+  display: none;
+}
+
+.sl-markdown-content:has(.betamax-hero) {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+main:has(.betamax-hero) {
+  background:
+    radial-gradient(circle at 67% 18%, rgba(214, 103, 36, 0.16), transparent 22rem),
+    radial-gradient(circle at 22% 12%, rgba(160, 55, 28, 0.08), transparent 20rem),
+    linear-gradient(180deg, #0b0b0a 0%, #100d0a 42%, #0b0806 100%);
 }
 
 .betamax-hero {
   display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(18rem, 1.1fr);
-  gap: clamp(1.25rem, 4vw, 3rem);
+  grid-template-columns: minmax(0, 0.92fr) minmax(18rem, 1.08fr);
+  gap: clamp(2.25rem, 7vw, 5rem);
   align-items: center;
-  margin: clamp(0rem, 2vw, 1.5rem) 0 3rem;
-  padding: clamp(1rem, 3vw, 2rem);
-  border: 1px solid color-mix(in srgb, var(--sl-color-hairline) 70%, transparent);
-  border-radius: 10px;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 28%),
-    linear-gradient(180deg, rgba(215, 91, 38, 0.14), rgba(21, 18, 17, 0.28));
-  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.36);
+  margin: 0 0 3rem;
+  padding: clamp(2.5rem, 7vw, 5.25rem) 0 clamp(1.25rem, 4vw, 3rem);
+}
+
+.betamax-hero-copy {
+  position: relative;
 }
 
 :root[data-theme='light'] .betamax-hero {
@@ -65,7 +180,7 @@
 }
 
 .betamax-kicker {
-  margin: 0 0 0.45rem;
+  margin: 0 0 0.9rem;
   color: var(--sl-color-accent);
   font-size: 0.78rem;
   font-weight: 800;
@@ -74,17 +189,16 @@
 }
 
 .betamax-hero h1 {
+  font-family: var(--sl-font-system);
   margin: 0;
   max-width: 100%;
-  font-size: 5.75rem;
-  line-height: 0.92;
-  letter-spacing: 0;
-  white-space: nowrap;
-  background: linear-gradient(180deg, #fff9e8 5%, #b9ad99 42%, #6c5d50 52%, #fff0c8 92%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  text-shadow: 0 18px 42px rgba(0, 0, 0, 0.45);
+}
+
+.betamax-hero h1 img {
+  display: block;
+  width: min(25rem, 100%);
+  height: auto;
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.55));
 }
 
 :root[data-theme='light'] .betamax-hero h1 {
@@ -107,11 +221,11 @@
 }
 
 .betamax-tagline {
-  max-width: 38rem;
-  margin: 1rem 0 0;
+  max-width: 42rem;
+  margin: 1.5rem 0 0;
   color: var(--sl-color-gray-2);
-  font-size: clamp(1.05rem, 2.4vw, 1.35rem);
-  line-height: 1.45;
+  font-size: clamp(0.95rem, 1.4vw, 1.02rem);
+  line-height: 1.55;
 }
 
 :root[data-theme='light'] .betamax-tagline {
@@ -121,26 +235,30 @@
 .betamax-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-top: 1.5rem;
+  gap: 0.8rem;
+  margin-top: 2rem;
 }
 
 .betamax-button {
   display: inline-flex;
   align-items: center;
-  min-height: 2.65rem;
-  padding: 0.55rem 1rem;
-  border: 1px solid color-mix(in srgb, var(--sl-color-accent) 42%, var(--sl-color-hairline));
-  border-radius: 7px;
+  min-height: 2.8rem;
+  padding: 0.62rem 1.3rem;
+  border: 1px solid color-mix(in srgb, var(--sl-color-accent) 72%, var(--sl-color-hairline));
+  border-radius: 12px;
   color: var(--sl-color-gray-1);
   font-weight: 700;
   text-decoration: none;
-  background: rgba(21, 18, 17, 0.34);
+  background: rgba(26, 18, 13, 0.45);
 }
 
 .betamax-button-primary {
   color: #fff7e8;
-  background: linear-gradient(180deg, #e36a2e, #9f3419);
+  border-color: #f07d38;
+  background: linear-gradient(180deg, #f07d38, #a8381a);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 224, 188, 0.45),
+    0 1px 10px rgba(224, 90, 36, 0.25);
 }
 
 :root[data-theme='light'] .betamax-button {
@@ -154,71 +272,313 @@
 
 .betamax-demo {
   display: block;
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--sl-color-accent) 52%, var(--sl-color-hairline));
-  border-radius: 8px;
-  background: #151211;
-  box-shadow:
-    inset 0 1px rgba(255, 255, 255, 0.16),
-    0 22px 70px rgba(0, 0, 0, 0.45);
+  position: relative;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  /* Own stacking context so the glow/reflection sit behind the tape
+     but still above the page background instead of sinking beneath it. */
+  isolation: isolate;
+}
+
+/* Ambient warm glow behind the cassette + warm floor reflection glow */
+.betamax-demo::after {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  inset: 0% -8% -30% -8%;
+  background:
+    radial-gradient(ellipse at 56% 32%, rgba(224, 109, 41, 0.22), transparent 52%),
+    radial-gradient(ellipse at 38% 24%, rgba(160, 55, 28, 0.12), transparent 56%),
+    radial-gradient(ellipse 52% 20% at 50% 80%, rgba(228, 112, 44, 0.34), transparent 72%);
+  filter: blur(1.4rem);
+  opacity: 0.95;
+  pointer-events: none;
+}
+
+/* Floor reflection synthesised from the cassette itself.
+   scaleY(-1) about the centre mirrors it in place directly below the tape;
+   the mask fades from the contact line (the cassette's bottom edge) downward.
+   NOTE: the mask is applied in the element's own space, so because the whole
+   element is flipped, the "solid" mask stop sits at the bottom (100%) which,
+   after the flip, becomes the contact line at the top. */
+.betamax-demo::before {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  inset: auto 0 auto 0;
+  /* The tape PNG has ~19px of transparent padding below the cassette, and the
+     mirror doubles it, so pull the reflection up ~2x that to sit flush at the
+     cassette's bottom edge (the contact line). */
+  top: calc(100% - 40px);
+  width: 100%;
+  aspect-ratio: 472 / 330;
+  background: url('/betamax/assets/betamax-hero-tape.png') center top / contain no-repeat;
+  transform: scaleY(-1);
+  transform-origin: center;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 62%,
+    rgba(0, 0, 0, 0.8) 90%,
+    #000 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 62%,
+    rgba(0, 0, 0, 0.8) 90%,
+    #000 100%
+  );
+  opacity: 0.3;
+  filter: blur(0.6px);
+  pointer-events: none;
 }
 
 .betamax-demo img {
+  position: relative;
+  z-index: 2;
   display: block;
   width: 100%;
-  min-height: 15rem;
-  object-fit: cover;
+  min-height: 0;
+  object-fit: contain;
+  filter: drop-shadow(0 1.5rem 1.7rem rgba(0, 0, 0, 0.6));
 }
 
-.project-grid {
+.feature-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
-  margin: 1.25rem 0 2.5rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 3rem 0 4rem;
 }
 
-.project-grid a {
-  display: block;
-  min-height: 8.5rem;
-  padding: 1rem;
+.feature-grid section {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  min-height: 16rem;
+  padding: 1.4rem 1.25rem 1.25rem;
   border: 1px solid color-mix(in srgb, var(--sl-color-hairline) 74%, transparent);
-  border-radius: 8px;
+  border-radius: 10px;
   color: inherit;
-  text-decoration: none;
   background:
-    linear-gradient(135deg, rgba(210, 196, 166, 0.09), transparent 48%),
-    rgba(31, 25, 22, 0.55);
+    linear-gradient(135deg, rgba(241, 194, 139, 0.08), transparent 42%),
+    rgba(15, 10, 7, 0.72);
 }
 
-:root[data-theme='light'] .project-grid a {
+:root[data-theme='light'] .feature-grid section {
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.74), transparent 48%),
     rgba(244, 231, 207, 0.78);
 }
 
-.project-grid a:hover {
-  border-color: var(--sl-color-accent);
+/* Full-width stripe rule under each card title.
+   Mirrors the logo: a wider beige line (the wordmark/"logo text") over
+   three thinner amber / orange / red lines. Colours match the logo. */
+.feature-grid .bm-stripes {
+  width: 100%;
+  height: 1.6rem;
+  margin: 0 0 1.25rem;
+  background: linear-gradient(
+    to bottom,
+    #d7b997 0 38%,
+    transparent 38% 47%,
+    #b46407 47% 62%,
+    transparent 62% 68%,
+    #a63e0d 68% 83%,
+    transparent 83% 89%,
+    #74180d 89% 100%
+  );
 }
 
-.project-grid span {
-  display: block;
-  color: var(--sl-color-accent);
-  font-weight: 800;
+.feature-grid h2 {
+  margin: 0 0 0.85rem;
+  color: #f1dfbd;
+  font-family: var(--sl-font-system);
+  font-size: 1.5rem;
+  line-height: 1.18;
+  min-height: 2.36lh;
 }
 
-.project-grid p {
-  margin: 0.45rem 0 0;
+.feature-grid p {
+  margin: 0;
   color: var(--sl-color-gray-2);
+  font-size: 0.84rem;
+  line-height: 1.65;
 }
 
-:root[data-theme='light'] .project-grid p {
+.feature-grid footer {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 1.1rem;
+  border-top: 1px solid color-mix(in srgb, var(--sl-color-hairline) 38%, transparent);
+  color: var(--sl-color-gray-3);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.feature-grid footer span {
+  margin: 0 auto 0 0;
+  color: var(--sl-color-gray-3);
+}
+
+.feature-grid kbd {
+  padding: 0.18rem 0.42rem;
+  border: 1px solid var(--sl-color-hairline);
+  border-radius: 3px;
+  color: var(--sl-color-gray-1);
+  background: #140d09;
+  font: inherit;
+}
+
+/* VCR transport controls (card 02) */
+.feature-grid .bm-controls {
+  display: block;
+  width: 4.2rem;
+  height: 1rem;
+  fill: var(--sl-color-gray-1);
+}
+
+/* Segmented parser meter (card 03) */
+.feature-grid .bm-meter {
+  display: block;
+  width: 4.2rem;
+  height: 0.85rem;
+}
+
+.feature-grid .bm-meter rect {
+  fill: var(--sl-color-gray-3);
+}
+
+.feature-grid .bm-meter rect.on {
+  fill: var(--sl-color-gray-1);
+}
+
+/* Grouped chip box (FORMAT GIF PNG / ARCH MIN) */
+.feature-grid .bm-chipset {
+  display: inline-flex;
+  align-items: stretch;
+  margin: 0;
+  border: 1px solid var(--sl-color-hairline);
+  border-radius: 4px;
+  overflow: hidden;
+  background: #140d09;
+  vertical-align: middle;
+}
+
+.feature-grid .bm-chipset kbd {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0.22rem 0.55rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--sl-color-gray-2);
+  line-height: 1;
+}
+
+.feature-grid .bm-chipset kbd + kbd {
+  border-left: 1px solid color-mix(in srgb, var(--sl-color-hairline) 70%, transparent);
+}
+
+.feature-grid .bm-chipset kbd.hot {
+  color: var(--sl-color-text-accent);
+  font-weight: 700;
+}
+
+:root[data-theme='light'] .feature-grid p {
   color: #4d3c31;
+}
+
+.sl-markdown-content:has(.betamax-hero) > h2 {
+  margin-top: 3.4rem;
+}
+
+.sl-markdown-content:has(.betamax-hero) > h2::after {
+  content: '';
+  display: block;
+  width: 2.8rem;
+  height: 0.12rem;
+  margin-top: 0.7rem;
+  background: var(--sl-color-accent);
+}
+
+.next-panel {
+  position: relative;
+  display: grid;
+  gap: 0.35rem;
+  overflow: hidden;
+  margin: 1rem 0 2.5rem;
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  padding-bottom: 8rem;
+  border: 1px solid color-mix(in srgb, var(--sl-color-hairline) 76%, transparent);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(241, 194, 139, 0.08), transparent 34%),
+    rgba(15, 10, 7, 0.72);
+}
+
+/* Curved stripe motif: wraps from top-right, around the corner, and runs
+   along the bottom fading out to the left. Sits behind the link text. */
+.next-panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: url('/betamax/assets/betamax-corner-stripes.svg') right bottom / auto 100% no-repeat;
+  -webkit-mask-image: linear-gradient(to right, transparent 2%, #000 50%);
+  mask-image: linear-gradient(to right, transparent 2%, #000 50%);
+  opacity: 0.95;
+  pointer-events: none;
+}
+
+.next-panel a {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1rem minmax(13rem, max-content) minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: baseline;
+  max-width: calc(100% - 13rem);
+  padding: 0.6rem 0;
+  border-top: 1px solid color-mix(in srgb, var(--sl-color-hairline) 34%, transparent);
+  color: inherit;
+  text-decoration: none;
+}
+
+.next-panel a::before {
+  content: '→';
+  color: var(--sl-color-accent);
+}
+
+.next-panel span {
+  color: var(--sl-color-text-accent);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-weight: 700;
+}
+
+.next-panel p {
+  margin: 0;
+  color: var(--sl-color-gray-2);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.85rem;
 }
 
 @media (max-width: 52rem) {
   .betamax-hero,
-  .project-grid {
+  .feature-grid {
     grid-template-columns: 1fr;
+  }
+
+  .next-panel a {
+    max-width: 100%;
+  }
+
+  .next-panel::after {
+    opacity: 0.28;
   }
 
   .betamax-hero h1 {
@@ -234,4 +594,86 @@
   .betamax-hero h1 {
     font-size: 4rem;
   }
+}
+
+/* ============================================================
+   Mockup-alignment polish
+   ============================================================ */
+
+/* --- Warmer ambient glow across the page --- */
+:root:not([data-theme='light']) .page {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(215, 91, 38, 0.075), transparent 820px),
+    radial-gradient(circle at 72% 4%, rgba(196, 176, 136, 0.055), transparent 700px);
+}
+
+:root:not([data-theme='light']) main:has(.betamax-hero) {
+  background:
+    radial-gradient(circle at 70% 20%, rgba(224, 109, 41, 0.22), transparent 26rem),
+    radial-gradient(circle at 20% 12%, rgba(176, 64, 30, 0.12), transparent 22rem),
+    linear-gradient(180deg, #0c0a08 0%, #120e0a 44%, #0b0806 100%);
+}
+
+/* --- Top nav: full-width bar --- */
+:root:not([data-theme='light']) .header > .header {
+  padding-inline: 0.5rem;
+}
+
+/* divider + spacing before the theme control */
+:root:not([data-theme='light']) starlight-theme-select {
+  margin-inline-start: 0.85rem;
+  padding-inline-start: 0.95rem;
+  border-inline-start: 1px solid color-mix(in srgb, var(--sl-color-hairline) 60%, transparent);
+}
+
+.feature-grid section {
+  min-height: 18rem;
+}
+
+/* --- Hide Starlight pagination + meta on the splash home, use custom footer --- */
+.sl-markdown-content:has(.betamax-hero) ~ footer .pagination-links,
+main:has(.betamax-hero) .pagination-links {
+  display: none;
+}
+
+main:has(.betamax-hero) footer:has(.pagination-links),
+main:has(.betamax-hero) .meta:has(a[href*='edit']) {
+  display: none;
+}
+
+/* --- Custom footer bar --- */
+.betamax-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  align-items: center;
+  justify-content: space-between;
+  margin: 2.5rem 0 1rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid color-mix(in srgb, var(--sl-color-hairline) 40%, transparent);
+  color: var(--sl-color-gray-3);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.84rem;
+}
+
+.betamax-footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.betamax-footer-links a {
+  color: var(--sl-color-gray-2);
+  text-decoration: none;
+}
+
+.betamax-footer-links a:hover {
+  color: var(--sl-color-text-accent);
+}
+
+.betamax-footer-links a + a::before {
+  content: '•';
+  margin-inline-end: 0.55rem;
+  color: var(--sl-color-gray-4);
 }

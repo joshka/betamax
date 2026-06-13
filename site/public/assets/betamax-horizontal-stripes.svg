@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 72" role="img" aria-label="Betamax stripes">
+  <rect width="360" height="72" fill="none"/>
+  <rect x="0" y="0" width="360" height="15" rx="1.5" fill="#d6a766"/>
+  <rect x="0" y="19" width="360" height="15" rx="1.5" fill="#c47a2a"/>
+  <rect x="0" y="38" width="360" height="15" rx="1.5" fill="#e05a24"/>
+  <rect x="0" y="57" width="360" height="15" rx="1.5" fill="#a93224"/>
+</svg>
