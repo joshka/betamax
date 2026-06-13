@@ -63,6 +63,7 @@ export default defineConfig({
           items: [
             { label: 'Tape Files', slug: 'authoring/tape-files' },
             { label: 'Outputs', slug: 'authoring/outputs' },
+            { label: 'Generated Media Storage', slug: 'authoring/generated-media' },
             { label: 'Themes And Styling', slug: 'authoring/themes' },
           ],
         },
