@@ -1,5 +1,7 @@
 # Changelog
 
+<!-- markdownlint-disable no-duplicate-heading -->
+
 ## [0.1.5](https://github.com/joshka/betamax/compare/betamax-v0.1.4...betamax-v0.1.5) - 2026-06-12
 
 ### Other
