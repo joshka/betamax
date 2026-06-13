@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 480" fill="none" aria-hidden="true">
+  <!-- top line first so each following (lower) line sits in front -->
+  <path d="M844 0 V290 Q844 402 732 402 H0" stroke="#74180d" stroke-width="26" stroke-linejoin="round"/>
+  <path d="M880 0 V290 Q880 420 750 420 H0" stroke="#a63e0d" stroke-width="26" stroke-linejoin="round"/>
+  <path d="M916 0 V290 Q916 438 768 438 H0" stroke="#b46407" stroke-width="26" stroke-linejoin="round"/>
+  <path d="M952 0 V290 Q952 456 786 456 H0" stroke="#cfb18d" stroke-width="26" stroke-linejoin="round"/>
+</svg>
