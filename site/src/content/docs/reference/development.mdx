@@ -32,5 +32,16 @@ just docs-site-check
 just docs-site-build
 ```
 
+## Internal Docs Links
+
+The docs site is published under Astro's `/betamax` base path. Starlight-generated navigation,
+sidebar, and pagination links are already base-aware, but links authored directly in MDX are emitted
+as written.
+
+Use normal relative Markdown links between docs pages. The site config canonicalizes the slashless
+base route, `/betamax`, to `/betamax/` before users can follow those links. Without that redirect,
+links such as `./quick-start/` would resolve to `/quick-start/` from `/betamax` instead of staying
+under `/betamax/`.
+
 Releases are managed by release-plz and crates.io Trusted Publishing. The release workflow installs
 mise tools because package verification builds `libghostty-vt-sys`, which requires Zig.

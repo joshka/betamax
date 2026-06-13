@@ -1,15 +1,26 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 
+const base = '/betamax';
+const canonicalBasePathScript = [
+  `if (location.pathname === '${base}') {`,
+  `  location.replace('${base}/' + location.search + location.hash);`,
+  '}',
+].join('\n');
+
 export default defineConfig({
   site: 'https://www.joshka.net',
-  base: '/betamax',
+  base,
   integrations: [
     starlight({
       title: 'Betamax',
       description: 'Rust-first terminal captures, GIFs, screenshots, and terminal snapshots.',
       customCss: ['./src/styles/custom.css'],
       head: [
+        {
+          tag: 'script',
+          content: canonicalBasePathScript,
+        },
         {
           tag: 'meta',
           attrs: {
