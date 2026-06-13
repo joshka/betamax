@@ -169,3 +169,26 @@ jobs:
       - name: Check unused dependencies
         continue-on-error: true
         run: just udeps
+
+  required:
+    name: Required
+    runs-on: ubuntu-latest
+    needs:
+      - lint
+      - test
+      - package
+      - dependencies
+    if: ${{ always() }}
+    steps:
+      - name: Check required jobs
+        env:
+          NEEDS_JSON: ${{ toJson(needs) }}
+          HAS_FAILED_JOB: >-
+            ${{
+              contains(needs.*.result, 'failure')
+              || contains(needs.*.result, 'cancelled')
+              || contains(needs.*.result, 'skipped')
+            }}
+        run: |
+          echo "$NEEDS_JSON"
+          test "$HAS_FAILED_JOB" = "false"
