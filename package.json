@@ -10,10 +10,10 @@
     "docs:preview": "astro preview --root site"
   },
   "dependencies": {
-    "@astrojs/check": "0.9.4",
-    "@astrojs/starlight": "0.39.0",
-    "astro": "6.2.2",
-    "typescript": "5.9.3"
+    "@astrojs/check": "0.9.9",
+    "@astrojs/starlight": "0.39.3",
+    "astro": "6.4.4",
+    "typescript": "6.0.3"
   },
   "pnpm": {
     "overrides": {
