@@ -4,7 +4,8 @@ description: Small tapes that exercise the core Betamax behavior.
 ---
 
 The repository examples are intentionally small. They are smoke tests for core behavior and
-copyable starting points for your own tapes. Render all examples from a checkout with:
+copyable starting points for your own [tapes](../authoring/tape-files/). Render all examples from a
+checkout with:
 
 ```sh
 scripts/render-examples.sh
@@ -53,24 +54,25 @@ updates terminal state, but the animation starts only when `Show` reveals the pr
 
 ![Ghostty theme Betamax GIF](https://github.com/joshka/betamax/releases/download/readme-assets/themes.gif)
 
-`themes.tape` shows ANSI colors mapped through a bundled Ghostty theme. Use `betamax themes` to
-list the names available to `Set Theme`.
+`themes.tape` shows ANSI colors mapped through a bundled [Ghostty theme](../authoring/themes/).
+Use [`betamax themes`](../authoring/themes/) to list the names available to `Set Theme`.
 
 ### Video
 
 ![Video output Betamax GIF](https://github.com/joshka/betamax/releases/download/readme-assets/video.gif)
 
 `video.tape` writes GIF, MP4, and WebM from one capture. The GIF is encoded in process; MP4 and
-WebM are handed to `ffmpeg`.
+WebM are handed to [ffmpeg](../authoring/outputs/#video-encoding).
 
 ## Example Patterns
 
 Use `examples/outputs.tape` when checking artifact behavior. It writes a GIF, a PNG, final state
 JSON, a PNG frame directory, a checkpoint screenshot, and checkpoint state JSON.
 
-Use `examples/scrollback.tape` and `examples/text-styles.tape` when evaluating terminal testing.
-Together they exercise the parts of state JSON that matter for snapshot tests: viewport text,
-scrollback text, default style, non-default style table entries, and styled spans.
+Use `examples/scrollback.tape` and `examples/text-styles.tape` when evaluating
+[terminal testing](../testing/terminal-testing/). Together they exercise the parts of
+[state JSON](../testing/state-json/) that matter for snapshot tests: viewport text, scrollback text,
+default style, non-default style table entries, and styled spans.
 
 Use `examples/waits.tape` when debugging timing. It shows the three wait targets and a custom
 `WaitPattern`, which is usually preferable to adding sleeps.

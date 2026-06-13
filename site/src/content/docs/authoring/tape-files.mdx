@@ -3,9 +3,11 @@ title: Tape Files
 description: How Betamax parses, validates, and executes terminal capture scripts.
 ---
 
-A tape is a small script that describes one terminal session. It names output artifacts, configures
-the terminal, starts a shell in a PTY, sends text and keys, waits for stable terminal states, and
-optionally writes checkpoint screenshots or state JSON.
+A tape is a small script that describes one terminal session. It names
+[`Output`](../../reference/tape-reference/#output-path) artifacts, configures the terminal, starts a
+shell in a PTY, sends text and keys, waits for stable terminal states, and optionally writes
+checkpoint [`Screenshot`](../../reference/tape-reference/#screenshot-pathpng) or
+[`State`](../../reference/tape-reference/#state-pathjson) files.
 
 Start here for authoring concepts. Use the [Tape Reference](../../reference/tape-reference/) for
 the exact command surface and [Examples](../../examples/) for copyable tapes.
@@ -30,11 +32,16 @@ Wait+Screen "hello"
 
 Most tapes follow this order:
 
-1. Declare `Output` files.
-1. Declare `Require` checks for external commands used by the tape.
-1. Apply `Env` and `Set` startup configuration.
-1. Run terminal actions such as `Type`, key presses, waits, screenshots, and state captures.
-1. Hide trailing cleanup with `Hide`, then type `exit` if the shell should close cleanly.
+1. Declare [`Output`](../../reference/tape-reference/#output-path) files.
+1. Declare [`Require`](../../reference/tape-reference/#require-program) checks for external
+   commands used by the tape.
+1. Apply [`Env`](../../reference/tape-reference/#env-key-value) and
+   [`Set`](../../reference/tape-reference/#set-name-value) startup configuration.
+1. Run terminal actions such as [`Type`](../../reference/tape-reference/#typeduration-text), key
+   presses, [waits](../../reference/tape-reference/#waitduration-regextext), screenshots, and state
+   captures.
+1. Hide trailing cleanup with [`Hide`](../../reference/tape-reference/#hide), then type `exit` if
+   the shell should close cleanly.
 
 Startup commands must appear before runtime commands. This is intentional: Betamax needs to know
 the shell argv, terminal dimensions, theme, environment, and output requirements before it starts
@@ -71,15 +78,17 @@ Enter
 Wait+Screen "test result:"
 ```
 
-Use `Wait+Line` or bare `Wait` for prompts. Use `Wait+Screen` for command output, full-screen TUIs,
-and text that may not be on the cursor line. Use regex waits when the output contains changing
-numbers, paths, durations, or identifiers.
+Use [`Wait+Line`](../../reference/tape-reference/#waitlineduration-regextext) or bare
+[`Wait`](../../reference/tape-reference/#waitduration-regextext) for prompts. Use
+[`Wait+Screen`](../../reference/tape-reference/#waitscreenduration-regextext) for command output,
+full-screen TUIs, and text that may not be on the cursor line. Use regex waits when the output
+contains changing numbers, paths, durations, or identifiers.
 
 ## Hidden Work
 
-`Hide` and `Show` are visibility controls, not execution controls. Hidden commands still run in the
-PTY, still update terminal state, and can still be waited on. They simply do not append frames to
-animated outputs.
+[`Hide`](../../reference/tape-reference/#hide) and [`Show`](../../reference/tape-reference/#show)
+are visibility controls, not execution controls. Hidden commands still run in the PTY, still update
+terminal state, and can still be waited on. They simply do not append frames to animated outputs.
 
 ```text
 Hide
@@ -93,13 +102,15 @@ Enter
 Wait+Screen "Ready"
 ```
 
-`Show` immediately captures the current terminal frame. That avoids a visible flicker from a hidden
-shell prompt to the useful output.
+[`Show`](../../reference/tape-reference/#show) immediately captures the current terminal frame. That
+avoids a visible flicker from a hidden shell prompt to the useful output.
 
 ## Outputs During A Tape
 
-`Output` describes final artifacts written after execution. `Screenshot` and `State` write
-checkpoint artifacts immediately at their position in the tape.
+[`Output`](../../reference/tape-reference/#output-path) describes final artifacts written after
+execution. [`Screenshot`](../../reference/tape-reference/#screenshot-pathpng) and
+[`State`](../../reference/tape-reference/#state-pathjson) write checkpoint artifacts immediately at
+their position in the tape.
 
 ```text
 Wait+Screen "Saved profile"
@@ -114,7 +125,8 @@ PNG or checkpoint screenshot so reviewers can inspect one frame without opening 
 
 For common shells such as `bash`, `zsh`, and `fish`, Betamax starts a clean recording-oriented
 environment where possible. The default prompt behavior aims for VHS-like output: a simple `>`
-prompt rather than host-specific prompts such as `bash-5.3$`.
+prompt rather than host-specific prompts such as `bash-5.3$`. See
+[Differences From VHS](../../reference/vhs-differences/) for the compatibility boundary.
 
 Set `Shell` explicitly when a tape depends on shell syntax:
 

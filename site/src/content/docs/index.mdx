@@ -11,8 +11,9 @@ template: splash
       <img src="/betamax/assets/betamax-logo-lockup.png" alt="Betamax" loading="eager" />
     </h1>
     <div class="betamax-tagline">
-      VHS-style GIFs, screenshots, videos, and terminal snapshots without a browser, terminal
-      server, xterm.js, or ttyd process.
+      <a href="./reference/vhs-differences/">VHS-style</a> GIFs, screenshots, videos, and terminal
+      snapshots without a browser, terminal server, <a href="https://xtermjs.org/">xterm.js</a>,
+      or <a href="https://github.com/tsl0922/ttyd">ttyd</a> process.
     </div>
     <div class="betamax-actions">
       <a class="betamax-button betamax-button-primary" href="./quick-start/">Quick Start →</a>
@@ -29,9 +30,10 @@ template: splash
   </a>
 </section>
 
-Betamax reads tape files, runs commands in a real PTY, feeds terminal output through
-`libghostty-vt`, rasterizes frames in process with `cosmic-text` and `swash`, and writes artifacts
-for documentation or tests.
+Betamax reads <a href="./authoring/tape-files/">tape files</a>, runs commands in a real PTY, feeds
+terminal output through <a href="./reference/vhs-differences/">libghostty-vt</a>, rasterizes frames
+in process with <a href="https://github.com/pop-os/cosmic-text">cosmic-text</a> and
+<a href="https://github.com/dfrg/swash">swash</a>, and writes artifacts for documentation or tests.
 
 <div class="feature-grid">
   <section>
@@ -49,8 +51,8 @@ for documentation or tests.
     <h2>Terminal Testing</h2>
     <div class="bm-stripes" aria-hidden="true"></div>
     <p>
-      Wait for text, capture terminal state, and compare viewport, scrollback, and style spans in
-      snapshot tests.
+      <a href="./testing/terminal-testing/">Wait for text</a>, capture terminal state, and compare
+      viewport, scrollback, and style spans in snapshot tests.
     </p>
     <footer>
       <span>Test</span>
@@ -65,7 +67,10 @@ for documentation or tests.
   <section>
     <h2>Ghostty-Based Parsing</h2>
     <div class="bm-stripes" aria-hidden="true"></div>
-    <p>Terminal output is interpreted by `libghostty-vt`, with copied Ghostty themes by name.</p>
+    <p>
+      Terminal output is interpreted by <a href="./reference/vhs-differences/">libghostty-vt</a>,
+      with copied <a href="./authoring/themes/">Ghostty themes</a> by name.
+    </p>
     <footer>
       <span>Parser</span>
       <svg class="bm-meter" viewBox="0 0 72 14" aria-hidden="true">
@@ -82,8 +87,8 @@ for documentation or tests.
     <h2>Small & Focused</h2>
     <div class="bm-stripes" aria-hidden="true"></div>
     <p>
-      No xterm.js, no browser, no terminal server, no ttyd process. MP4 and WebM use `ffmpeg` only
-      for video encoding.
+      No xterm.js, no browser, no terminal server, no ttyd process. MP4 and WebM use
+      <a href="./authoring/outputs/#video-encoding">ffmpeg</a> only for video encoding.
     </p>
     <footer><span>Arch</span><span class="bm-chipset"><kbd class="hot">Min</kbd></span></footer>
   </section>
@@ -92,6 +97,10 @@ for documentation or tests.
 ## Where To Go Next
 
 <nav class="next-panel" aria-label="Where to go next">
+  <a href="./overview/">
+    <span>Overview</span>
+    <p>Understand the capture model, output types, and main docs paths.</p>
+  </a>
   <a href="./quick-start/">
     <span>Quick Start</span>
     <p>Get Betamax running in minutes.</p>

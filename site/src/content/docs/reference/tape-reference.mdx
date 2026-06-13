@@ -30,8 +30,8 @@ waits, sleeps, screenshots, state checkpoints, `Hide`, `Show`, `Copy`, and `Past
 | `Output <path>.gif`     | Write an animated GIF                         | Encoded in process                          |
 | `Output <path>.png`     | Write a final-frame PNG                       | Encoded in process                          |
 | `Output <path>.json`    | Write final terminal state                    | See [State JSON](../../testing/state-json/) |
-| `Output <path>.mp4`     | Write MP4 video                               | Requires `ffmpeg` on `PATH`                 |
-| `Output <path>.webm`    | Write WebM video                              | Requires `ffmpeg` on `PATH`                 |
+| `Output <path>.mp4`     | Write MP4 video                               | Requires [ffmpeg][video-encoding] on `PATH` |
+| `Output <path>.webm`    | Write WebM video                              | Requires [ffmpeg][video-encoding] on `PATH` |
 | `Output <dir>`          | Write numbered PNG frames into a directory    | Extensionless path only                     |
 | `Screenshot <path>.png` | Write a checkpoint screenshot at this command | Only `.png` is supported                    |
 | `State <path>.json`     | Write checkpoint terminal state               | Only `.json` is supported                   |
@@ -198,3 +198,5 @@ Betamax currently exposes these CLI commands:
 
 `publish`, `record`, and `serve` remain explicit not-implemented commands so users migrating from
 VHS get a clear error message.
+
+[video-encoding]: ../../authoring/outputs/#video-encoding
