@@ -37,7 +37,8 @@ Write final state with `Output <path>.json` or checkpoint state with `State <pat
 Important fields:
 
 - `size` is `[columns, rows]` for the PTY grid.
-- `total_rows` is the total rows reported by `libghostty-vt`, including scrollback and viewport.
+- `total_rows` is the total rows reported by
+  [`libghostty-vt`](../../reference/vhs-differences/), including scrollback and viewport.
 - `scrollback_rows` is the number of rows currently available above the viewport.
 - `title` and `working_directory` are included only when non-empty.
 - `cursor` is zero-based within the visible viewport.

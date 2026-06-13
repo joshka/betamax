@@ -5,7 +5,8 @@ description: Ghostty themes, window borders, padding, prompt defaults, and layou
 
 Betamax uses Ghostty-style theme files to map terminal color indexes and named colors into rendered
 RGB values. It searches user Ghostty theme directories first, then the copied themes bundled with
-`betamax-core`.
+`betamax-core`. See [Differences From VHS](../../reference/vhs-differences/) for the larger
+Ghostty-first architecture.
 
 ```sh
 betamax themes
@@ -88,7 +89,8 @@ Set CursorBlink false
 
 ## Current Theme Boundary
 
-Betamax applies the selected theme in its Rust renderer. The `libghostty-vt` terminal parser is not
-initialized with the selected palette yet, which mostly matters for future work where parser state
-may expose palette-aware data directly. The renderer path used for GIFs, PNGs, videos, and state
-style serialization uses Betamax's loaded theme.
+Betamax applies the selected theme in its Rust renderer. The
+[`libghostty-vt`](../../reference/vhs-differences/) terminal parser is not initialized with the
+selected palette yet, which mostly matters for future work where parser state may expose
+palette-aware data directly. The renderer path used for GIFs, PNGs, videos, and state style
+serialization uses Betamax's loaded theme.

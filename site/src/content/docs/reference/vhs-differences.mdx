@@ -3,22 +3,22 @@ title: Differences From VHS
 description: What Betamax keeps, changes, and intentionally omits.
 ---
 
-Betamax follows the useful parts of the VHS authoring model: tape files, typed input, waits,
-themes, frame styling, GIF output, screenshots, and simple examples. The differences below focus on
-actual user-visible behavior, not implementation details that produce the same result.
+Betamax follows the useful parts of the VHS authoring model: [tape files][tape-files], typed input,
+waits, themes, frame styling, GIF output, screenshots, and simple examples. The differences below
+focus on actual user-visible behavior, not implementation details that produce the same result.
 
 ## Summary
 
-| Area            | VHS                          | Betamax                                                  |
-| --------------- | ---------------------------- | -------------------------------------------------------- |
-| Terminal stack  | Browser terminal stack       | PTY plus `libghostty-vt`, rendered in process            |
-| GIF and PNG     | Supported                    | Supported in process                                     |
-| MP4 and WebM    | Supported                    | Supported through `ffmpeg`                               |
-| State snapshots | Not a primary feature        | JSON viewport, scrollback, cursor, and styles            |
-| `Source`        | Executes included tapes      | Parsed, then rejected with a clear not-implemented error |
-| `record`        | Records interactive sessions | Intentionally not implemented                            |
-| `serve`         | Starts a server workflow     | Intentionally not implemented                            |
-| `publish`       | Upload/share workflow        | Intentionally not implemented                            |
+| Area            | VHS                          | Betamax                                                     |
+| --------------- | ---------------------------- | ----------------------------------------------------------- |
+| Terminal stack  | Browser terminal stack       | PTY plus [`libghostty-vt`][libghostty], rendered in process |
+| GIF and PNG     | Supported                    | Supported in process                                        |
+| MP4 and WebM    | Supported                    | Supported through [ffmpeg][video-encoding]                  |
+| State snapshots | Not a primary feature        | JSON viewport, scrollback, cursor, and styles               |
+| `Source`        | Executes included tapes      | Parsed, then rejected with a clear not-implemented error    |
+| `record`        | Records interactive sessions | Intentionally not implemented                               |
+| `serve`         | Starts a server workflow     | Intentionally not implemented                               |
+| `publish`       | Upload/share workflow        | Intentionally not implemented                               |
 
 ## Same Authoring Ideas
 
@@ -54,8 +54,12 @@ See [Terminal Testing](../../testing/terminal-testing/) and
 
 ## Video Tradeoff
 
-MP4 and WebM use `ffmpeg`. That keeps container encoding reliable and avoids adding native video
-encoder complexity to the first cut. GIF, PNG, screenshots, terminal parsing, rasterization, and
-state JSON are still handled in process.
+MP4 and WebM use [ffmpeg][video-encoding]. That keeps container encoding reliable and avoids adding
+native video encoder complexity to the first cut. GIF, PNG, screenshots, terminal parsing,
+rasterization, and state JSON are still handled in process.
 
 Use [Outputs](../../authoring/outputs/) for installation notes and output selection guidance.
+
+[libghostty]: #summary
+[tape-files]: ../../authoring/tape-files/
+[video-encoding]: ../../authoring/outputs/#video-encoding

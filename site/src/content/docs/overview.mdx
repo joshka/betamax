@@ -1,0 +1,118 @@
+---
+title: Overview
+description: Betamax's capture model, output types, and main documentation paths.
+---
+
+Betamax turns [tape files][tape-files] into terminal artifacts for documentation and tests. A tape
+describes one terminal session: outputs, requirements, shell settings, typed text, key presses,
+waits, screenshots, and state snapshots.
+
+The runtime starts a real PTY, feeds terminal bytes into [`libghostty-vt`][vhs-differences],
+renders frames in process with [cosmic-text][cosmic-text] and [swash][swash], and writes the
+requested artifacts. GIF, PNG, screenshot, state JSON, and frame outputs stay inside the Rust
+process. MP4 and WebM output uses [ffmpeg][video-encoding] as the video encoder.
+
+Betamax follows the common [VHS][vhs-differences] tape-authoring shape, but it keeps a smaller
+Ghostty-first architecture. It does not start a browser, terminal server, `xterm.js`, or `ttyd`;
+does not implement VHS's `serve`, `record`, or `publish` workflows; and parses `Source` without
+executing it.
+
+## Output Types
+
+The same tape model can produce documentation media, review artifacts, and terminal-testing
+snapshots:
+
+| Output                         | Use case                                                              |
+| ------------------------------ | --------------------------------------------------------------------- |
+| GIF                            | README demos, release notes, and docs pages                           |
+| PNG                            | Final-frame previews and static screenshots                           |
+| MP4 and WebM                   | Video embeds when GIF size or playback quality matters                |
+| Screenshot checkpoints         | Intermediate frames at meaningful moments in a tape                   |
+| [State JSON][state-json]       | Terminal-testing snapshots with viewport, scrollback, and style spans |
+| Frame directories              | Debugging and custom post-processing                                  |
+
+Final [`Output`][output-command] artifacts are written after the tape finishes.
+[`Screenshot`][screenshot-command] and [`State`][state-command] commands write checkpoint artifacts
+at their position in the tape.
+
+## Tape Model
+
+Most tapes have the same shape:
+
+1. [`Output`][output-command] commands declare final artifacts.
+1. [`Require`][require-command] commands check external programs before terminal work starts.
+1. [`Set`][set-command] and [`Env`][env-command] commands configure the shell, environment,
+   dimensions, theme, timing, and frame styling.
+1. Runtime commands type text, press keys, paste content, wait for terminal state, hide or reveal
+   frame capture, and write checkpoint artifacts.
+
+[Wait commands][wait-commands] match the terminal state reported by `libghostty-vt`. `Wait` and
+`Wait+Line` match the current cursor line; `Wait+Screen` matches visible viewport text. That makes a
+tape depend on terminal output instead of a fixed sleep whenever the next frame has an observable
+condition.
+
+## Documentation Captures
+
+[Quick Start][quick-start] covers installation and the first rendered tape. [Tape Files][tape-files]
+explains tape structure, tokenization, waits, hidden work, outputs, and shell defaults.
+[Examples][examples] maps each checked-in tape to the behavior it demonstrates.
+
+[Generated Media Storage][generated-media] covers where rendered files belong when a repository
+needs stable README media, review artifacts, CI outputs, or web-hosted documentation assets.
+
+## Output And Styling Reference
+
+[Outputs][outputs] documents output commands, checkpoint behavior, frame directories, and the
+`ffmpeg` boundary for video files. [Themes And Styling][themes] covers copied Ghostty themes, theme
+lookup, terminal dimensions, font size, padding, margin, fill, window bars, border radius,
+framerate, and playback speed.
+
+The [Tape Reference][tape-reference] is the exact command surface: supported outputs, settings,
+defaults, runtime commands, ignored VHS commands, and CLI subcommands.
+
+## Terminal Testing
+
+Betamax can act as a terminal-testing harness for CLIs and TUIs. A test tape can run an interactive
+program, wait for expected text, capture screenshots at checkpoints, and write state JSON for
+snapshot assertions.
+
+[Terminal Testing][terminal-testing] explains the workflow. [State JSON][state-json] documents the
+snapshot format: viewport rows, optional scrollback, cursor position, terminal dimensions, default
+style, and non-default style spans.
+
+## Compatibility
+
+Betamax currently supports macOS and Linux. Windows is not supported because the upstream
+`libghostty-vt-sys` native build does not support Windows.
+
+Video output requires [ffmpeg][video-encoding] on `PATH`. Other output formats do not require an
+external encoder.
+
+## Next Pages
+
+- [Quick Start][quick-start] installs Betamax and renders a first tape.
+- [Examples][examples] shows each checked-in tape and the behavior it demonstrates.
+- [Tape Reference][tape-reference] documents every command, setting, default, and CLI option.
+- [Differences From VHS][vhs-differences] explains compatibility boundaries for users familiar
+  with VHS.
+
+[cosmic-text]: https://github.com/pop-os/cosmic-text
+[examples]: ../examples/
+[generated-media]: ../authoring/generated-media/
+[env-command]: ../reference/tape-reference/#env-key-value
+[outputs]: ../authoring/outputs/
+[output-command]: ../reference/tape-reference/#output-path
+[quick-start]: ../quick-start/
+[require-command]: ../reference/tape-reference/#require-program
+[screenshot-command]: ../reference/tape-reference/#screenshot-pathpng
+[set-command]: ../reference/tape-reference/#set-name-value
+[state-json]: ../testing/state-json/
+[state-command]: ../reference/tape-reference/#state-pathjson
+[swash]: https://github.com/dfrg/swash
+[tape-files]: ../authoring/tape-files/
+[tape-reference]: ../reference/tape-reference/
+[terminal-testing]: ../testing/terminal-testing/
+[themes]: ../authoring/themes/
+[video-encoding]: ../authoring/outputs/#video-encoding
+[vhs-differences]: ../reference/vhs-differences/
+[wait-commands]: ../reference/tape-reference/#waitduration-regextext

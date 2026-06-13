@@ -4,7 +4,7 @@ description: Install Betamax and render your first tape.
 ---
 
 Betamax currently supports macOS and Linux. Windows is not supported because the upstream
-`libghostty-vt-sys` native build does not support Windows.
+[`libghostty-vt-sys`](../reference/vhs-differences/) native build does not support Windows.
 
 ## Install
 
@@ -13,7 +13,7 @@ cargo install betamax --locked
 ```
 
 GIF, PNG, screenshot, and state JSON outputs are written in process. MP4 and WebM output require
-`ffmpeg` on `PATH`:
+[ffmpeg](../authoring/outputs/#video-encoding) on `PATH`:
 
 ```sh
 # macOS
@@ -37,14 +37,15 @@ with:
 betamax run demo.tape
 ```
 
-Append an extra output from the CLI without editing the tape:
+Append an extra [`Output`](../reference/tape-reference/#output-path) from the CLI without editing
+the tape:
 
 ```sh
 betamax run demo.tape --output target/demo.png
 ```
 
-The output path is appended as another `Output` command. It does not replace outputs already in the
-tape.
+The output path is appended as another [`Output`](../reference/tape-reference/#output-path)
+command. It does not replace outputs already in the tape.
 
 ## Validate Tapes
 
@@ -56,7 +57,8 @@ betamax validate "examples/*.tape"
 ```
 
 Validation parses syntax and enforces command ordering. It does not start a shell, load a theme, run
-`Require` checks, or write output files. Use `betamax run` for a full execution check.
+[`Require`](../reference/tape-reference/#require-program) checks, or write output files. Use
+`betamax run` for a full execution check.
 
 ## List Themes
 
@@ -66,8 +68,9 @@ betamax themes --json
 betamax themes --markdown
 ```
 
-Use the exact theme name with `Set Theme "..."`. See [Themes And Styling](../authoring/themes/) for
-lookup behavior, layout settings, and frame decoration.
+Use the exact theme name with [`Set Theme "..."`](../reference/tape-reference/#settings). See
+[Themes And Styling](../authoring/themes/) for lookup behavior, layout settings, and frame
+decoration.
 
 ## Repository Examples
 

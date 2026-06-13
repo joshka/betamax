@@ -51,7 +51,8 @@ sudo apt-get update
 sudo apt-get install ffmpeg
 ```
 
-Use `Require ffmpeg` if the tape should fail before doing any other work:
+Use [`Require ffmpeg`](../../reference/tape-reference/#require-program) if the tape should fail
+before doing any other work:
 
 ```text
 Output examples/output/demo.mp4
@@ -71,5 +72,6 @@ Screenshot target/snapshots/ready.png
 State target/snapshots/ready.json
 ```
 
-The screenshot preserves the decorated visual frame. The state JSON preserves terminal text and
-styles in a compact comparison format.
+The [`Screenshot`](../../reference/tape-reference/#screenshot-pathpng) preserves the decorated
+visual frame. The [`State`](../../reference/tape-reference/#state-pathjson) JSON preserves terminal
+text and styles in a compact comparison format.
