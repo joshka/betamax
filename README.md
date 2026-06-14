@@ -156,6 +156,13 @@ terminal state, and fail when expected terminal output does not appear before a 
 See [Terminal Testing][terminal-testing] and [State JSON][state-json] for the test
 workflow and state snapshot format.
 
+## Community
+
+Questions, early ideas, and examples of Betamax in real projects belong in
+[Discussions][discussions]. If Betamax helped you make a demo, test a terminal UI, document a CLI,
+or replace part of an existing workflow, please share a screenshot, rendered tape, repo link, or
+short note in [Show and tell][show-and-tell].
+
 ## Documentation
 
 - [Documentation Site][docs-site]
@@ -176,8 +183,10 @@ just docs-site-dev
 ```
 
 [basic-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/basic.gif
+[discussions]: https://github.com/joshka/betamax/discussions
 [docs-site]: https://www.joshka.net/betamax/
 [hide-show-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/hide-show.gif
+[show-and-tell]: https://github.com/joshka/betamax/discussions/categories/show-and-tell
 [state-json]: https://www.joshka.net/betamax/testing/state-json/
 [tape-reference]: https://www.joshka.net/betamax/reference/tape-reference/
 [terminal-testing]: https://www.joshka.net/betamax/testing/terminal-testing/

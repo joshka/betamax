@@ -4,6 +4,15 @@ title: "Bug: "
 labels:
   - bug
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a reproducible Betamax bug.
+
+        If this is a question, early idea, or a note about what you built with Betamax,
+        please use [Discussions](https://github.com/joshka/betamax/discussions) instead.
+        The [Show and tell](https://github.com/joshka/betamax/discussions/categories/show-and-tell)
+        category is especially welcome for examples, screenshots, rendered tapes, and project links.
   - type: textarea
     id: summary
     attributes:

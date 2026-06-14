@@ -57,3 +57,7 @@ titles such as `Document contributor workflow` or `Fix state JSON style spans`.
 
 Pull requests should explain the user-visible behavior, mention relevant docs or examples, and
 include validation commands run, especially `just check` or why a narrower check was sufficient.
+
+Route questions, early ideas, and examples of Betamax in real projects to GitHub Discussions
+instead of issues. Use the `Show and tell` category for screenshots, rendered tapes, repo links, and
+short notes about how Betamax helps another project.

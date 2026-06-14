@@ -152,6 +152,12 @@ Pull requests should explain user-visible behavior, mention relevant docs or exa
 validation commands run. If `just check` was not run, note which narrower check was sufficient and
 why.
 
+Questions, early ideas, and examples of Betamax in real projects should go to
+[Discussions](https://github.com/joshka/betamax/discussions) instead of issues. The
+[Show and tell](https://github.com/joshka/betamax/discussions/categories/show-and-tell) category is
+for screenshots, rendered tapes, repo links, and short notes about how Betamax helps another
+project.
+
 ## Release Notes
 
 User-visible changes should update [CHANGELOG.md](CHANGELOG.md). Keep entries short and focused on
