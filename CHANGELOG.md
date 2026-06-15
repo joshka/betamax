@@ -2,6 +2,19 @@
 
 <!-- markdownlint-disable no-duplicate-heading -->
 
+## [0.1.8](https://github.com/joshka/betamax/compare/betamax-v0.1.7...betamax-v0.1.8) - 2026-06-15
+
+### Other
+
+- Document Homebrew installation ([#58](https://github.com/joshka/betamax/pull/58))
+- Add quick-start Betamax tape ([#56](https://github.com/joshka/betamax/pull/56))
+
+## [0.1.4](https://github.com/joshka/betamax/compare/betamax-core-v0.1.3...betamax-core-v0.1.4) - 2026-06-15
+
+### Other
+
+- Add quick-start Betamax tape ([#56](https://github.com/joshka/betamax/pull/56))
+
 ## [0.1.7](https://github.com/joshka/betamax/compare/betamax-v0.1.6...betamax-v0.1.7) - 2026-06-15
 
 ### Fixed
