@@ -343,6 +343,50 @@ main:has(.betamax-hero) {
   filter: drop-shadow(0 1.5rem 1.7rem rgba(0, 0, 0, 0.6));
 }
 
+.betamax-terminal-demo {
+  position: relative;
+  left: 50%;
+  display: block;
+  width: min(96vw, 82rem);
+  margin: clamp(0.5rem, 2vw, 1.5rem) 0 clamp(1.5rem, 4vw, 3rem);
+  border: 0;
+  background: transparent;
+  transform: translateX(-50%);
+  isolation: isolate;
+}
+
+.betamax-terminal-demo::before {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  inset: 60% 6% 0;
+  background: radial-gradient(ellipse at 50% 50%, rgba(224, 109, 41, 0.2), transparent 68%);
+  filter: blur(1rem);
+  pointer-events: none;
+}
+
+.betamax-terminal-frame {
+  position: relative;
+  z-index: 3;
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 1.4rem 2.2rem rgba(0, 0, 0, 0.72));
+}
+
+.betamax-terminal-screen {
+  position: absolute;
+  z-index: 2;
+  top: 12.2%;
+  left: 18.2%;
+  width: 63.4%;
+  height: 60.2%;
+  object-fit: cover;
+  border-radius: 7% / 5%;
+  filter: brightness(0.94) contrast(1.04) saturate(1.06);
+  pointer-events: none;
+}
+
 .feature-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -587,6 +631,11 @@ main:has(.betamax-hero) {
 
   .betamax-demo img {
     min-height: 12rem;
+  }
+
+  .betamax-terminal-demo {
+    width: min(112vw, 54rem);
+    margin-top: 0;
   }
 }
 

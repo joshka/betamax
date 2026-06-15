@@ -21,6 +21,7 @@ if ! gh release view "$tag" >/dev/null 2>&1; then
 fi
 
 gh release upload "$tag" \
+  target/betamax-examples/quick-start.gif \
   target/betamax-examples/basic.gif \
   target/betamax-examples/hide-show.gif \
   target/betamax-examples/themes.gif \

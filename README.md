@@ -116,6 +116,7 @@ The checked-in examples are small smoke-test tapes that demonstrate core behavio
 
 | Tape                             | Demonstrates                                   | Main Output         |
 | -------------------------------- | ---------------------------------------------- | ------------------- |
+| `examples/quick-start.tape`      | installing, help, `new`, and nested `run`      | `quick-start.gif`   |
 | `examples/basic.tape`            | typing, wait, theme, window bar, border radius | `basic.gif`         |
 | `examples/hide-show.tape`        | hidden setup and hidden trailing cleanup       | `hide-show.gif`     |
 | `examples/waits.tape`            | line, screen, regex, and default prompt waits  | `waits.gif`         |
@@ -128,7 +129,10 @@ The checked-in examples are small smoke-test tapes that demonstrate core behavio
 | `examples/themes.tape`           | copied Ghostty themes and palette mapping      | `themes.gif`        |
 | `examples/screenshot.tape`       | screenshots and terminal state JSON            | `screenshot.png`    |
 | `examples/video.tape`            | GIF, MP4, and WebM from one capture            | `video.*`           |
-| `examples/quick-start.tape`      | installing, help, `new`, and nested `run`      | `quick-start.gif`   |
+
+### Quick Start
+
+![Quick Start Betamax GIF][quick-start-gif]
 
 ### Basic
 
@@ -224,6 +228,7 @@ mise run docs-site-dev
 [homebrew-tap]: https://github.com/joshka/homebrew-tap
 [mise]: https://mise.jdx.dev/
 [nix]: https://nixos.org/
+[quick-start-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/quick-start.gif
 [show-and-tell]: https://github.com/joshka/betamax/discussions/categories/show-and-tell
 [state-json]: https://www.joshka.net/betamax/testing/state-json/
 [tape-reference]: https://www.joshka.net/betamax/reference/tape-reference/
