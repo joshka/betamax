@@ -16,7 +16,7 @@ homepage = "https://www.joshka.net/betamax/"
 documentation = "https://www.joshka.net/betamax/"
 
 [workspace.dependencies]
-anyhow = "1.0.100"
+anyhow = "1.0.102"
 betamax-core = { path = "crates/betamax-core", version = "0.1.4" }
 clap = { version = "4.5.20", features = ["derive", "wrap_help"] }
 clap-stdin = "0.8"
