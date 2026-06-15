@@ -19,14 +19,21 @@ Install repository tools with:
 mise install
 ```
 
-Use `just` for local and CI-aligned tasks:
+Use [mise](https://mise.jdx.dev/) tasks for repository commands. This is not only convenience:
+Betamax builds the vendored `libghostty-vt-sys` native dependency, and the current Ghostty build
+requires Zig 0.15.2. The repository pins that Zig version in `.mise.toml`; a shell that finds newer
+Zig releases such as 0.16 can fail during native dependency builds. Other reproducible toolchain
+approaches such as [Nix](https://nixos.org/) may work, but mise is the documented path in this
+checkout.
+
+Use mise for local and CI-aligned tasks:
 
 ```sh
-just check          # formatting, tests, docs, markdown lint, tape validation
-just test           # cargo test --workspace --all-targets
-just validate       # validate examples/*.tape and docs.tape
-just smoke          # render examples/basic.tape
-just release-check  # full release-oriented validation
+mise run check          # formatting, tests, docs, markdown lint, tape validation
+mise run test           # cargo test --workspace --all-targets
+mise run validate       # validate examples/*.tape and docs.tape
+mise run smoke          # render examples/basic.tape
+mise run release-check  # full release-oriented validation
 ```
 
 Run the CLI locally with `cargo run -- run examples/basic.tape`.
@@ -37,7 +44,7 @@ Rust formatting uses `rustfmt.toml` and nightly rustfmt:
 
 ```sh
 rustup toolchain install nightly --component rustfmt
-just fmt
+mise run fmt
 ```
 
 Prefer small modules with clear ownership and documented non-obvious behavior. Public API docs
@@ -56,7 +63,7 @@ Keep unrelated fixes in separate pull requests. Use imperative, concise commit o
 titles such as `Document contributor workflow` or `Fix state JSON style spans`.
 
 Pull requests should explain the user-visible behavior, mention relevant docs or examples, and
-include validation commands run, especially `just check` or why a narrower check was sufficient.
+include validation commands run, especially `mise run check` or why a narrower check was sufficient.
 
 Route questions, early ideas, and examples of Betamax in real projects to GitHub Discussions
 instead of issues. Use the `Show and tell` category for screenshots, rendered tapes, repo links, and

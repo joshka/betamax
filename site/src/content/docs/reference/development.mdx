@@ -8,28 +8,28 @@ tool versions.
 
 ```sh
 mise install
-just check
 pnpm install
-just docs-site-check
+mise run check
+mise run docs-site-check
 ```
 
 Useful Rust commands:
 
 ```sh
-just fmt-check
-just clippy
-just test
-just doc
-just validate
-just package
+mise run fmt-check
+mise run clippy
+mise run test
+mise run doc
+mise run validate
+mise run package
 ```
 
 Docs site commands:
 
 ```sh
-just docs-site-dev
-just docs-site-check
-just docs-site-build
+mise run docs-site-dev
+mise run docs-site-check
+mise run docs-site-build
 ```
 
 ## Internal Docs Links

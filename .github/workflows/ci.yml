@@ -1,5 +1,7 @@
 name: CI
 
+# CI calls mise tasks instead of spelling out long command lines in YAML. That keeps local and CI
+# behavior aligned, and it ensures Cargo sees the Zig version pinned for libghostty-vt-sys.
 on:
   pull_request:
   push:
@@ -52,25 +54,25 @@ jobs:
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
 
       - name: Check formatting
-        run: just fmt-check
+        run: mise run fmt-check
 
       - name: Check clippy
-        run: just clippy
+        run: mise run clippy
 
       - name: Check beta clippy
-        run: just clippy-beta
+        run: mise run clippy-beta
 
       - name: Check documentation builds
-        run: just doc
+        run: mise run doc
 
       - name: Run doc tests
-        run: just doc-test
+        run: mise run doc-test
 
       - name: Lint Markdown
-        run: just lint-md
+        run: mise run lint-md
 
       - name: Validate tapes
-        run: just validate
+        run: mise run validate
 
   test:
     name: Test (${{ matrix.os }})
@@ -104,16 +106,16 @@ jobs:
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
 
       - name: Check workspace
-        run: mise exec -- cargo check --workspace --all-targets
+        run: mise run cargo-check
 
       - name: Test workspace
-        run: mise exec -- cargo test --workspace --all-targets
+        run: mise run test
 
       - name: Validate tape syntax through CLI
-        run: mise exec -- cargo run -p betamax -- validate "examples/*.tape" docs.tape
+        run: mise run validate
 
       - name: Check CLI version command
-        run: mise exec -- cargo run -p betamax -- --version
+        run: mise run version
 
   package:
     name: Package and smoke (${{ matrix.os }})
@@ -150,13 +152,13 @@ jobs:
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
 
       - name: Package crates
-        run: just package
+        run: mise run package
 
       - name: Install CLI from path
-        run: just install-smoke
+        run: mise run install-smoke
 
       - name: Render smoke tape
-        run: just smoke
+        run: mise run smoke
 
   dependencies:
     name: Dependency check (${{ matrix.name }})
@@ -170,19 +172,19 @@ jobs:
         include:
           - name: dependency policy
             tools: cargo-deny
-            command: just dependency-policy
+            command: mise run dependency-policy
             allow-failure: false
           - name: features
             tools: cargo-hack
-            command: just feature-check
+            command: mise run feature-check
             allow-failure: false
           - name: minimal versions
             tools: cargo-minimal-versions,cargo-hack
-            command: just minimal-versions
+            command: mise run minimal-versions
             allow-failure: false
           - name: unused dependencies
             tools: cargo-udeps
-            command: just udeps
+            command: mise run udeps
             allow-failure: true
 
     steps:

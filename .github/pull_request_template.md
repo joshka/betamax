@@ -9,7 +9,7 @@ Describe the user-visible behavior or maintainer-facing change.
 List the commands run, or explain why a narrower check was sufficient.
 
 ```sh
-just check
+mise run check
 ```
 
 ## Notes

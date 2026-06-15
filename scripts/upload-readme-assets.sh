@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Refresh the generated README preview media on the `readme-assets` GitHub Release. Keeping these
+# files as release assets avoids committing generated media while still giving README and docs pages
+# stable URLs.
+#
+# Prefer `mise run upload-readme-assets`. Pass an alternate release tag as the first argument only
+# when testing the upload flow against a throwaway release.
 cd "$(dirname "$0")/.."
 
 tag="${1:-readme-assets}"

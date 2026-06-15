@@ -8,8 +8,12 @@ Betamax currently supports macOS and Linux. Windows is not supported because the
 
 ## Install
 
+Install Rust and Cargo with [rustup][rustup], then install the release binary with
+[cargo-binstall][cargo-binstall]:
+
 ```sh
-cargo install betamax --locked
+cargo install cargo-binstall
+cargo binstall betamax
 ```
 
 GIF, PNG, screenshot, and state JSON outputs are written in process. MP4 and WebM output require
@@ -23,6 +27,31 @@ brew install ffmpeg
 sudo apt-get update
 sudo apt-get install ffmpeg
 ```
+
+## Repository Software
+
+The checked-in examples and development commands need:
+
+- Rust and Cargo, usually from [rustup][rustup].
+- [mise][mise] for the repository toolchain, especially Zig 0.15.2.
+- [pnpm][pnpm] for the documentation site and site checks.
+- [ffmpeg](../authoring/outputs/#video-encoding) only when rendering MP4 or WebM outputs.
+
+Install the repository tools and docs dependencies with:
+
+```sh
+mise install
+pnpm install
+```
+
+The important non-Rust tool is Zig 0.15.2. Betamax builds against the vendored
+`libghostty-vt-sys` crate, and that native Ghostty build currently fails with newer Zig releases
+such as 0.16. The repository pins Zig 0.15.2 in `.mise.toml`, so `mise run ...` commands use the
+version Ghostty expects.
+
+mise is the documented path because it is small and works across the repository today. Other
+toolchain managers can work too, including [Nix][nix] or a manually installed [Zig][zig] 0.15.2 on
+`PATH`. PRs that document another reproducible setup are welcome.
 
 ## Create A Tape
 
@@ -79,10 +108,18 @@ Clone the repository to render the checked-in examples:
 ```sh
 git clone https://github.com/joshka/betamax
 cd betamax
+mise install
 pnpm install
-scripts/render-examples.sh
+mise run render-examples
 ```
 
 Rendered outputs are written under `examples/output` and copied to `target/betamax-examples` for
 local inspection. The [Examples](../examples/) page explains what each tape demonstrates. The
 [Tape Reference](../reference/tape-reference/) documents every command and setting.
+
+[cargo-binstall]: https://github.com/cargo-bins/cargo-binstall
+[mise]: https://mise.jdx.dev/
+[nix]: https://nixos.org/
+[pnpm]: https://pnpm.io/
+[rustup]: https://rustup.rs/
+[zig]: https://ziglang.org/

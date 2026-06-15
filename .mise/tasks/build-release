@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+target="${1:?target triple is required}"
+# Keep this task intentionally narrow. The release workflow owns target selection and
+# scripts/package-binstall-archive.sh owns archive layout.
+cargo build --locked --release -p betamax --target "$target"
