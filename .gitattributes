@@ -1,0 +1,2 @@
+site/public/assets/betamax-hero-terminal.png filter=lfs diff=lfs merge=lfs -text
+site/public/assets/betamax-hero-quick-start.gif filter=lfs diff=lfs merge=lfs -text
