@@ -59,7 +59,7 @@ launcher="${work_dir}/betamax"
 rm -rf "$work_dir" "$archive"
 mkdir -p "$payload_dir" "$dist_dir"
 
-cp "$binary" "$payload_dir/betamax-real"
+cp "$binary" "$payload_dir/betamax"
 find "$lib_dir" -maxdepth 1 \
   \( -name "libghostty-vt*.dylib" -o -name "libghostty-vt.so*" \) \
   -exec cp -P {} "$payload_dir/" \;
@@ -72,7 +72,7 @@ version="$version"
 target="$target"
 library_path_var="$library_path_var"
 cache="\${XDG_CACHE_HOME:-\${HOME}/.cache}/betamax/\${version}/\${target}"
-real="\${cache}/betamax-real"
+real="\${cache}/betamax"
 
 if [ ! -x "\$real" ]; then
   tmp="\${cache}.\$\$"
@@ -80,7 +80,7 @@ if [ ! -x "\$real" ]; then
   mkdir -p "\$tmp"
   payload_line=\$(awk '/^__BETAMAX_PAYLOAD_BELOW__\$/ { print NR + 1; exit }' "\$0")
   tail -n "+\$payload_line" "\$0" | tar -xz -C "\$tmp"
-  chmod 0755 "\$tmp/betamax-real"
+  chmod 0755 "\$tmp/betamax"
   mkdir -p "\$(dirname "\$cache")"
   rm -rf "\$cache"
   mv "\$tmp" "\$cache"
