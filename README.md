@@ -116,6 +116,7 @@ The checked-in examples are small smoke-test tapes that demonstrate core behavio
 | `examples/themes.tape`           | copied Ghostty themes and palette mapping      | `themes.gif`        |
 | `examples/screenshot.tape`       | screenshots and terminal state JSON            | `screenshot.png`    |
 | `examples/video.tape`            | GIF, MP4, and WebM from one capture            | `video.*`           |
+| `examples/quick-start.tape`      | installing, help, `new`, and nested `run`      | `quick-start.gif`   |
 
 ### Basic
 

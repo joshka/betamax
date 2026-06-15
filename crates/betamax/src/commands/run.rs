@@ -10,6 +10,9 @@ use betamax_core::tape::Tape;
 use clap_stdin::FileOrStdin;
 use miette::{IntoDiagnostic, Result};
 
+const ANSI_RESET: &str = "\x1b[0m";
+const ANSI_BLUE: &str = "\x1b[34m";
+
 #[derive(Debug, clap::Parser)]
 pub struct Run {
     /// File to read input from, or `-` for stdin
@@ -39,6 +42,9 @@ impl Run {
     /// Returns an error if the input cannot be read, the tape cannot be parsed, runner execution
     /// fails, or a requested output cannot be written.
     pub fn run(&self) -> Result<()> {
+        if !self.quiet {
+            println!("{ANSI_BLUE}running {}{ANSI_RESET}", self.input.filename());
+        }
         let source = self.input.clone().contents().into_diagnostic()?;
         let mut tape = Tape::parse(&source)?;
         if let Some(output) = &self.output {
@@ -49,6 +55,7 @@ impl Run {
             publish: self.publish,
             quiet: self.quiet,
         };
-        Ok(Runner::new(options).run(&tape)?)
+        Runner::new(options).run(&tape)?;
+        Ok(())
     }
 }

@@ -138,7 +138,6 @@ dependencies = [
  "serde",
  "serde_json",
  "shell-words",
- "tracing",
 ]
 
 [[package]]
@@ -247,6 +246,7 @@ dependencies = [
  "anstyle",
  "clap_lex",
  "strsim",
+ "terminal_size",
 ]
 
 [[package]]

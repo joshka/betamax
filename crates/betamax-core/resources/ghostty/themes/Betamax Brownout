@@ -1,0 +1,33 @@
+# Betamax Brownout
+# Ghostty theme inspired by joshka.net/betamax.
+# Warm, intentionally "wrong" ANSI colors: espresso, oxide red, amber orange,
+# brass, aged tape-label cream.
+
+background = #0d0b08
+foreground = #e8cda3
+
+cursor-color = #f28a24
+cursor-text = #120c08
+
+selection-background = #3a2618
+selection-foreground = #ffe0a8
+
+# ANSI 0-7
+palette = 0=#15100b
+palette = 1=#b83a1b
+palette = 2=#a65a1a
+palette = 3=#d47a13
+palette = 4=#7a3b22
+palette = 5=#c45a24
+palette = 6=#c99a5a
+palette = 7=#d8b98a
+
+# Bright ANSI 8-15
+palette = 8=#3a2a1d
+palette = 9=#e35120
+palette = 10=#c96e1d
+palette = 11=#f09a20
+palette = 12=#9a4b29
+palette = 13=#e06b2e
+palette = 14=#e8b866
+palette = 15=#ffe3b3
