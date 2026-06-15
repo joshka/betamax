@@ -3,18 +3,32 @@ title: Tape Files
 description: How Betamax parses, validates, and executes terminal capture scripts.
 ---
 
-A tape is a small script that describes one terminal session. It names
-[`Output`](../../reference/tape-reference/#output-path) artifacts, configures the terminal, starts a
-shell in a PTY, sends text and keys, waits for stable terminal states, and optionally writes
-checkpoint [`Screenshot`](../../reference/tape-reference/#screenshot-pathpng) or
-[`State`](../../reference/tape-reference/#state-pathjson) files.
+<div class="bm-manual-page bm-tape-files">
 
-Start here for authoring concepts. Use the [Tape Reference](../../reference/tape-reference/) for
-the exact command surface and [Examples](../../examples/) for copyable tapes.
+<div class="bm-manual-lede">
+
+A tape file describes one terminal capture session. It lists outputs, startup settings, terminal
+actions, waits, checkpoints, and metadata in the order Betamax should execute them.
+
+</div>
+
+<section class="bm-manual-row bm-manual-row-top" aria-labelledby="file-structure">
+<div class="bm-manual-copy">
+
+## File Structure
+
+Most tapes divide into three parts:
+
+1. Outputs, requirements, environment, and startup settings.
+1. Ordered terminal actions such as typing, key presses, and waits.
+1. Optional screenshots, state captures, hidden cleanup, and shell exit.
+
+</div>
+
+<div class="bm-manual-code">
 
 ```text
 Output examples/output/basic.gif
-
 Require printf
 
 Set Shell "bash"
@@ -28,49 +42,67 @@ Enter
 Wait+Screen "hello"
 ```
 
-## File Structure
+</div>
 
-Most tapes follow this order:
+<aside class="bm-manual-note">
+  <p class="bm-note-label">Notes</p>
+  <p>
+    Startup commands must appear before runtime commands because Betamax needs the shell,
+    terminal dimensions, theme, environment, and output requirements before PTY startup.
+  </p>
+</aside>
+</section>
 
-1. Declare [`Output`](../../reference/tape-reference/#output-path) files.
-1. Declare [`Require`](../../reference/tape-reference/#require-program) checks for external
-   commands used by the tape.
-1. Apply [`Env`](../../reference/tape-reference/#env-key-value) and
-   [`Set`](../../reference/tape-reference/#set-name-value) startup configuration.
-1. Run terminal actions such as [`Type`](../../reference/tape-reference/#typeduration-text), key
-   presses, [waits](../../reference/tape-reference/#waitduration-regextext), screenshots, and state
-   captures.
-1. Hide trailing cleanup with [`Hide`](../../reference/tape-reference/#hide), then type `exit` if
-   the shell should close cleanly.
-
-Startup commands must appear before runtime commands. This is intentional: Betamax needs to know
-the shell argv, terminal dimensions, theme, environment, and output requirements before it starts
-the PTY or creates capture state.
+<section class="bm-manual-row bm-manual-row-top" aria-labelledby="tokenization">
+<div class="bm-manual-copy">
 
 ## Tokenization
 
 Tapes use shell-like tokenization for each non-comment line. Quote strings that contain spaces,
-newlines, regex characters, ANSI escapes, or shell syntax:
+newlines, regex characters, ANSI escapes, or shell syntax.
+
+- Blank lines are ignored.
+- Lines whose trimmed form starts with `#` are comments.
+- Multiple commands may appear on one line.
+- One command per line is usually easier to review by hand.
+
+</div>
+
+<div class="bm-manual-code">
 
 ```text
 Type "printf 'hello from betamax\n'"
 Wait+Screen "hello from betamax"
 Wait+Screen "/item-[0-9]+/"
+
+Type "printf 'done\n'"
+Enter
+Wait+Screen "done"
 ```
 
-Blank lines are ignored. Lines whose trimmed form starts with `#` are comments. Multiple commands
-may appear on one line, which is useful for compact generated tapes:
+</div>
 
-```text
-Type "printf 'done\n'" Enter Wait+Screen "done"
-```
+<aside class="bm-manual-note">
+  <p class="bm-note-label">Token Rules</p>
+  <ul>
+    <li>Quote values with spaces.</li>
+    <li>Use regex waits for changing output.</li>
+    <li>Keep generated tapes compact only when review does not matter.</li>
+  </ul>
+</aside>
+</section>
 
-For hand-written tapes, one command per line is usually easier to review.
+<section class="bm-manual-row bm-manual-row-split" aria-labelledby="synchronization">
+<div class="bm-manual-copy">
 
 ## Synchronization
 
 Prefer waits over long sleeps. A sleep records whatever happens for a fixed amount of time; a wait
-records until the expected terminal text exists or the timeout expires.
+records until expected terminal text exists or the timeout expires.
+
+</div>
+
+<div class="bm-manual-code bm-compact-code">
 
 ```text
 Type "cargo test --quiet"
@@ -78,17 +110,29 @@ Enter
 Wait+Screen "test result:"
 ```
 
-Use [`Wait+Line`](../../reference/tape-reference/#waitlineduration-regextext) or bare
-[`Wait`](../../reference/tape-reference/#waitduration-regextext) for prompts. Use
-[`Wait+Screen`](../../reference/tape-reference/#waitscreenduration-regextext) for command output,
-full-screen TUIs, and text that may not be on the cursor line. Use regex waits when the output
-contains changing numbers, paths, durations, or identifiers.
+</div>
+
+<aside class="bm-manual-note">
+  <p class="bm-note-label">Tip</p>
+  <p>
+    Use <a href="../../reference/tape-reference/#waitscreenduration-regextext">Wait+Screen</a>
+    for command output and full-screen TUIs.
+  </p>
+</aside>
+</section>
+
+<section class="bm-manual-row bm-manual-row-split" aria-labelledby="hidden-work">
+<div class="bm-manual-copy">
 
 ## Hidden Work
 
 [`Hide`](../../reference/tape-reference/#hide) and [`Show`](../../reference/tape-reference/#show)
-are visibility controls, not execution controls. Hidden commands still run in the PTY, still update
-terminal state, and can still be waited on. They simply do not append frames to animated outputs.
+are visibility controls, not execution controls. Hidden commands still run in the PTY, update
+terminal state, and can be waited on.
+
+</div>
+
+<div class="bm-manual-code bm-compact-code">
 
 ```text
 Hide
@@ -96,14 +140,21 @@ Type "cargo build --quiet"
 Enter
 Wait
 Show
-
-Type "my-cli --demo"
-Enter
-Wait+Screen "Ready"
 ```
 
-[`Show`](../../reference/tape-reference/#show) immediately captures the current terminal frame. That
-avoids a visible flicker from a hidden shell prompt to the useful output.
+</div>
+
+<aside class="bm-manual-note">
+  <p class="bm-note-label">Remember</p>
+  <p>
+    <code>Show</code> immediately captures the current terminal frame, avoiding a visible
+    flicker from setup work to useful output.
+  </p>
+</aside>
+</section>
+
+<section class="bm-manual-row bm-manual-row-split" aria-labelledby="outputs-during-a-tape">
+<div class="bm-manual-copy">
 
 ## Outputs During A Tape
 
@@ -112,23 +163,39 @@ execution. [`Screenshot`](../../reference/tape-reference/#screenshot-pathpng) an
 [`State`](../../reference/tape-reference/#state-pathjson) write checkpoint artifacts immediately at
 their position in the tape.
 
+</div>
+
+<div class="bm-manual-code bm-compact-code">
+
 ```text
 Wait+Screen "Saved profile"
 Screenshot target/snapshots/profile.png
 State target/snapshots/profile.state.json
 ```
 
-For testing, pair a wait with a checkpoint state file. For documentation, pair a GIF with a final
-PNG or checkpoint screenshot so reviewers can inspect one frame without opening an animation.
+</div>
+
+<aside class="bm-manual-note">
+  <p class="bm-note-label">Review</p>
+  <p>
+    Pair a GIF with a final PNG or checkpoint screenshot so reviewers can inspect one frame
+    without opening an animation.
+  </p>
+</aside>
+</section>
+
+<section class="bm-manual-row bm-manual-row-split" aria-labelledby="shell-defaults">
+<div class="bm-manual-copy">
 
 ## Shell Defaults
 
 For common shells such as `bash`, `zsh`, and `fish`, Betamax starts a clean recording-oriented
 environment where possible. The default prompt behavior aims for VHS-like output: a simple `>`
-prompt rather than host-specific prompts such as `bash-5.3$`. See
-[Differences From VHS](../../reference/vhs-differences/) for the compatibility boundary.
+prompt rather than host-specific prompts such as `bash-5.3$`.
 
-Set `Shell` explicitly when a tape depends on shell syntax:
+</div>
+
+<div class="bm-manual-code bm-compact-code">
 
 ```text
 Set Shell "bash"
@@ -136,5 +203,15 @@ Set Shell "zsh -f"
 Set Shell "fish --private"
 ```
 
-Shell argv is split with shell-like rules, so a single `Set Shell` string can contain the program
-and arguments.
+</div>
+
+<aside class="bm-manual-note">
+  <p class="bm-note-label">Compatibility</p>
+  <p>
+    See <a href="../../reference/vhs-differences/">Differences From VHS</a> for the compatibility
+    boundary.
+  </p>
+</aside>
+</section>
+
+</div>
