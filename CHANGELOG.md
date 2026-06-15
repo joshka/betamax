@@ -2,6 +2,12 @@
 
 <!-- markdownlint-disable no-duplicate-heading -->
 
+## [0.1.7](https://github.com/joshka/betamax/compare/betamax-v0.1.6...betamax-v0.1.7) - 2026-06-15
+
+### Fixed
+
+- Make cargo-binstall launchers report `betamax` in help and usage output.
+
 ## [0.1.6](https://github.com/joshka/betamax/compare/betamax-v0.1.5...betamax-v0.1.6) - 2026-06-15
 
 ### Other
