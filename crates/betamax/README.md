@@ -110,6 +110,7 @@ The repository includes tapes that exercise the core behavior:
 
 | Tape                          | Demonstrates                                   |
 | ----------------------------- | ---------------------------------------------- |
+| `examples/quick-start.tape`   | installing, help, `new`, and nested `run`      |
 | `examples/basic.tape`         | typing, wait, theme, window bar, border radius |
 | `examples/hide-show.tape`     | hidden setup and hidden trailing cleanup       |
 | `examples/waits.tape`         | line, screen, regex, and default prompt waits  |
@@ -121,6 +122,10 @@ The repository includes tapes that exercise the core behavior:
 | `examples/layout.tape`        | padding, margin, fill, window bar, radius      |
 | `examples/themes.tape`        | copied Ghostty themes and palette mapping      |
 | `examples/video.tape`         | GIF, MP4, and WebM from one capture            |
+
+### Quick Start
+
+![Quick Start Betamax GIF][quick-start-gif]
 
 ### Basic
 
@@ -199,6 +204,7 @@ See [Differences From VHS][vhs-differences] for the full comparison.
 [hide-show-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/hide-show.gif
 [mise]: https://mise.jdx.dev/
 [nix]: https://nixos.org/
+[quick-start-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/quick-start.gif
 [repo-readme]: https://github.com/joshka/betamax
 [state-json]: https://www.joshka.net/betamax/testing/state-json/
 [tape-reference]: https://www.joshka.net/betamax/reference/tape-reference/
