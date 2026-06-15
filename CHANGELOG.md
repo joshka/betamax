@@ -7,6 +7,7 @@
 ### Fixed
 
 - Make cargo-binstall launchers report `betamax` in help and usage output.
+- Publish corrected cargo-binstall archives in a patch release.
 
 ## [0.1.6](https://github.com/joshka/betamax/compare/betamax-v0.1.5...betamax-v0.1.6) - 2026-06-15
 
