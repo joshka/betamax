@@ -116,7 +116,19 @@ mise run install-local
 
 ## Installation Modes
 
-Published users should install Betamax with [cargo-binstall][cargo-binstall]:
+Users can install Betamax with Homebrew from [joshka/homebrew-tap][homebrew-tap]:
+
+```sh
+brew install joshka/tap/betamax
+```
+
+If Homebrew requires trusted taps, trust the formula first:
+
+```sh
+brew trust --formula joshka/tap/betamax
+```
+
+They can also install from crates.io with [cargo-binstall][cargo-binstall]:
 
 ```sh
 cargo binstall betamax
@@ -230,6 +242,7 @@ mise run upload-readme-assets
 [cargo-binstall]: https://github.com/cargo-bins/cargo-binstall
 [cargo-deny]: https://github.com/EmbarkStudios/cargo-deny
 [ffmpeg]: https://ffmpeg.org/
+[homebrew-tap]: https://github.com/joshka/homebrew-tap
 [mise]: https://mise.jdx.dev/
 [nix]: https://nixos.org/
 [pnpm]: https://pnpm.io/
