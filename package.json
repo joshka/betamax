@@ -24,5 +24,8 @@
       "esbuild",
       "sharp"
     ]
+  },
+  "devDependencies": {
+    "@astrojs/mdx": "5.0.6"
   }
 }

@@ -9,61 +9,16 @@ focus on actual user-visible behavior, not implementation details that produce t
 
 ## Summary
 
-<table>
-  <thead>
-    <tr>
-      <th>Area</th>
-      <th>VHS</th>
-      <th>Betamax</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>Terminal stack</td>
-      <td>Browser terminal stack</td>
-      <td>
-        PTY plus <a href="#summary"><code>libghostty-vt</code></a>, rendered in process
-      </td>
-    </tr>
-    <tr>
-      <td>GIF and PNG</td>
-      <td>Supported</td>
-      <td>Supported in process</td>
-    </tr>
-    <tr>
-      <td>MP4 and WebM</td>
-      <td>Supported</td>
-      <td>
-        Supported through <a href="../../authoring/outputs/#video-encoding">ffmpeg</a>
-      </td>
-    </tr>
-    <tr>
-      <td>State snapshots</td>
-      <td>Not a primary feature</td>
-      <td>JSON viewport, scrollback, cursor, and styles</td>
-    </tr>
-    <tr>
-      <td><code>Source</code></td>
-      <td>Executes included tapes</td>
-      <td>Parsed, then rejected with a clear not-implemented error</td>
-    </tr>
-    <tr>
-      <td><code>record</code></td>
-      <td>Records interactive sessions</td>
-      <td>Intentionally not implemented</td>
-    </tr>
-    <tr>
-      <td><code>serve</code></td>
-      <td>Starts a server workflow</td>
-      <td>Intentionally not implemented</td>
-    </tr>
-    <tr>
-      <td><code>publish</code></td>
-      <td>Upload/share workflow</td>
-      <td>Intentionally not implemented</td>
-    </tr>
-  </tbody>
-</table>
+| Area            | VHS                          | Betamax                                                  |
+| --------------- | ---------------------------- | -------------------------------------------------------- |
+| Terminal stack  | Browser terminal stack       | PTY plus `libghostty-vt`, rendered in process            |
+| GIF and PNG     | Supported                    | Supported in process                                     |
+| MP4 and WebM    | Supported                    | Supported through [ffmpeg][video-encoding]               |
+| State snapshots | Not a primary feature        | JSON viewport, scrollback, cursor, and styles            |
+| `Source`        | Executes included tapes      | Parsed, then rejected with a clear not-implemented error |
+| `record`        | Records interactive sessions | Intentionally not implemented                            |
+| `serve`         | Starts a server workflow     | Intentionally not implemented                            |
+| `publish`       | Upload/share workflow        | Intentionally not implemented                            |
 
 ## Same Authoring Ideas
 
