@@ -1,21 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Render every checked-in example tape into examples/output and mirror the generated files under
+# target/betamax-examples. The tracked examples/output paths match the tape files, while
+# target/betamax-examples gives README asset upload a stable generated-artifact directory.
+#
+# Prefer `mise run render-examples` so Cargo uses the repository toolchain, including the Zig
+# version required by libghostty-vt-sys.
 cd "$(dirname "$0")/.."
-
-cargo_cmd=(cargo)
-if command -v mise >/dev/null 2>&1; then
-  cargo_cmd=(mise exec -- cargo)
-fi
 
 mkdir -p examples/output
 mkdir -p target/betamax-examples
 
-"${cargo_cmd[@]}" run --quiet -- validate examples/*.tape
+cargo run --quiet -- validate examples/*.tape
 
 for tape in examples/*.tape; do
   echo "rendering ${tape}"
-  "${cargo_cmd[@]}" run --quiet -- run --quiet "${tape}"
+  cargo run --quiet -- run --quiet "${tape}"
 done
 
 cp -R examples/output/. target/betamax-examples/

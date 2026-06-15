@@ -15,11 +15,31 @@ Betamax currently supports macOS and Linux. Windows is not supported because the
 `libghostty-vt-sys` native build does not support Windows.
 
 ```sh
-cargo install betamax --locked
+cargo binstall betamax
 ```
 
-MP4 and WebM output require `ffmpeg` on `PATH`; GIF, PNG, screenshots, and state JSON are written
-in process.
+If [cargo-binstall][cargo-binstall] is not installed, install it first:
+
+```sh
+cargo install cargo-binstall
+```
+
+Source installs are mainly for maintainers. They build Betamax's vendored `libghostty-vt`
+dependency, and Ghostty currently requires Zig 0.15.2 rather than newer Zig releases such as 0.16.
+In a checkout, use [mise][mise] to get the pinned toolchain and keep Cargo's target directory in the
+checkout so the installed binary can find the native library build output:
+
+```sh
+mise install
+mise run install-local
+```
+
+Other toolchain managers can work too, including [Nix][nix] or a manually installed [Zig][zig]
+0.15.2 on `PATH`. mise is the documented path because it works for this repository today; PRs that
+add tested docs for other approaches are welcome.
+
+MP4 and WebM output require [ffmpeg][ffmpeg] on `PATH`; GIF, PNG, screenshots, and state JSON are
+written in process.
 
 ```sh
 # macOS
@@ -173,11 +193,16 @@ See [Differences From VHS][vhs-differences] for the full comparison.
 - [Repository README][repo-readme]
 
 [basic-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/basic.gif
+[cargo-binstall]: https://github.com/cargo-bins/cargo-binstall
 [docs-site]: https://www.joshka.net/betamax/
+[ffmpeg]: https://ffmpeg.org/
 [hide-show-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/hide-show.gif
+[mise]: https://mise.jdx.dev/
+[nix]: https://nixos.org/
 [repo-readme]: https://github.com/joshka/betamax
 [state-json]: https://www.joshka.net/betamax/testing/state-json/
 [tape-reference]: https://www.joshka.net/betamax/reference/tape-reference/
 [terminal-testing]: https://www.joshka.net/betamax/testing/terminal-testing/
 [themes-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/themes.gif
 [vhs-differences]: https://www.joshka.net/betamax/reference/vhs-differences/
+[zig]: https://ziglang.org/

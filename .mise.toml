@@ -1,6 +1,133 @@
 [tools]
-just = "latest"
 "npm:markdownlint-cli2" = "latest"
 node = "lts"
 pnpm = "10.33.2"
 zig = "0.15.2"
+
+[tasks.default]
+run = "mise tasks ls"
+
+[tasks.fmt]
+run = "cargo +nightly fmt --all"
+
+[tasks.fmt-check]
+run = "cargo +nightly fmt --all --check"
+
+[tasks.test]
+run = "cargo test --workspace --all-targets"
+
+[tasks.cargo-check]
+run = "cargo check --workspace --all-targets"
+
+[tasks.clippy]
+run = "cargo clippy --workspace --all-targets -- -D warnings"
+
+[tasks.clippy-beta]
+run = "cargo +beta clippy --workspace --all-targets -- -D warnings"
+
+[tasks.doc-test]
+run = "cargo test --workspace --doc"
+
+[tasks.doc]
+run = "cargo doc --workspace --no-deps --document-private-items"
+
+[tasks.lint-md]
+run = "markdownlint-cli2 '**/*.md' '**/*.mdx' '#target' '#node_modules'"
+
+[tasks.outdated]
+run = "cargo outdated --workspace --root-deps-only"
+
+[tasks.minimal-versions]
+run = "cargo minimal-versions --direct --workspace check"
+
+[tasks.dependency-policy]
+run = "cargo deny check advisories licenses bans sources"
+
+[tasks.feature-check]
+run = "cargo hack check --workspace --all-targets"
+
+[tasks.udeps]
+run = "cargo +nightly udeps --workspace --all-targets"
+
+[tasks.validate]
+run = "cargo run -p betamax -- validate 'examples/*.tape' docs.tape"
+
+[tasks.version]
+run = "cargo run -p betamax -- --version"
+
+[tasks.smoke]
+run = "cargo run -- run examples/basic.tape"
+
+[tasks.render-examples]
+run = "scripts/render-examples.sh"
+
+[tasks.upload-readme-assets]
+run = "scripts/upload-readme-assets.sh"
+
+[tasks.docs-site-dev]
+run = "pnpm docs:dev"
+
+[tasks.docs-site-check]
+run = "pnpm docs:check"
+
+[tasks.docs-site-build]
+run = "pnpm docs:build"
+
+[tasks.pnpm-audit]
+run = "pnpm audit --audit-level low"
+
+[tasks.package-core]
+run = "cargo package -p betamax-core --allow-dirty"
+
+[tasks.package-cli]
+run = "cargo package --workspace --allow-dirty --no-verify"
+
+[tasks.package-cli-verify]
+run = "cargo package -p betamax --allow-dirty"
+
+[tasks.publish-dry-run-core]
+run = "cargo publish -p betamax-core --dry-run --allow-dirty"
+
+[tasks.publish-dry-run-cli]
+run = "cargo publish -p betamax --dry-run --allow-dirty"
+
+[tasks.install-local]
+run = 'CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$PWD/target/install}" cargo install --path crates/betamax --locked --force'
+
+[tasks.install-smoke]
+run = '''
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+CARGO_HOME="$tmp/cargo-home" CARGO_TARGET_DIR="$tmp/target" cargo install --path crates/betamax --locked --root "$tmp/install"
+"$tmp/install/bin/betamax" --version
+'''
+
+[tasks.package]
+run = "mise run package-core && mise run package-cli"
+
+[tasks.check]
+run = '''
+mise run fmt-check
+mise run clippy
+mise run clippy-beta
+mise run test
+mise run doc-test
+mise run doc
+mise run lint-md
+mise run validate
+mise run docs-site-check
+mise run docs-site-build
+'''
+
+[tasks.release-check]
+run = '''
+mise run check
+mise run dependency-policy
+mise run pnpm-audit
+mise run feature-check
+mise run outdated
+mise run minimal-versions
+mise run package
+mise run install-smoke
+mise run smoke
+'''

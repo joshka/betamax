@@ -24,7 +24,7 @@ fn add_libghostty_vt_rpath() {
     let lib_dir = prefix_dir.join("lib");
 
     // libghostty-vt-sys 0.1.1 links the vendored native library dynamically. The rpath keeps
-    // `cargo install --path` and local release builds runnable without requiring users to export a
+    // `cargo run` and local release builds runnable without requiring users to export a
     // platform-specific library-path environment variable.
     println!(
         "cargo:rustc-link-arg-bin=betamax=-Wl,-rpath,{}",

@@ -40,5 +40,11 @@ tracing-subscriber.workspace = true
 anyhow.workspace = true
 vergen.workspace = true
 
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/{ name }-v{ version }/{ name }-{ version }-{ target }{ archive-suffix }"
+bin-dir = "{ bin }{ binary-ext }"
+pkg-fmt = "tgz"
+disabled-strategies = ["quick-install", "compile"]
+
 [lints]
 workspace = true

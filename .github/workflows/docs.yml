@@ -1,5 +1,7 @@
 name: Docs
 
+# The docs site is a pnpm/Starlight project, but the workflow still installs mise first so CI uses
+# the same Node and pnpm versions as local `mise run docs-site-*` commands.
 on:
   pull_request:
     paths:
@@ -44,10 +46,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Check docs
-        run: just docs-site-check
+        run: mise run docs-site-check
 
       - name: Build docs
-        run: just docs-site-build
+        run: mise run docs-site-build
 
       - name: Upload Pages artifact
         if: ${{ github.event_name != 'pull_request' }}
@@ -65,6 +67,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     permissions:
       pages: write
+      # GitHub Pages custom workflows require OIDC in addition to pages:write.
+      # https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages
       id-token: write
     steps:
       - name: Deploy to GitHub Pages

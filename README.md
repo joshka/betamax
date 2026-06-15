@@ -16,8 +16,28 @@ Betamax currently supports macOS and Linux. Windows is not supported because the
 Install the CLI from crates.io:
 
 ```sh
-cargo install betamax --locked
+cargo binstall betamax
 ```
+
+If [cargo-binstall][cargo-binstall] is not installed, install it first:
+
+```sh
+cargo install cargo-binstall
+```
+
+Source installs are mainly for maintainers. They build Betamax's vendored `libghostty-vt`
+dependency, and Ghostty currently requires Zig 0.15.2 rather than newer Zig releases such as 0.16.
+In a checkout, use [mise][mise] to get the pinned toolchain and keep Cargo's target directory in the
+checkout so the installed binary can find the native library build output:
+
+```sh
+mise install
+mise run install-local
+```
+
+Other toolchain managers can work too, including [Nix][nix] or a manually installed [Zig][zig]
+0.15.2 on `PATH`. mise is the documented path because it works for this repository today; PRs that
+add tested docs for other approaches are welcome.
 
 For local development or source checkouts, run from the workspace:
 
@@ -28,10 +48,10 @@ cargo run -- run examples/basic.tape
 Render all local examples:
 
 ```sh
-scripts/render-examples.sh
+mise run render-examples
 ```
 
-MP4 and WebM output require `ffmpeg` on `PATH`:
+MP4 and WebM output require [ffmpeg][ffmpeg] on `PATH`:
 
 ```sh
 # macOS
@@ -179,13 +199,17 @@ The Starlight docs site lives under `site/` and can be run locally with:
 
 ```sh
 pnpm install
-just docs-site-dev
+mise run docs-site-dev
 ```
 
 [basic-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/basic.gif
+[cargo-binstall]: https://github.com/cargo-bins/cargo-binstall
 [discussions]: https://github.com/joshka/betamax/discussions
 [docs-site]: https://www.joshka.net/betamax/
+[ffmpeg]: https://ffmpeg.org/
 [hide-show-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/hide-show.gif
+[mise]: https://mise.jdx.dev/
+[nix]: https://nixos.org/
 [show-and-tell]: https://github.com/joshka/betamax/discussions/categories/show-and-tell
 [state-json]: https://www.joshka.net/betamax/testing/state-json/
 [tape-reference]: https://www.joshka.net/betamax/reference/tape-reference/
@@ -193,3 +217,4 @@ just docs-site-dev
 [themes-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/themes.gif
 [video-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/video.gif
 [vhs-differences]: https://www.joshka.net/betamax/reference/vhs-differences/
+[zig]: https://ziglang.org/
