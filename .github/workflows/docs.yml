@@ -57,6 +57,8 @@ jobs:
           set -euo pipefail
           file site/dist/assets/betamax-hero-terminal.png | grep -F "PNG image data"
           file site/dist/assets/betamax-hero-quick-start.gif | grep -F "GIF image data"
+          grep -F "<table>" site/dist/reference/vhs-differences/index.html
+          ! grep -F "<p>| Area" site/dist/reference/vhs-differences/index.html
 
       - name: Upload Pages artifact
         if: ${{ github.event_name != 'pull_request' }}
