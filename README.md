@@ -13,7 +13,19 @@ intentionally does not include `serve`, `record`, `source`, or `publish`.
 Betamax currently supports macOS and Linux. Windows is not supported because the upstream
 `libghostty-vt-sys` native build does not support Windows.
 
-Install the CLI from crates.io:
+Install the CLI with Homebrew from [joshka/homebrew-tap][homebrew-tap]:
+
+```sh
+brew install joshka/tap/betamax
+```
+
+If Homebrew requires trusted taps, trust the formula first:
+
+```sh
+brew trust --formula joshka/tap/betamax
+```
+
+Or install from crates.io with cargo-binstall:
 
 ```sh
 cargo binstall betamax
@@ -209,6 +221,7 @@ mise run docs-site-dev
 [docs-site]: https://www.joshka.net/betamax/
 [ffmpeg]: https://ffmpeg.org/
 [hide-show-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/hide-show.gif
+[homebrew-tap]: https://github.com/joshka/homebrew-tap
 [mise]: https://mise.jdx.dev/
 [nix]: https://nixos.org/
 [show-and-tell]: https://github.com/joshka/betamax/discussions/categories/show-and-tell

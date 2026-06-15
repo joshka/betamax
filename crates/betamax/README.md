@@ -14,6 +14,20 @@ tests for terminal applications.
 Betamax currently supports macOS and Linux. Windows is not supported because the upstream
 `libghostty-vt-sys` native build does not support Windows.
 
+Install the CLI with Homebrew from [joshka/homebrew-tap][homebrew-tap]:
+
+```sh
+brew install joshka/tap/betamax
+```
+
+If Homebrew requires trusted taps, trust the formula first:
+
+```sh
+brew trust --formula joshka/tap/betamax
+```
+
+Or install from crates.io with cargo-binstall:
+
 ```sh
 cargo binstall betamax
 ```
@@ -197,6 +211,7 @@ See [Differences From VHS][vhs-differences] for the full comparison.
 [docs-site]: https://www.joshka.net/betamax/
 [ffmpeg]: https://ffmpeg.org/
 [hide-show-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/hide-show.gif
+[homebrew-tap]: https://github.com/joshka/homebrew-tap
 [mise]: https://mise.jdx.dev/
 [nix]: https://nixos.org/
 [repo-readme]: https://github.com/joshka/betamax

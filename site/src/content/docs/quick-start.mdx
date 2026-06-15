@@ -8,7 +8,19 @@ Betamax currently supports macOS and Linux. Windows is not supported because the
 
 ## Install
 
-Install Rust and Cargo with [rustup][rustup], then install the release binary with
+Install the CLI with Homebrew from [joshka/homebrew-tap][homebrew-tap]:
+
+```sh
+brew install joshka/tap/betamax
+```
+
+If Homebrew requires trusted taps, trust the formula first:
+
+```sh
+brew trust --formula joshka/tap/betamax
+```
+
+Or install Rust and Cargo with [rustup][rustup], then install from crates.io with
 [cargo-binstall][cargo-binstall]:
 
 ```sh
@@ -118,6 +130,7 @@ local inspection. The [Examples](../examples/) page explains what each tape demo
 [Tape Reference](../reference/tape-reference/) documents every command and setting.
 
 [cargo-binstall]: https://github.com/cargo-bins/cargo-binstall
+[homebrew-tap]: https://github.com/joshka/homebrew-tap
 [mise]: https://mise.jdx.dev/
 [nix]: https://nixos.org/
 [pnpm]: https://pnpm.io/
