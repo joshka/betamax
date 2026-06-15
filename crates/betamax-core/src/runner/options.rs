@@ -11,9 +11,8 @@ pub struct RunOptions {
     /// This option exists to keep the public API compatible with the VHS-shaped CLI surface, but
     /// publishing is intentionally not implemented in the current Ghostty-first runner.
     pub publish: bool,
-    /// Suppress informational logs from successful no-capture execution.
+    /// Suppress informational logs from successful execution.
     ///
-    /// Errors are still returned normally. Capture runs currently do not emit routine progress
-    /// logs.
+    /// Errors are still returned normally.
     pub quiet: bool,
 }

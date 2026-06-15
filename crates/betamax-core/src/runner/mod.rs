@@ -62,7 +62,7 @@ use crate::media::{
     write_gif, write_json, write_mp4, write_png, write_png_sequence, write_webm, Frame,
 };
 use crate::output::{classify_outputs, Outputs};
-use crate::tape::{Command, Tape};
+use crate::tape::{Command, Key, KeyCode, Tape, Value, WaitPattern, WaitTarget};
 
 /// Terminal session used by the runner's capture path.
 ///
@@ -132,6 +132,13 @@ const FINAL_COMMAND_IDLE: Duration = Duration::from_millis(100);
 /// Inline checkpoints should reflect output produced by the preceding command, but they should not
 /// wait as long as shell startup because they often appear in the middle of visible recordings.
 const CHECKPOINT_IDLE: Duration = Duration::from_millis(50);
+
+const ANSI_RESET: &str = "\x1b[0m";
+const ANSI_BOLD: &str = "\x1b[1m";
+const ANSI_DIM: &str = "\x1b[2m";
+const ANSI_CYAN: &str = "\x1b[36m";
+const ANSI_GREEN: &str = "\x1b[32m";
+const ANSI_YELLOW: &str = "\x1b[33m";
 
 /// Runs parsed tapes.
 ///
@@ -335,7 +342,9 @@ where
         let mut clipboard = String::new();
         session.drain_into(&mut terminal, SHELL_STARTUP_IDLE)?;
 
-        for command in &tape.commands {
+        let command_count = tape.commands.len();
+        for (index, command) in tape.commands.iter().enumerate() {
+            self.progress_command(index + 1, command_count, command);
             self.run_capture_command(
                 command,
                 &settings,
@@ -366,22 +375,49 @@ where
         let final_state = terminal.terminal_state()?;
 
         for path in outputs.pngs {
+            self.progress(
+                ANSI_YELLOW,
+                format_args!("generating png {}", path.display()),
+            );
             write_png(&path, &frame)?;
+            self.progress(ANSI_GREEN, format_args!("wrote {}", path.display()));
         }
         for path in outputs.states {
+            self.progress(
+                ANSI_YELLOW,
+                format_args!("writing state {}", path.display()),
+            );
             write_json(&path, &final_state)?;
+            self.progress(ANSI_GREEN, format_args!("wrote {}", path.display()));
         }
         for path in outputs.gifs {
+            self.progress(
+                ANSI_YELLOW,
+                format_args!("combining frames into gif {}", path.display()),
+            );
             write_gif(&path, &capture.frames)?;
+            self.progress(ANSI_GREEN, format_args!("wrote {}", path.display()));
         }
         for path in outputs.frame_dirs {
+            self.progress(
+                ANSI_YELLOW,
+                format_args!("writing frame sequence {}", path.display()),
+            );
             write_png_sequence(&path, &capture.frames)?;
+            self.progress(ANSI_GREEN, format_args!("wrote {}", path.display()));
         }
         for path in outputs.mp4s {
+            self.progress(ANSI_YELLOW, format_args!("encoding mp4 {}", path.display()));
             write_mp4(&path, &capture.frames, settings.output_framerate())?;
+            self.progress(ANSI_GREEN, format_args!("wrote {}", path.display()));
         }
         for path in outputs.webms {
+            self.progress(
+                ANSI_YELLOW,
+                format_args!("encoding webm {}", path.display()),
+            );
             write_webm(&path, &capture.frames, settings.output_framerate())?;
+            self.progress(ANSI_GREEN, format_args!("wrote {}", path.display()));
         }
 
         Ok(RunArtifacts {
@@ -497,7 +533,9 @@ where
         let mut session = PtySession::spawn(&settings)?;
         let mut clipboard = String::new();
         session.drain_output(SHELL_STARTUP_IDLE)?;
-        for command in &tape.commands {
+        let command_count = tape.commands.len();
+        for (index, command) in tape.commands.iter().enumerate() {
+            self.progress_command(index + 1, command_count, command);
             match command {
                 Command::Sleep(duration) => thread::sleep(*duration),
                 Command::Type { text, delay } => session.type_text(text, *delay)?,
@@ -545,15 +583,177 @@ where
             }
         }
 
-        if !self.options.quiet {
-            tracing::info!("tape executed without capture outputs");
-        }
+        self.progress(
+            ANSI_GREEN,
+            format_args!("tape executed without capture outputs"),
+        );
 
         Ok(RunArtifacts {
             final_state: None,
             output_paths: Vec::new(),
         })
     }
+
+    fn progress_command(&self, index: usize, count: usize, command: &Command) {
+        let (style, label) = match command {
+            Command::Output(_)
+            | Command::Require(_)
+            | Command::Set { .. }
+            | Command::Env { .. } => (ANSI_DIM, "setup"),
+            Command::Sleep(_) | Command::Wait { .. } => (ANSI_YELLOW, "wait"),
+            Command::Screenshot(_) | Command::State(_) => (ANSI_YELLOW, "capture"),
+            Command::Hide | Command::Show => (ANSI_DIM, "display"),
+            _ => (ANSI_CYAN, "run"),
+        };
+        self.progress(
+            style,
+            format_args!(
+                "{ANSI_BOLD}{label}{ANSI_RESET}{style} {index}/{count}: {}",
+                describe_command(command)
+            ),
+        );
+    }
+
+    fn progress(&self, style: &str, args: std::fmt::Arguments<'_>) {
+        if !self.options.quiet {
+            println!("{style}{args}{ANSI_RESET}");
+        }
+    }
+}
+
+fn describe_command(command: &Command) -> String {
+    match command {
+        Command::Output(path) => format!("Output {}", path.display()),
+        Command::Require(program) => format!("Require {program}"),
+        Command::Set { key, value } => format!("Set {key} {}", describe_value(value)),
+        Command::Sleep(duration) => format!("Sleep {}", describe_duration(*duration)),
+        Command::Type { text, delay } => match delay {
+            Some(delay) => format!(
+                "Type@{} \"{}\"",
+                describe_duration(*delay),
+                describe_text(text)
+            ),
+            None => format!("Type \"{}\"", describe_text(text)),
+        },
+        Command::Wait {
+            target,
+            pattern,
+            timeout,
+        } => {
+            let target = match target {
+                WaitTarget::Line => "Line",
+                WaitTarget::Screen => "Screen",
+            };
+            let pattern = pattern
+                .as_ref()
+                .map(describe_wait_pattern)
+                .unwrap_or_else(|| "default prompt".to_string());
+            match timeout {
+                Some(timeout) => {
+                    format!("Wait+{target}@{} {pattern}", describe_duration(*timeout))
+                }
+                None => format!("Wait+{target} {pattern}"),
+            }
+        }
+        Command::Key { key, delay, count } => {
+            let key = describe_key(key);
+            let suffix = delay
+                .map(|delay| format!("@{}", describe_duration(delay)))
+                .unwrap_or_default();
+            if *count == 1 {
+                format!("{key}{suffix}")
+            } else {
+                format!("{key}{suffix} {count}")
+            }
+        }
+        Command::Hide => "Hide".to_string(),
+        Command::Show => "Show".to_string(),
+        Command::Env { key, .. } => format!("Env {key} <value>"),
+        Command::Copy(text) => format!("Copy \"{}\"", describe_text(text)),
+        Command::Paste => "Paste".to_string(),
+        Command::Source(path) => format!("Source {}", path.display()),
+        Command::Screenshot(path) => format!("Screenshot {}", path.display()),
+        Command::State(path) => format!("State {}", path.display()),
+    }
+}
+
+fn describe_value(value: &Value) -> String {
+    match value {
+        Value::String(value) => format!("\"{}\"", describe_text(value)),
+        Value::Number(value) => value.to_string(),
+        Value::Duration(value) => describe_duration(*value),
+        Value::Bool(value) => value.to_string(),
+    }
+}
+
+fn describe_wait_pattern(pattern: &WaitPattern) -> String {
+    match pattern {
+        WaitPattern::Contains(text) => format!("\"{}\"", describe_text(text)),
+        WaitPattern::Regex(regex) => format!("/{}/", describe_text(regex)),
+    }
+}
+
+fn describe_key(key: &Key) -> String {
+    let Key::Press { key, modifiers } = key;
+    let mut parts = Vec::new();
+    if modifiers.ctrl {
+        parts.push("Ctrl".to_string());
+    }
+    if modifiers.alt {
+        parts.push("Alt".to_string());
+    }
+    if modifiers.shift {
+        parts.push("Shift".to_string());
+    }
+    parts.push(match key {
+        KeyCode::Backspace => "Backspace".to_string(),
+        KeyCode::Delete => "Delete".to_string(),
+        KeyCode::Down => "Down".to_string(),
+        KeyCode::End => "End".to_string(),
+        KeyCode::Enter => "Enter".to_string(),
+        KeyCode::Escape => "Escape".to_string(),
+        KeyCode::Function(number) => format!("F{number}"),
+        KeyCode::Home => "Home".to_string(),
+        KeyCode::Insert => "Insert".to_string(),
+        KeyCode::Left => "Left".to_string(),
+        KeyCode::PageDown => "PageDown".to_string(),
+        KeyCode::PageUp => "PageUp".to_string(),
+        KeyCode::Right => "Right".to_string(),
+        KeyCode::Space => "Space".to_string(),
+        KeyCode::Tab => "Tab".to_string(),
+        KeyCode::Up => "Up".to_string(),
+        KeyCode::Char(ch) => ch.to_string(),
+    });
+    parts.join("+")
+}
+
+fn describe_duration(duration: Duration) -> String {
+    let milliseconds = duration.as_millis();
+    if milliseconds.is_multiple_of(1000) {
+        format!("{}s", milliseconds / 1000)
+    } else {
+        format!("{milliseconds}ms")
+    }
+}
+
+fn describe_text(text: &str) -> String {
+    const MAX_CHARS: usize = 72;
+    let mut output = String::new();
+    let mut chars = text.chars();
+    for ch in chars.by_ref().take(MAX_CHARS) {
+        match ch {
+            '\n' => output.push_str("\\n"),
+            '\r' => output.push_str("\\r"),
+            '\t' => output.push_str("\\t"),
+            '"' => output.push_str("\\\""),
+            '\\' => output.push_str("\\\\"),
+            ch => output.push(ch),
+        }
+    }
+    if chars.next().is_some() {
+        output.push('…');
+    }
+    output
 }
 
 #[cfg(test)]
