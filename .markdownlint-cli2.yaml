@@ -12,6 +12,7 @@ config:
       - a
       - Card
       - CardGrid
+      - code
       - div
       - footer
       - h1
@@ -25,5 +26,11 @@ config:
       - section
       - span
       - svg
+      - table
+      - tbody
+      - td
+      - th
+      - thead
+      - tr
   MD024:
     siblings_only: true
