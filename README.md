@@ -37,10 +37,9 @@ If [cargo-binstall][cargo-binstall] is not installed, install it first:
 cargo install cargo-binstall
 ```
 
-Source installs are mainly for maintainers. They build Betamax's vendored `libghostty-vt`
-dependency, and Ghostty currently requires Zig 0.15.2 rather than newer Zig releases such as 0.16.
-In a checkout, use [mise][mise] to get the pinned toolchain and keep Cargo's target directory in the
-checkout so the installed binary can find the native library build output:
+Source installs are mainly for maintainers. Betamax uses the safe `libghostty-vt` Rust wrapper; its
+`libghostty-vt-sys` dependency fetches a pinned Ghostty source commit and runs Zig 0.15.2 to build
+the native VT library. In a checkout, use [mise][mise] to get the pinned toolchain:
 
 ```sh
 mise install
@@ -48,8 +47,9 @@ mise run install-local
 ```
 
 Other toolchain managers can work too, including [Nix][nix] or a manually installed [Zig][zig]
-0.15.2 on `PATH`. mise is the documented path because it works for this repository today; PRs that
-add tested docs for other approaches are welcome.
+0.15.2 on `PATH`. mise is the documented path because it works for this repository today. The
+specific Zig version is an upstream Ghostty build requirement until Ghostty supports newer Zig
+releases such as 0.16.
 
 For local development or source checkouts, run from the workspace:
 

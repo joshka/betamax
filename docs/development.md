@@ -11,10 +11,20 @@ mise run check
 
 ## Toolchain Requirements
 
-Betamax is a Rust workspace, but the terminal engine comes from the vendored
-`libghostty-vt-sys` native build. That Ghostty build currently requires Zig 0.15.2 and fails with
-newer Zig releases such as 0.16. The repository pins Zig 0.15.2 in [.mise.toml](../.mise.toml), so
-run development, packaging, and source-install commands through mise:
+Betamax is a Rust workspace, but the terminal engine depends on Ghostty's native VT library through
+two Rust crates:
+
+- `libghostty-vt` is the safe Rust wrapper that `betamax-core` uses directly.
+- `libghostty-vt-sys` is the low-level FFI crate. Its default build fetches a pinned Ghostty source
+  commit and runs Zig to build `libghostty-vt`.
+
+The CLI crate does not depend on `libghostty-vt-sys` directly. Older Betamax releases needed that
+direct dependency only so the CLI build script could add an rpath for the dynamically linked native
+library. `libghostty-vt-sys` now links the native VT library statically by default, so the normal
+dependency chain is `betamax` -> `betamax-core` -> `libghostty-vt` -> `libghostty-vt-sys`.
+
+The repository pins Zig 0.15.2 in [.mise.toml](../.mise.toml), so run development, packaging, and
+source-install commands through mise:
 
 ```sh
 mise install
@@ -24,8 +34,9 @@ mise run build-release -- aarch64-apple-darwin
 
 mise is not the only possible way to provide that Zig version. [Nix][nix], a manually managed
 [Zig][zig] 0.15.2, or another reproducible toolchain wrapper can also work if Cargo finds Zig
-0.15.2 when `libghostty-vt-sys` builds. mise is the documented path because it works for this
-checkout and CI. PRs that add tested instructions for other approaches are welcome.
+0.15.2 when `libghostty-vt-sys` builds. That version is an upstream Ghostty build requirement until
+Ghostty supports newer Zig releases such as 0.16. mise is the documented path because it works for
+this checkout and CI.
 
 ## Formatting
 
@@ -101,14 +112,8 @@ mise run install-smoke
 version to already be available from crates.io, because Cargo rewrites the workspace path
 dependency into a registry dependency when packaging the CLI crate.
 
-The CLI directly depends on `libghostty-vt-sys` in addition to `betamax-core` so its build script
-can add an rpath for the vendored native `libghostty-vt` library. That keeps local release builds
-runnable with the current upstream sys crate. Run source installs through `mise`; the native
-dependency currently requires the Zig version pinned in [.mise.toml](../.mise.toml), and a shell
-that finds a newer global Zig can fail during the vendored Ghostty build.
-
-For source installs from a checkout, keep Cargo's target directory in the checkout so the installed
-binary's rpath points at a persistent native library build output:
+Run source installs through `mise` so Cargo finds the Zig version pinned in
+[.mise.toml](../.mise.toml):
 
 ```sh
 mise run install-local
@@ -141,20 +146,8 @@ GitHub Release assets named `betamax-<version>-<target>.tgz` on release tags nam
 model. Those archive names must stay aligned with
 [`release-plz.yml`](../.github/workflows/release-plz.yml).
 
-The preferred shape would be a normal single binary. That is not available with
-`libghostty-vt-sys` 0.1.1: its build script tells Cargo to link `libghostty-vt` dynamically, and a
-test static link against the emitted `libghostty-vt.a` leaves Highway, simdutf, and C++ runtime
-symbols unresolved on macOS. Until the sys crate exposes a supported static link mode, the release
-archive uses a small launcher produced by
-[`scripts/package-binstall-archive.sh`](../scripts/package-binstall-archive.sh). cargo-binstall
-installs that launcher as `betamax`; on first run it unpacks the real CLI binary and the
-`libghostty-vt` shared library payload into the user's cache, points the platform library path at
-that payload, and then execs the real binary.
-
-Plain `cargo install betamax --locked` is not the preferred install path. It compiles the same
-native `libghostty-vt-sys` dependency but does not preserve Cargo's temporary native library build
-output after installation, so the installed binary can fail at runtime on platforms that require the
-vendored shared library.
+`libghostty-vt-sys` links the native VT library statically by default. The cargo-binstall archive
+therefore only needs the `betamax` executable and does not need a companion shared library payload.
 
 ## Scripts And Tasks
 
@@ -197,8 +190,9 @@ Configure a trusted publisher for each published crate:
 
 The workflow has two jobs. `release-plz-release` publishes crate versions that exist on `main` but
 are not yet on crates.io, then creates GitHub releases and tags. It installs the repo's mise tools
-because package verification builds `libghostty-vt-sys`, which requires Zig. `release-plz-pr` opens
-or updates the release PR that prepares the next version and changelog entry.
+because package verification builds `libghostty-vt-sys`, which requires Zig 0.15.2.
+`release-plz-pr` opens or updates the release PR that prepares the next version and changelog
+entry.
 
 Binary release assets are built by the `prepare-release-assets` and `release-assets` jobs in
 [`release-plz.yml`](../.github/workflows/release-plz.yml) after release-plz reports that the
@@ -209,8 +203,8 @@ supported native targets.
 ## Platform And Tooling Notes
 
 `libghostty-vt-sys` is a native dependency and currently determines Betamax's platform support.
-Betamax supports macOS and Linux. Windows is not supported because the upstream vendored
-`libghostty-vt` build does not support Windows.
+Betamax supports macOS and Linux. Windows is not supported because the upstream `libghostty-vt`
+build does not support Windows.
 
 GIF, PNG, screenshot, and state JSON outputs are written in process. MP4 and WebM intentionally use
 [ffmpeg][ffmpeg] on `PATH`; this keeps first-cut video support small and debuggable, but it means video

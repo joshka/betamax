@@ -120,14 +120,7 @@ impl FrameCapture for GhosttyFrameCapture {
 /// over feeding terminal bytes.
 pub struct GhosttySession {
     /// libghostty-vt terminal model receiving PTY bytes.
-    ///
-    /// Boxed to work around libghostty-vt 0.1.1 unsoundness: `on_pty_write`
-    /// records `&self.vtable` (an interior field) as C userdata, so moving the
-    /// `Terminal` after install — e.g. returning it from this constructor —
-    /// dangles the pointer and segfaults on the next callback fire. Fixed
-    /// upstream by Uzaaft/libghostty-rs#24 (boxes the VTable internally); drop
-    /// this `Box` once we depend on a release containing that PR.
-    terminal: Box<Terminal<'static, 'static>>,
+    terminal: Terminal<'static, 'static>,
     pending_pty_reply: Rc<Cell<Vec<u8>>>,
     /// Software renderer and reusable render iterators.
     renderer: RasterRenderer,
@@ -152,14 +145,12 @@ impl GhosttySession {
         let cell_width = request.text.cell_width();
         let cell_height = request.text.cell_height();
 
-        let mut terminal = Box::new(
-            Terminal::new(TerminalOptions {
-                cols: request.grid.columns.max(1),
-                rows: request.grid.rows.max(1),
-                max_scrollback: MAX_SCROLLBACK_ROWS,
-            })
-            .map_err(vt_error("failed to create libghostty-vt terminal"))?,
-        );
+        let mut terminal = Terminal::new(TerminalOptions {
+            cols: request.grid.columns.max(1),
+            rows: request.grid.rows.max(1),
+            max_scrollback: MAX_SCROLLBACK_ROWS,
+        })
+        .map_err(vt_error("failed to create libghostty-vt terminal"))?;
         terminal
             .resize(
                 request.grid.columns.max(1),
