@@ -117,7 +117,6 @@ dependencies = [
  "glob",
  "interpolator",
  "libghostty-vt",
- "log",
  "miette",
  "serde_json",
  "tracing",
@@ -541,20 +540,18 @@ checksum = "68ab91017fe16c622486840e4c83c9a37afeff978bd239b5293d61ece587de66"
 [[package]]
 name = "libghostty-vt"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04c77176dd05b2b5718046d807e786473f463ea6d478d56f8c0105e2fe6f71f5"
+source = "git+https://github.com/Uzaaft/libghostty-rs?rev=f6cc545dcbe2db319cdb1a28ef24b0cdf13301fa#f6cc545dcbe2db319cdb1a28ef24b0cdf13301fa"
 dependencies = [
  "bitflags 2.11.1",
  "int-enum",
  "libghostty-vt-sys",
- "log",
+ "tracing",
 ]
 
 [[package]]
 name = "libghostty-vt-sys"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "404671567c0ac43389a69ae424eefc89390a25d3a5386a54249cdaf13e01b411"
+source = "git+https://github.com/Uzaaft/libghostty-rs?rev=f6cc545dcbe2db319cdb1a28ef24b0cdf13301fa#f6cc545dcbe2db319cdb1a28ef24b0cdf13301fa"
 
 [[package]]
 name = "libm"
