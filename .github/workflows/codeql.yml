@@ -1,7 +1,7 @@
 name: CodeQL
 
 # CodeQL's Rust extractor can analyze this workspace without a build. That keeps the security scan
-# independent from the native libghostty-vt-sys build and its pinned Zig toolchain.
+# independent from the native libghostty-vt-sys build and its pinned Zig 0.15.2 toolchain.
 # https://docs.github.com/en/code-security/reference/code-scanning/codeql/build-options-for-compiled-languages#building-rust
 on:
   pull_request:

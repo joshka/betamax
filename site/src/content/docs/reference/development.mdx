@@ -44,4 +44,5 @@ links such as `./quick-start/` would resolve to `/quick-start/` from `/betamax` 
 under `/betamax/`.
 
 Releases are managed by release-plz and crates.io Trusted Publishing. The release workflow installs
-mise tools because package verification builds `libghostty-vt-sys`, which requires Zig.
+mise tools because package verification builds `libghostty-vt-sys`, which requires Zig 0.15.2 until
+the upstream Ghostty build supports newer Zig releases.

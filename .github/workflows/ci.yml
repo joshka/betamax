@@ -1,7 +1,8 @@
 name: CI
 
 # CI calls mise tasks instead of spelling out long command lines in YAML. That keeps local and CI
-# behavior aligned, and it ensures Cargo sees the Zig version pinned for libghostty-vt-sys.
+# behavior aligned, and it ensures Cargo sees the Zig 0.15.2 version required by
+# libghostty-vt-sys.
 on:
   pull_request:
   push:

@@ -11,9 +11,7 @@ use super::theme::TerminalTheme;
 /// Ghostty themes while preserving arbitrary truecolor application output.
 ///
 /// TODO: Prefer initializing libghostty-vt with Betamax's selected foreground, background, cursor,
-/// and palette once the safe Rust wrapper exposes the C API's color setters. Ghostty's C examples
-/// demonstrate this through `ghostty_terminal_set`, but `libghostty-vt` 0.1.1 currently exposes
-/// only dimensions and scrollback in `TerminalOptions`.
+/// and palette through the safe wrapper's color setters, then remove this remapping layer.
 pub(super) struct RenderTheme {
     /// Target background color.
     pub(super) background: RgbColor,

@@ -6,7 +6,7 @@ set -euo pipefail
 # target/betamax-examples gives README asset upload a stable generated-artifact directory.
 #
 # Prefer `mise run render-examples` so Cargo uses the repository toolchain, including the Zig
-# version required by libghostty-vt-sys.
+# 0.15.2 version required by libghostty-vt-sys.
 cd "$(dirname "$0")/.."
 
 mkdir -p examples/output
