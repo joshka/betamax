@@ -2,6 +2,18 @@
 
 <!-- markdownlint-disable no-duplicate-heading -->
 
+## [0.1.10](https://github.com/joshka/betamax/compare/betamax-v0.1.9...betamax-v0.1.10) - 2026-06-16
+
+### Other
+
+- Trace Ghostty capture boundaries ([#72](https://github.com/joshka/betamax/pull/72))
+
+## [0.1.6](https://github.com/joshka/betamax/compare/betamax-core-v0.1.5...betamax-core-v0.1.6) - 2026-06-16
+
+### Other
+
+- Trace Ghostty capture boundaries ([#72](https://github.com/joshka/betamax/pull/72))
+
 ## [0.1.9](https://github.com/joshka/betamax/compare/betamax-v0.1.8...betamax-v0.1.9) - 2026-06-16
 
 ### Other
