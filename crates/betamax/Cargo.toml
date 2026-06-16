@@ -29,6 +29,7 @@ betamax-core.workspace = true
 clap.workspace = true
 clap-stdin.workspace = true
 glob.workspace = true
+indicatif.workspace = true
 interpolator.workspace = true
 libghostty-vt.workspace = true
 log.workspace = true

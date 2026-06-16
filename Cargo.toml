@@ -24,6 +24,7 @@ cosmic-text = "0.19"
 gif = "0.14"
 glob = "0.3"
 interpolator = "0.5"
+indicatif = "0.18.4"
 libghostty-vt = { version = "0.2.0", features = ["log"] }
 log = "0.4.29"
 miette = "7"

@@ -59,7 +59,9 @@ use settings::Settings;
 use crate::ghostty::{CaptureRequest, GhosttyFrameCapture, PixelSize, TerminalGrid};
 use crate::key::key_bytes;
 use crate::media::{
-    write_gif, write_json, write_mp4, write_png, write_png_sequence, write_webm, Frame,
+    write_gif_with_progress, write_json, write_mp4_with_progress, write_png,
+    write_png_sequence_with_progress, write_webm_with_progress, Frame, MediaProgressReporter,
+    NoMediaProgress,
 };
 use crate::output::{classify_outputs, Outputs};
 use crate::tape::{Command, Key, KeyCode, Tape, Value, WaitPattern, WaitTarget};
@@ -150,6 +152,8 @@ pub struct Runner<C = GhosttyFrameCapture> {
     options: RunOptions,
     /// Capture implementation used when any command or output needs rendered terminal state.
     capture: C,
+    /// Optional sink for deterministic media-writing progress.
+    media_progress: Box<dyn MediaProgressReporter>,
 }
 
 impl<C> std::fmt::Debug for Runner<C> {
@@ -158,6 +162,10 @@ impl<C> std::fmt::Debug for Runner<C> {
             .debug_struct("Runner")
             .field("options", &self.options)
             .field("capture", &std::any::type_name::<C>())
+            .field(
+                "media_progress",
+                &std::any::type_name::<Box<dyn MediaProgressReporter>>(),
+            )
             .finish()
     }
 }
@@ -168,6 +176,7 @@ impl Runner<GhosttyFrameCapture> {
         Self {
             options,
             capture: GhosttyFrameCapture,
+            media_progress: Box::new(NoMediaProgress),
         }
     }
 }
@@ -253,7 +262,20 @@ impl<C> Runner<C> {
     /// # }
     /// ```
     pub fn with_capture(options: RunOptions, capture: C) -> Self {
-        Self { options, capture }
+        Self {
+            options,
+            capture,
+            media_progress: Box::new(NoMediaProgress),
+        }
+    }
+
+    /// Attach a reporter for media-writing progress.
+    ///
+    /// The default runner only reports normal status lines. CLI callers can use this hook to render
+    /// progress bars without making terminal UI a core dependency.
+    pub fn with_media_progress(mut self, progress: impl MediaProgressReporter + 'static) -> Self {
+        self.media_progress = Box::new(progress);
+        self
     }
 }
 
@@ -420,7 +442,7 @@ where
                 ANSI_YELLOW,
                 format_args!("combining frames into gif {}", path.display()),
             );
-            write_gif(&path, &capture.frames)?;
+            write_gif_with_progress(&path, &capture.frames, &mut self.media_progress)?;
             self.progress(ANSI_GREEN, format_args!("wrote {}", path.display()));
         }
         for path in outputs.frame_dirs {
@@ -428,12 +450,17 @@ where
                 ANSI_YELLOW,
                 format_args!("writing frame sequence {}", path.display()),
             );
-            write_png_sequence(&path, &capture.frames)?;
+            write_png_sequence_with_progress(&path, &capture.frames, &mut self.media_progress)?;
             self.progress(ANSI_GREEN, format_args!("wrote {}", path.display()));
         }
         for path in outputs.mp4s {
             self.progress(ANSI_YELLOW, format_args!("encoding mp4 {}", path.display()));
-            write_mp4(&path, &capture.frames, settings.output_framerate())?;
+            write_mp4_with_progress(
+                &path,
+                &capture.frames,
+                settings.output_framerate(),
+                &mut self.media_progress,
+            )?;
             self.progress(ANSI_GREEN, format_args!("wrote {}", path.display()));
         }
         for path in outputs.webms {
@@ -441,7 +468,12 @@ where
                 ANSI_YELLOW,
                 format_args!("encoding webm {}", path.display()),
             );
-            write_webm(&path, &capture.frames, settings.output_framerate())?;
+            write_webm_with_progress(
+                &path,
+                &capture.frames,
+                settings.output_framerate(),
+                &mut self.media_progress,
+            )?;
             self.progress(ANSI_GREEN, format_args!("wrote {}", path.display()));
         }
 

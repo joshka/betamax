@@ -42,6 +42,50 @@ const VIDEO_FRAMERATE_PRECISION: usize = 3;
 /// value and keeps WebM output useful without making example assets unnecessarily large.
 const WEBM_CRF: &str = "30";
 
+/// Media writer stage that can report deterministic frame progress.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MediaProgressKind {
+    /// Animated GIF frame encoding.
+    Gif,
+    /// Numbered PNG frame sequence writing.
+    PngSequence,
+    /// Temporary PNG frame writing before handing video encoding to `ffmpeg`.
+    VideoFrames,
+}
+
+/// Determinate progress for media writers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MediaProgress {
+    /// Writer stage being reported.
+    pub kind: MediaProgressKind,
+    /// Completed units.
+    pub position: usize,
+    /// Total units expected for this stage.
+    pub total: usize,
+}
+
+/// Receives media progress updates.
+pub trait MediaProgressReporter: Send {
+    /// Report the latest completed frame count for a media-writing stage.
+    fn report(&mut self, progress: MediaProgress);
+}
+
+impl<T> MediaProgressReporter for Box<T>
+where
+    T: MediaProgressReporter + ?Sized,
+{
+    fn report(&mut self, progress: MediaProgress) {
+        self.as_mut().report(progress);
+    }
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct NoMediaProgress;
+
+impl MediaProgressReporter for NoMediaProgress {
+    fn report(&mut self, _progress: MediaProgress) {}
+}
+
 /// Pixel byte order for a [`Frame`].
 ///
 /// Betamax normalizes both supported formats to tightly packed RGBA when writing image formats.
@@ -179,17 +223,34 @@ pub fn write_png(path: &Path, frame: &Frame) -> Result<()> {
 /// Returns an error if no frames are provided, the output directory cannot be created, or any frame
 /// cannot be written as PNG.
 pub fn write_png_sequence(path: &Path, frames: &[(Frame, Duration)]) -> Result<()> {
+    write_png_sequence_with_progress(path, frames, &mut NoMediaProgress)
+}
+
+/// Write a directory of numbered PNG frames, reporting progress after each frame.
+///
+/// See [`write_png_sequence`] for output behavior and error cases.
+pub fn write_png_sequence_with_progress(
+    path: &Path,
+    frames: &[(Frame, Duration)],
+    progress: &mut impl MediaProgressReporter,
+) -> Result<()> {
     if frames.is_empty() {
         return Err(miette!("cannot write PNG sequence with no frames").into());
     }
     fs::create_dir_all(path)
         .into_diagnostic()
         .map_err(|error| error.wrap_err(format!("failed to create {}", path.display())))?;
+    let total = frames.len();
     for (index, (frame, _)) in frames.iter().enumerate() {
         write_png(
             &path.join(format!("{index:0width$}.png", width = FRAME_INDEX_WIDTH)),
             frame,
         )?;
+        progress.report(MediaProgress {
+            kind: MediaProgressKind::PngSequence,
+            position: index + 1,
+            total,
+        });
     }
     Ok(())
 }
@@ -241,6 +302,17 @@ pub fn write_json<T: Serialize>(path: &Path, value: &T) -> Result<()> {
 /// Returns an error if no frames are provided, frame dimensions exceed GIF limits, frames have
 /// inconsistent dimensions, a frame cannot be converted to RGBA, or file creation/encoding fails.
 pub fn write_gif(path: &Path, frames: &[(Frame, Duration)]) -> Result<()> {
+    write_gif_with_progress(path, frames, &mut NoMediaProgress)
+}
+
+/// Write an animated GIF with an infinite loop, reporting progress after each frame.
+///
+/// See [`write_gif`] for output behavior and error cases.
+pub fn write_gif_with_progress(
+    path: &Path,
+    frames: &[(Frame, Duration)],
+    progress: &mut impl MediaProgressReporter,
+) -> Result<()> {
     let Some((first, _)) = frames.first() else {
         return Err(miette!("cannot write GIF with no frames").into());
     };
@@ -255,7 +327,8 @@ pub fn write_gif(path: &Path, frames: &[(Frame, Duration)]) -> Result<()> {
         GifEncoder::new(BufWriter::new(file), width, height, &[]).into_diagnostic()?;
     encoder.set_repeat(Repeat::Infinite).into_diagnostic()?;
 
-    for (frame, delay) in frames {
+    let total = frames.len();
+    for (index, (frame, delay)) in frames.iter().enumerate() {
         if frame.width != first.width || frame.height != first.height {
             return Err(miette!("all GIF frames must have the same dimensions").into());
         }
@@ -264,6 +337,11 @@ pub fn write_gif(path: &Path, frames: &[(Frame, Duration)]) -> Result<()> {
             GifFrame::from_rgba_speed(width, height, &mut rgba, GIF_QUANTIZATION_SPEED);
         gif_frame.delay = gif_delay(*delay);
         encoder.write_frame(&gif_frame).into_diagnostic()?;
+        progress.report(MediaProgress {
+            kind: MediaProgressKind::Gif,
+            position: index + 1,
+            total,
+        });
     }
 
     Ok(())
@@ -282,6 +360,18 @@ pub fn write_mp4(path: &Path, frames: &[(Frame, Duration)], framerate: f64) -> R
     write_video(path, frames, framerate, VideoFormat::Mp4)
 }
 
+/// Write an MP4 video through `ffmpeg`, reporting progress while writing temporary frames.
+///
+/// See [`write_mp4`] for output behavior and error cases.
+pub fn write_mp4_with_progress(
+    path: &Path,
+    frames: &[(Frame, Duration)],
+    framerate: f64,
+    progress: &mut impl MediaProgressReporter,
+) -> Result<()> {
+    write_video_with_progress(path, frames, framerate, VideoFormat::Mp4, progress)
+}
+
 /// Write a WebM video through `ffmpeg`.
 ///
 /// See [`write_mp4`] for the process-backed encoding tradeoff. WebM uses VP9-specific ffmpeg
@@ -293,6 +383,18 @@ pub fn write_mp4(path: &Path, frames: &[(Frame, Duration)], framerate: f64) -> R
 /// exits unsuccessfully, or if cleanup of the temporary frame directory fails after encoding.
 pub fn write_webm(path: &Path, frames: &[(Frame, Duration)], framerate: f64) -> Result<()> {
     write_video(path, frames, framerate, VideoFormat::Webm)
+}
+
+/// Write a WebM video through `ffmpeg`, reporting progress while writing temporary frames.
+///
+/// See [`write_webm`] for output behavior and error cases.
+pub fn write_webm_with_progress(
+    path: &Path,
+    frames: &[(Frame, Duration)],
+    framerate: f64,
+    progress: &mut impl MediaProgressReporter,
+) -> Result<()> {
+    write_video_with_progress(path, frames, framerate, VideoFormat::Webm, progress)
 }
 
 /// Video container and codec preset selected from the requested output extension.
@@ -348,6 +450,16 @@ fn write_video(
     framerate: f64,
     format: VideoFormat,
 ) -> Result<()> {
+    write_video_with_progress(path, frames, framerate, format, &mut NoMediaProgress)
+}
+
+fn write_video_with_progress(
+    path: &Path,
+    frames: &[(Frame, Duration)],
+    framerate: f64,
+    format: VideoFormat,
+    progress: &mut impl MediaProgressReporter,
+) -> Result<()> {
     if frames.is_empty() {
         return Err(miette!(
             "cannot write {} with no frames",
@@ -371,7 +483,9 @@ fn write_video(
             .as_nanos()
     ));
     fs::create_dir_all(&temp_dir).into_diagnostic()?;
-    let result = write_video_inner(path, frames, framerate, format, &ffmpeg, &temp_dir);
+    let result = write_video_inner(
+        path, frames, framerate, format, &ffmpeg, &temp_dir, progress,
+    );
     let cleanup = fs::remove_dir_all(&temp_dir).into_diagnostic();
     result?;
     cleanup?;
@@ -404,7 +518,9 @@ fn write_video_inner(
     format: VideoFormat,
     ffmpeg: &Path,
     temp_dir: &Path,
+    progress: &mut impl MediaProgressReporter,
 ) -> Result<()> {
+    let total = frames.len();
     for (index, (frame, _)) in frames.iter().enumerate() {
         write_png(
             &temp_dir.join(format!(
@@ -413,6 +529,11 @@ fn write_video_inner(
             )),
             frame,
         )?;
+        progress.report(MediaProgress {
+            kind: MediaProgressKind::VideoFrames,
+            position: index + 1,
+            total,
+        });
     }
     let mut command = Command::new(ffmpeg);
     command
@@ -470,7 +591,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn converts_bgra_to_rgba() {
+    fn converts_bgra_to_rgba() -> Result<()> {
         let frame = Frame {
             width: 1,
             height: 1,
@@ -478,11 +599,109 @@ mod tests {
             format: PixelFormat::Bgra8,
             pixels: vec![1, 2, 3, 4],
         };
-        assert_eq!(frame.rgba().unwrap(), vec![3, 2, 1, 4]);
+        assert_eq!(frame.rgba()?, vec![3, 2, 1, 4]);
+        Ok(())
     }
 
     #[test]
     fn missing_program_lookup_returns_none() {
         assert!(which("betamax-definitely-not-installed").is_none());
+    }
+
+    #[test]
+    fn gif_writer_reports_frame_progress() -> Result<()> {
+        let path = temp_path("betamax-progress.gif");
+        let frames = test_frames();
+        let mut progress = RecordingProgress::default();
+
+        write_gif_with_progress(&path, &frames, &mut progress)?;
+
+        assert_eq!(
+            progress.events,
+            vec![
+                MediaProgress {
+                    kind: MediaProgressKind::Gif,
+                    position: 1,
+                    total: 2,
+                },
+                MediaProgress {
+                    kind: MediaProgressKind::Gif,
+                    position: 2,
+                    total: 2,
+                },
+            ]
+        );
+        let _ = fs::remove_file(path);
+        Ok(())
+    }
+
+    #[test]
+    fn png_sequence_writer_reports_frame_progress() -> Result<()> {
+        let path = temp_path("betamax-progress-frames");
+        let frames = test_frames();
+        let mut progress = RecordingProgress::default();
+
+        write_png_sequence_with_progress(&path, &frames, &mut progress)?;
+
+        assert_eq!(
+            progress.events,
+            vec![
+                MediaProgress {
+                    kind: MediaProgressKind::PngSequence,
+                    position: 1,
+                    total: 2,
+                },
+                MediaProgress {
+                    kind: MediaProgressKind::PngSequence,
+                    position: 2,
+                    total: 2,
+                },
+            ]
+        );
+        let _ = fs::remove_dir_all(path);
+        Ok(())
+    }
+
+    fn test_frames() -> Vec<(Frame, Duration)> {
+        vec![
+            (
+                Frame {
+                    width: 1,
+                    height: 1,
+                    stride: 4,
+                    format: PixelFormat::Rgba8,
+                    pixels: vec![255, 0, 0, 255],
+                },
+                Duration::from_millis(20),
+            ),
+            (
+                Frame {
+                    width: 1,
+                    height: 1,
+                    stride: 4,
+                    format: PixelFormat::Rgba8,
+                    pixels: vec![0, 0, 255, 255],
+                },
+                Duration::from_millis(20),
+            ),
+        ]
+    }
+
+    fn temp_path(name: &str) -> PathBuf {
+        let suffix = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_or(0, |duration| duration.as_nanos());
+        std::env::temp_dir().join(format!("{}-{suffix}-{name}", std::process::id(),))
+    }
+
+    #[derive(Debug, Default)]
+    struct RecordingProgress {
+        events: Vec<MediaProgress>,
+    }
+
+    impl MediaProgressReporter for RecordingProgress {
+        fn report(&mut self, progress: MediaProgress) {
+            self.events.push(progress);
+        }
     }
 }
