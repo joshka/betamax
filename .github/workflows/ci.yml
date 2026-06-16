@@ -152,6 +152,12 @@ jobs:
       - name: Cache Rust builds
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
 
+      - name: Install Ubuntu crash diagnostics
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gdb binutils
+
       - name: Package crates
         run: mise run package
 
@@ -159,7 +165,43 @@ jobs:
         run: mise run install-smoke
 
       - name: Render smoke tape
-        run: mise run smoke
+        env:
+          RUST_BACKTRACE: full
+        run: |
+          set -uo pipefail
+          mise run smoke
+          status=$?
+          if [[ "$status" -eq 0 ]]; then
+            exit 0
+          fi
+          if [[ "${{ matrix.os }}" != "ubuntu-latest" ]]; then
+            exit "$status"
+          fi
+
+          echo "::group::Ubuntu CPU and binary diagnostics"
+          uname -a || true
+          lscpu || true
+          grep -m1 '^flags' /proc/cpuinfo || true
+          file target/debug/betamax || true
+          ldd target/debug/betamax || true
+          echo "::endgroup::"
+
+          cargo build -p betamax
+          gdb -q -batch \
+            -ex 'set pagination off' \
+            -ex 'set confirm off' \
+            -ex 'run run examples/basic.tape' \
+            -ex 'printf "\n--- program ---\n"' \
+            -ex 'info program' \
+            -ex 'printf "\n--- registers ---\n"' \
+            -ex 'info registers' \
+            -ex 'printf "\n--- disassembly around pc ---\n"' \
+            -ex 'x/24i $pc-32' \
+            -ex 'printf "\n--- all threads ---\n"' \
+            -ex 'thread apply all bt full' \
+            --args target/debug/betamax || true
+
+          exit "$status"
 
   dependencies:
     name: Dependency check (${{ matrix.name }})
