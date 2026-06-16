@@ -2,6 +2,18 @@
 
 <!-- markdownlint-disable no-duplicate-heading -->
 
+## [0.1.11](https://github.com/joshka/betamax/compare/betamax-v0.1.10...betamax-v0.1.11) - 2026-06-16
+
+### Other
+
+- Add media encoding progress ([#78](https://github.com/joshka/betamax/pull/78))
+
+## [0.1.7](https://github.com/joshka/betamax/compare/betamax-core-v0.1.6...betamax-core-v0.1.7) - 2026-06-16
+
+### Other
+
+- Add media encoding progress ([#78](https://github.com/joshka/betamax/pull/78))
+
 ## [0.1.10](https://github.com/joshka/betamax/compare/betamax-v0.1.9...betamax-v0.1.10) - 2026-06-16
 
 ### Other
