@@ -18,20 +18,6 @@
 
 ### Other
 
-- release ([#59](https://github.com/joshka/betamax/pull/59))
-- Use static libghostty-vt builds ([#66](https://github.com/joshka/betamax/pull/66))
-- Add homepage quick-start demo ([#60](https://github.com/joshka/betamax/pull/60))
-
-## [0.1.5](https://github.com/joshka/betamax/compare/betamax-core-v0.1.4...betamax-core-v0.1.5) - 2026-06-16
-
-### Other
-
-- Use static libghostty-vt builds ([#66](https://github.com/joshka/betamax/pull/66))
-
-## [0.1.9](https://github.com/joshka/betamax/compare/betamax-v0.1.8...betamax-v0.1.9) - 2026-06-16
-
-### Other
-
 - Use static libghostty-vt builds ([#66](https://github.com/joshka/betamax/pull/66))
 - Add homepage quick-start demo ([#60](https://github.com/joshka/betamax/pull/60))
 

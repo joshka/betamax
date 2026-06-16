@@ -17,7 +17,20 @@ jobs:
     name: Release-plz release
     environment: release
     runs-on: ubuntu-latest
-    if: ${{ github.repository_owner == 'joshka' }}
+    # This job publishes crates and therefore enters the protected `release` environment. Keep it
+    # off ordinary `main` pushes so non-release merges do not require release approval.
+    #
+    # release-plz release PRs are merged with squash commits whose subjects are `chore: release` or
+    # the older `chore(<package>): release ...` form. Manual dispatch remains available for repair.
+    if: >-
+      ${{
+        github.repository_owner == 'joshka' &&
+        (
+          github.event_name == 'workflow_dispatch' ||
+          startsWith(github.event.head_commit.message, 'chore: release') ||
+          contains(github.event.head_commit.message, '): release')
+        )
+      }}
     permissions:
       contents: write
       pull-requests: read
@@ -143,7 +156,18 @@ jobs:
   release-plz-pr:
     name: Release-plz PR
     runs-on: ubuntu-latest
-    if: ${{ github.repository_owner == 'joshka' }}
+    # release-plz's quickstart runs `release` and `release-pr` as sibling jobs on every `main` push.
+    # In this repo the release job publishes via a protected environment and then uploads binary
+    # assets in the same workflow run. If `release-pr` also runs on a release-PR merge, it can read
+    # crates.io before the sibling publish finishes and open a stale PR for the versions being
+    # released. Skip release commits here; the next ordinary merge will refresh the release PR.
+    if: >-
+      ${{
+        github.repository_owner == 'joshka' &&
+        github.event_name == 'push' &&
+        !startsWith(github.event.head_commit.message, 'chore: release') &&
+        !contains(github.event.head_commit.message, '): release')
+      }}
     permissions:
       contents: write
       pull-requests: write
