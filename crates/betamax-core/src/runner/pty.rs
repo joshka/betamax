@@ -14,6 +14,7 @@ use super::settings::Settings;
 use crate::runner::TerminalSession;
 use crate::shell::{apply_terminal_environment, ShellLaunch};
 use crate::tape::{WaitPattern, WaitTarget};
+use crate::trace::ByteSample;
 use crate::wait::{wait_pattern_matches, wait_pattern_name, wait_target_name, wait_target_text};
 use crate::Result;
 
@@ -118,6 +119,20 @@ impl PtySession {
 
     /// Write raw input bytes to the PTY.
     pub(super) fn write_all(&mut self, bytes: &[u8]) -> Result<()> {
+        if bytes.len() == 1 {
+            tracing::trace!(
+                bytes = bytes.len(),
+                sample = %ByteSample(bytes),
+                "writing bytes to PTY",
+            );
+        } else {
+            tracing::trace!(
+                bytes = bytes.len(),
+                sample = %ByteSample(bytes),
+                "writing byte sample to PTY",
+            );
+            tracing::debug!(bytes = bytes.len(), "writing bytes to PTY",);
+        }
         Ok(self.writer.write_all(bytes).into_diagnostic()?)
     }
 
@@ -134,13 +149,20 @@ impl PtySession {
     ) -> Result<bool> {
         let mut saw_output = false;
         while let Ok(bytes) = self.reader.recv_timeout(idle) {
+            log_pty_drain("draining PTY bytes into terminal", &bytes);
             terminal.write_vt(&bytes);
             saw_output = true;
             while let Ok(bytes) = self.reader.try_recv() {
+                log_pty_drain("draining buffered PTY bytes into terminal", &bytes);
                 terminal.write_vt(&bytes);
             }
             let reply = terminal.take_pending_pty_reply();
             if !reply.is_empty() {
+                tracing::trace!(
+                    bytes = reply.len(),
+                    sample = %ByteSample(&reply),
+                    "forwarding terminal reply to PTY",
+                );
                 self.writer.write_all(&reply).into_diagnostic()?;
             }
         }
@@ -235,4 +257,12 @@ impl PtySession {
         )
         .into())
     }
+}
+
+fn log_pty_drain(message: &'static str, bytes: &[u8]) {
+    tracing::trace!(
+        bytes = bytes.len(),
+        sample = %ByteSample(bytes),
+        message,
+    );
 }

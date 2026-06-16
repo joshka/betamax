@@ -49,6 +49,7 @@ pub(super) struct RasterRenderer {
 impl RasterRenderer {
     /// Create a renderer with reusable libghostty-vt and font resources.
     pub(super) fn new(request: CaptureRequest, cell_width: u32, cell_height: u32) -> Self {
+        tracing::trace!("creating reusable libghostty-vt render helpers");
         let text_renderer = TextRenderer::new(request.text.clone(), cell_width, cell_height);
         Self {
             request,
@@ -74,14 +75,27 @@ impl RasterRenderer {
         terminal: &Terminal<'static, 'static>,
         cursor_visible: bool,
     ) -> Result<Frame> {
+        let span = tracing::trace_span!(
+            "ghostty_render_frame",
+            cursor_visible,
+            canvas.width = self.request.canvas.width,
+            canvas.height = self.request.canvas.height,
+            cell.width = self.cell_width,
+            cell.height = self.cell_height,
+        );
+        let _enter = span.enter();
         let mut target = PixelTarget::new(self.request.canvas.width, self.request.canvas.height)?;
+        tracing::trace!("updating libghostty-vt render state");
         let snapshot = self
             .render_state
             .update(terminal)
             .map_err(vt_error("failed to update libghostty-vt render state"))?;
+        tracing::trace!("updated libghostty-vt render state");
+        tracing::trace!("reading libghostty-vt colors");
         let colors = snapshot
             .colors()
             .map_err(vt_error("failed to read libghostty-vt colors"))?;
+        tracing::trace!("read libghostty-vt colors");
         let theme = RenderTheme::new(
             &self.request.theme,
             colors.background,
@@ -91,6 +105,7 @@ impl RasterRenderer {
         target.clear(theme.background);
 
         {
+            tracing::trace!("iterating libghostty-vt render rows");
             let mut row_iter = self
                 .rows
                 .update(&snapshot)
@@ -141,6 +156,7 @@ impl RasterRenderer {
                 }
                 y = y.saturating_add(1);
             }
+            tracing::trace!(rows = y, "iterated libghostty-vt render rows");
         }
 
         if cursor_visible
@@ -148,6 +164,7 @@ impl RasterRenderer {
                 .cursor_visible()
                 .map_err(vt_error("failed to read libghostty-vt cursor visibility"))?
         {
+            tracing::trace!("reading libghostty-vt cursor");
             if let Some(cursor) = snapshot
                 .cursor_viewport()
                 .map_err(vt_error("failed to read libghostty-vt cursor position"))?
@@ -169,6 +186,7 @@ impl RasterRenderer {
                     style,
                 );
             }
+            tracing::trace!("read libghostty-vt cursor");
         }
 
         Ok(target.into_frame())
@@ -178,11 +196,16 @@ impl RasterRenderer {
     ///
     /// Empty cells become spaces so substring matching sees the same column layout as the renderer.
     pub(super) fn screen_text(&mut self, terminal: &Terminal<'static, 'static>) -> Result<String> {
+        let span = tracing::trace_span!("ghostty_screen_text");
+        let _enter = span.enter();
+        tracing::trace!("updating libghostty-vt render state for screen text");
         let snapshot = self
             .render_state
             .update(terminal)
             .map_err(vt_error("failed to update libghostty-vt render state"))?;
+        tracing::trace!("updated libghostty-vt render state for screen text");
         let mut text = String::new();
+        tracing::trace!("iterating libghostty-vt rows for screen text");
         let mut row_iter = self
             .rows
             .update(&snapshot)
@@ -206,6 +229,10 @@ impl RasterRenderer {
             text.push('\n');
         }
 
+        tracing::trace!(
+            bytes = text.len(),
+            "built screen text from libghostty-vt rows"
+        );
         Ok(text)
     }
 
@@ -222,6 +249,9 @@ impl RasterRenderer {
         &mut self,
         terminal: &mut Terminal<'static, 'static>,
     ) -> Result<TerminalState> {
+        let span = tracing::trace_span!("ghostty_terminal_state");
+        let _enter = span.enter();
+        tracing::trace!("reading libghostty-vt terminal metadata");
         let columns = terminal
             .cols()
             .map_err(vt_error("failed to read terminal columns"))?;
@@ -253,8 +283,16 @@ impl RasterRenderer {
                 .is_cursor_visible()
                 .map_err(vt_error("failed to read cursor visibility"))?,
         };
+        tracing::trace!(
+            columns,
+            rows,
+            total_rows,
+            scrollback_rows,
+            "read libghostty-vt terminal metadata",
+        );
 
         let mut all_rows = Vec::new();
+        tracing::trace!("scrolling libghostty-vt viewport to collect state rows");
         terminal.scroll_viewport(ScrollViewport::Top);
         let top_rows = self.state_rows(terminal)?;
         all_rows.extend(top_rows);
@@ -266,6 +304,7 @@ impl RasterRenderer {
             }
         }
         terminal.scroll_viewport(ScrollViewport::Bottom);
+        tracing::trace!("restored libghostty-vt viewport after state row collection");
 
         let viewport = trim_empty_rows(self.state_rows(terminal)?);
         let viewport_text = pending_rows_text(&viewport);
@@ -275,10 +314,12 @@ impl RasterRenderer {
             .map(|viewport_start| trim_empty_rows(all_rows[..viewport_start].to_vec()))
             .unwrap_or_default();
         let scrollback_text = pending_rows_text(&scrollback);
+        tracing::trace!("updating libghostty-vt render state for state colors");
         let snapshot = self
             .render_state
             .update(terminal)
             .map_err(vt_error("failed to update libghostty-vt render state"))?;
+        tracing::trace!("updated libghostty-vt render state for state colors");
         let colors = snapshot
             .colors()
             .map_err(vt_error("failed to read libghostty-vt colors"))?;
@@ -317,10 +358,12 @@ impl RasterRenderer {
         &mut self,
         terminal: &Terminal<'static, 'static>,
     ) -> Result<Vec<Vec<PendingStateSpan>>> {
+        tracing::trace!("updating libghostty-vt render state for state rows");
         let snapshot = self
             .render_state
             .update(terminal)
             .map_err(vt_error("failed to update libghostty-vt render state"))?;
+        tracing::trace!("updated libghostty-vt render state for state rows");
         let colors = snapshot
             .colors()
             .map_err(vt_error("failed to read libghostty-vt colors"))?;
@@ -374,6 +417,10 @@ impl RasterRenderer {
             rows.push(compact_row(cells));
         }
 
+        tracing::trace!(
+            rows = rows.len(),
+            "built state rows from libghostty-vt rows"
+        );
         Ok(rows)
     }
 }

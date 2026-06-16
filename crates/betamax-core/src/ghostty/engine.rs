@@ -10,6 +10,7 @@ use super::state::TerminalState;
 use super::theme::{TerminalTheme, TextSettings};
 use crate::media::Frame;
 use crate::runner::{FrameCapture, TerminalSession};
+use crate::trace::ByteSample;
 use crate::Result;
 
 /// Maximum scrollback rows retained by direct Ghostty sessions.
@@ -144,13 +145,26 @@ impl GhosttySession {
     fn new(request: CaptureRequest) -> Result<Self> {
         let cell_width = request.text.cell_width();
         let cell_height = request.text.cell_height();
+        let span = tracing::debug_span!(
+            "ghostty_session_open",
+            grid.columns = request.grid.columns,
+            grid.rows = request.grid.rows,
+            canvas.width = request.canvas.width,
+            canvas.height = request.canvas.height,
+            cell.width = cell_width,
+            cell.height = cell_height,
+        );
+        let _enter = span.enter();
 
+        tracing::debug!("creating libghostty-vt terminal");
         let mut terminal = Terminal::new(TerminalOptions {
             cols: request.grid.columns.max(1),
             rows: request.grid.rows.max(1),
             max_scrollback: MAX_SCROLLBACK_ROWS,
         })
         .map_err(vt_error("failed to create libghostty-vt terminal"))?;
+        tracing::trace!("created libghostty-vt terminal");
+        tracing::debug!("sizing libghostty-vt terminal");
         terminal
             .resize(
                 request.grid.columns.max(1),
@@ -159,11 +173,18 @@ impl GhosttySession {
                 cell_height,
             )
             .map_err(vt_error("failed to size libghostty-vt terminal"))?;
+        tracing::trace!("sized libghostty-vt terminal");
 
         let pending_pty_reply = Rc::new(Cell::new(Vec::new()));
         let reply_for_callback = Rc::clone(&pending_pty_reply);
+        tracing::debug!("installing libghostty-vt write_pty callback");
         terminal
             .on_pty_write(move |_terminal, bytes| {
+                tracing::trace!(
+                    bytes = bytes.len(),
+                    sample = %ByteSample(bytes),
+                    "received libghostty-vt pty reply",
+                );
                 let mut buf = reply_for_callback.take();
                 buf.extend_from_slice(bytes);
                 reply_for_callback.set(buf);
@@ -171,6 +192,7 @@ impl GhosttySession {
             .map_err(vt_error(
                 "failed to install libghostty-vt write_pty callback",
             ))?;
+        tracing::trace!("installed libghostty-vt write_pty callback");
 
         Ok(Self {
             terminal,
@@ -183,23 +205,55 @@ impl GhosttySession {
 impl TerminalSession for GhosttySession {
     /// Feed raw PTY bytes into libghostty-vt.
     fn write_vt(&mut self, bytes: &[u8]) {
+        log_pty_write_start(bytes);
         self.terminal.vt_write(bytes);
+        log_pty_write_finish(bytes);
     }
 
     fn capture_frame_with_cursor(&mut self, cursor_visible: bool) -> Result<Frame> {
-        self.renderer.render(&self.terminal, cursor_visible)
+        tracing::trace!(cursor_visible, "capturing frame from libghostty-vt state");
+        let frame = self.renderer.render(&self.terminal, cursor_visible)?;
+        tracing::trace!(
+            width = frame.width,
+            height = frame.height,
+            "captured frame from libghostty-vt state",
+        );
+        Ok(frame)
     }
 
     fn screen_text(&mut self) -> Result<String> {
-        self.renderer.screen_text(&self.terminal)
+        tracing::trace!("reading screen text from libghostty-vt state");
+        let text = self.renderer.screen_text(&self.terminal)?;
+        tracing::trace!(
+            bytes = text.len(),
+            "read screen text from libghostty-vt state"
+        );
+        Ok(text)
     }
 
     fn terminal_state(&mut self) -> Result<TerminalState> {
-        self.renderer.terminal_state(&mut self.terminal)
+        tracing::trace!("reading terminal state from libghostty-vt");
+        let state = self.renderer.terminal_state(&mut self.terminal)?;
+        tracing::trace!(
+            columns = state.size[0],
+            rows = state.size[1],
+            total_rows = state.total_rows,
+            scrollback_rows = state.scrollback_rows,
+            "read terminal state from libghostty-vt",
+        );
+        Ok(state)
     }
 
     fn take_pending_pty_reply(&mut self) -> Vec<u8> {
-        self.pending_pty_reply.take()
+        let reply = self.pending_pty_reply.take();
+        if !reply.is_empty() {
+            tracing::trace!(
+                bytes = reply.len(),
+                sample = %ByteSample(&reply),
+                "taking pending libghostty-vt pty reply",
+            );
+        }
+        reply
     }
 }
 
@@ -255,6 +309,31 @@ impl GhosttySession {
 
 fn vt_error(context: &'static str) -> impl Fn(libghostty_vt::Error) -> miette::Report {
     move |error| miette::miette!("{context}: {error}")
+}
+
+fn log_pty_write_start(bytes: &[u8]) {
+    if bytes.len() == 1 {
+        tracing::trace!(
+            bytes = bytes.len(),
+            sample = %ByteSample(bytes),
+            "writing PTY bytes to libghostty-vt",
+        );
+    } else {
+        tracing::trace!(
+            bytes = bytes.len(),
+            sample = %ByteSample(bytes),
+            "writing PTY byte sample to libghostty-vt",
+        );
+        tracing::debug!(bytes = bytes.len(), "writing PTY bytes to libghostty-vt",);
+    }
+}
+
+fn log_pty_write_finish(bytes: &[u8]) {
+    if bytes.len() == 1 {
+        tracing::trace!("wrote PTY bytes to libghostty-vt");
+    } else {
+        tracing::trace!(bytes = bytes.len(), "wrote PTY bytes to libghostty-vt");
+    }
 }
 
 #[cfg(test)]

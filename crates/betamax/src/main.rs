@@ -19,7 +19,14 @@ fn main() -> Result<()> {
     let env_filter = EnvFilter::builder()
         .with_default_directive(LevelFilter::INFO.into())
         .from_env_lossy();
-    tracing_subscriber::fmt().with_env_filter(env_filter).init();
+    tracing_subscriber::fmt()
+        .with_env_filter(env_filter)
+        .with_timer(tracing_subscriber::fmt::time::uptime())
+        .with_writer(std::io::stderr)
+        .init();
+    if let Err(error) = libghostty_vt::set_logger(Some(Box::new(log::logger()))) {
+        tracing::debug!(%error, "failed to install libghostty-vt logger");
+    }
     Cli::run()
 }
 

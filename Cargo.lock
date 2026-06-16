@@ -116,6 +116,8 @@ dependencies = [
  "clap-stdin",
  "glob",
  "interpolator",
+ "libghostty-vt",
+ "log",
  "miette",
  "serde_json",
  "tracing",
@@ -137,6 +139,7 @@ dependencies = [
  "serde",
  "serde_json",
  "shell-words",
+ "tracing",
 ]
 
 [[package]]
@@ -544,6 +547,7 @@ dependencies = [
  "bitflags 2.11.1",
  "int-enum",
  "libghostty-vt-sys",
+ "log",
 ]
 
 [[package]]
