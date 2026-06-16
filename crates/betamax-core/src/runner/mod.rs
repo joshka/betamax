@@ -331,20 +331,41 @@ where
     /// appearing in GIF/video output.
     fn run_with_capture(&mut self, tape: &Tape, outputs: Outputs) -> Result<RunArtifacts> {
         let settings = Settings::from_tape(tape)?;
+        tracing::debug!(
+            columns = settings.columns,
+            rows = settings.rows,
+            width = settings.width,
+            height = settings.height,
+            commands = tape.commands.len(),
+            "starting captured tape run",
+        );
+        tracing::debug!("opening Ghostty frame capture");
         let mut terminal = self.capture.open(CaptureRequest {
             canvas: PixelSize::new(settings.width, settings.height),
             grid: TerminalGrid::new(settings.columns, settings.rows),
             text: settings.text.clone(),
             theme: settings.theme.clone(),
         })?;
+        tracing::trace!("opened Ghostty frame capture");
+        tracing::debug!("spawning PTY session");
         let mut session = PtySession::spawn(&settings)?;
+        tracing::trace!("spawned PTY session");
         let mut capture = CaptureState::default();
         let mut clipboard = String::new();
+        tracing::debug!("draining PTY shell startup output");
         session.drain_into(&mut terminal, SHELL_STARTUP_IDLE)?;
+        tracing::trace!("drained PTY shell startup output");
 
         let command_count = tape.commands.len();
         for (index, command) in tape.commands.iter().enumerate() {
             self.progress_command(index + 1, command_count, command);
+            let span = tracing::debug_span!(
+                "tape_command",
+                index = index + 1,
+                count = command_count,
+                kind = command_kind(command),
+            );
+            let _enter = span.enter();
             self.run_capture_command(
                 command,
                 &settings,
@@ -355,7 +376,9 @@ where
             )?;
         }
 
+        tracing::debug!("draining final PTY output");
         session.drain_into(&mut terminal, FINAL_COMMAND_IDLE)?;
+        tracing::trace!("drained final PTY output");
         let frame = settings.decorate_frame(&capture_frame(
             &mut terminal,
             &settings,
@@ -372,7 +395,9 @@ where
         }
 
         let output_paths = outputs.paths();
+        tracing::debug!("reading final terminal state");
         let final_state = terminal.terminal_state()?;
+        tracing::trace!("read final terminal state");
 
         for path in outputs.pngs {
             self.progress(
@@ -440,6 +465,10 @@ where
         capture: &mut CaptureState,
         clipboard: &mut String,
     ) -> Result<()> {
+        tracing::trace!(
+            kind = command_kind(command),
+            "running captured tape command"
+        );
         match command {
             Command::Sleep(duration) => {
                 session.drain_for(terminal, *duration, settings, capture)?;
@@ -530,12 +559,23 @@ where
     /// capture.
     fn run_without_capture(&mut self, tape: &Tape) -> Result<RunArtifacts> {
         let settings = Settings::from_tape(tape)?;
+        tracing::debug!(
+            commands = tape.commands.len(),
+            "starting non-captured tape run",
+        );
         let mut session = PtySession::spawn(&settings)?;
         let mut clipboard = String::new();
         session.drain_output(SHELL_STARTUP_IDLE)?;
         let command_count = tape.commands.len();
         for (index, command) in tape.commands.iter().enumerate() {
             self.progress_command(index + 1, command_count, command);
+            let span = tracing::debug_span!(
+                "tape_command",
+                index = index + 1,
+                count = command_count,
+                kind = command_kind(command),
+            );
+            let _enter = span.enter();
             match command {
                 Command::Sleep(duration) => thread::sleep(*duration),
                 Command::Type { text, delay } => session.type_text(text, *delay)?,
@@ -674,6 +714,26 @@ fn describe_command(command: &Command) -> String {
         Command::Source(path) => format!("Source {}", path.display()),
         Command::Screenshot(path) => format!("Screenshot {}", path.display()),
         Command::State(path) => format!("State {}", path.display()),
+    }
+}
+
+fn command_kind(command: &Command) -> &'static str {
+    match command {
+        Command::Output(_) => "Output",
+        Command::Require(_) => "Require",
+        Command::Set { .. } => "Set",
+        Command::Sleep(_) => "Sleep",
+        Command::Type { .. } => "Type",
+        Command::Wait { .. } => "Wait",
+        Command::Key { .. } => "Key",
+        Command::Hide => "Hide",
+        Command::Show => "Show",
+        Command::Env { .. } => "Env",
+        Command::Copy(_) => "Copy",
+        Command::Paste => "Paste",
+        Command::Screenshot(_) => "Screenshot",
+        Command::State(_) => "State",
+        Command::Source(_) => "Source",
     }
 }
 

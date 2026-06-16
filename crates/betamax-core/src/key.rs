@@ -11,6 +11,7 @@ use libghostty_vt::key::{
 use miette::miette;
 
 use crate::tape::{Key, KeyCode, KeyModifiers};
+use crate::trace::ByteSample;
 use crate::Result;
 
 /// Encode a parsed tape key into bytes suitable for writing to the PTY.
@@ -19,6 +20,13 @@ use crate::Result;
 /// key commands, where terminal key encoding rules and modifiers matter.
 pub(crate) fn key_bytes(key: &Key) -> Result<Vec<u8>> {
     let Key::Press { key, modifiers } = *key;
+    let span = tracing::trace_span!(
+        "ghostty_key_encode",
+        key = ?key,
+        modifiers = ?modifiers,
+    );
+    let _enter = span.enter();
+    tracing::trace!("creating libghostty-vt key event");
     let mut event =
         GhosttyKeyEvent::new().map_err(|error| miette!("failed to create key event: {error}"))?;
     event
@@ -29,16 +37,24 @@ pub(crate) fn key_bytes(key: &Key) -> Result<Vec<u8>> {
         event.set_utf8(Some(text));
     }
 
+    tracing::trace!("creating libghostty-vt key encoder");
     let mut encoder = GhosttyKeyEncoder::new()
         .map_err(|error| miette!("failed to create key encoder: {error}"))?;
     encoder.set_alt_esc_prefix(true);
     let mut bytes = Vec::new();
+    tracing::trace!("encoding key with libghostty-vt");
     encoder
         .encode_to_vec(&event, &mut bytes)
         .map_err(|error| miette!("failed to encode key: {error}"))?;
     if bytes.is_empty() {
+        tracing::trace!("libghostty-vt returned no key bytes; using fallback");
         bytes = fallback_key_bytes(key, modifiers);
     }
+    tracing::trace!(
+        bytes = bytes.len(),
+        sample = %ByteSample(&bytes),
+        "encoded key bytes",
+    );
     Ok(bytes)
 }
 

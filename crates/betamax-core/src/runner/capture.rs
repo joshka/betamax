@@ -43,7 +43,9 @@ pub(super) fn capture_frame(
     settings: &Settings,
     frame_index: usize,
 ) -> Result<Frame> {
-    terminal.capture_frame_with_cursor(settings.cursor_visible(frame_index))
+    let cursor_visible = settings.cursor_visible(frame_index);
+    tracing::trace!(frame_index, cursor_visible, "capturing runner frame",);
+    terminal.capture_frame_with_cursor(cursor_visible)
 }
 
 /// Append one visible frame or extend the previous frame when pixels have not changed.

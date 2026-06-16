@@ -68,6 +68,7 @@ mod output;
 pub mod runner;
 mod shell;
 pub mod tape;
+mod trace;
 mod wait;
 
 #[doc(inline)]
