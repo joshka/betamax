@@ -10,6 +10,7 @@ config:
   MD033:
     allowed_elements:
       - a
+      - aside
       - Card
       - CardGrid
       - code
@@ -19,12 +20,15 @@ config:
       - h2
       - img
       - kbd
+      - li
       - nav
       - p
       - polygon
       - rect
       - section
+      - small
       - span
+      - strong
       - svg
       - table
       - tbody
@@ -32,5 +36,6 @@ config:
       - th
       - thead
       - tr
+      - ul
   MD024:
     siblings_only: true
