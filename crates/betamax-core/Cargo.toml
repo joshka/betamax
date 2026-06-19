@@ -9,12 +9,14 @@ repository.workspace = true
 homepage.workspace = true
 documentation.workspace = true
 readme = "README.md"
+build = "build.rs"
 keywords = ["terminal", "capture", "testing", "ghostty", "vhs"]
 categories = ["development-tools::testing", "multimedia", "command-line-utilities"]
 include = [
     "Cargo.toml",
     "README.md",
     "THIRD_PARTY.md",
+    "build.rs",
     "src/**/*.rs",
     "tests/**/*.rs",
     "resources/ghostty/themes/**",
