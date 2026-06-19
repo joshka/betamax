@@ -4,7 +4,8 @@
 //! directories first, then `GHOSTTY_RESOURCES_DIR`, then Betamax's copied Ghostty resources. Inline
 //! JSON themes are intentionally small and exist for VHS-style tapes and tests.
 
-use std::path::{Path, PathBuf};
+use std::borrow::Cow;
+use std::path::PathBuf;
 use std::{env, fs};
 
 use libghostty_vt::style::RgbColor;
@@ -13,6 +14,8 @@ use serde::Deserialize;
 
 use super::color::{hex_color, parse_hex_color, rgb};
 use crate::Result;
+
+include!(concat!(env!("OUT_DIR"), "/bundled_themes.rs"));
 
 /// VHS-like default font size in pixels.
 const DEFAULT_FONT_SIZE: f32 = 22.0;
@@ -183,10 +186,10 @@ impl TerminalTheme {
         if name.eq_ignore_ascii_case("Aardvark Blue") {
             return Ok(Self::aardvark_blue());
         }
-        let Some(path) = find_theme_file(name) else {
+        let Some(source) = find_theme_source(name)? else {
             return Err(miette!("theme was not found: {name}").into());
         };
-        Self::from_ghostty_file(name, &path)
+        Self::from_ghostty_source(name, source.as_ref())
     }
 
     /// Return the background color as `#RRGGBB`.
@@ -226,10 +229,7 @@ impl TerminalTheme {
     ///
     /// Unknown keys are ignored. Palette entries are expected as `palette = index=#RRGGBB`,
     /// matching Ghostty's resource files.
-    fn from_ghostty_file(name: &str, path: &Path) -> Result<Self> {
-        let source = fs::read_to_string(path)
-            .into_diagnostic()
-            .map_err(|error| error.wrap_err(format!("failed to read theme {}", path.display())))?;
+    fn from_ghostty_source(name: &str, source: &str) -> Result<Self> {
         let mut theme = Self {
             name: name.to_string(),
             ..Self::default()
@@ -368,11 +368,28 @@ pub fn theme_names() -> Result<Vec<String>> {
             names.push(name);
         }
     }
+    for (name, _) in BUNDLED_THEMES {
+        if !names.iter().any(|existing| existing == name) {
+            names.push((*name).to_string());
+        }
+    }
     names.sort_by_key(|name| name.to_ascii_lowercase());
     Ok(names)
 }
 
-/// Find the first theme file matching a name in the configured theme search path.
+/// Find the first theme source matching a name in the configured theme search path.
+fn find_theme_source(name: &str) -> Result<Option<Cow<'static, str>>> {
+    if let Some(path) = find_theme_file(name) {
+        let source = fs::read_to_string(&path)
+            .into_diagnostic()
+            .map_err(|error| error.wrap_err(format!("failed to read theme {}", path.display())))?;
+        return Ok(Some(Cow::Owned(source)));
+    }
+    Ok(BUNDLED_THEMES
+        .iter()
+        .find_map(|(theme_name, source)| (*theme_name == name).then_some(Cow::Borrowed(*source))))
+}
+
 fn find_theme_file(name: &str) -> Option<PathBuf> {
     theme_dirs()
         .into_iter()
@@ -382,8 +399,9 @@ fn find_theme_file(name: &str) -> Option<PathBuf> {
 
 /// Return theme search directories in precedence order.
 ///
-/// User configuration is searched before bundled resources so users can override copied themes with
-/// local edits.
+/// User configuration is searched before bundled resources so users can override bundled themes
+/// with local edits. Built-in themes are embedded at compile time rather than loaded from this
+/// list.
 fn theme_dirs() -> Vec<PathBuf> {
     let mut dirs = Vec::new();
     if let Some(config_home) = env::var_os("XDG_CONFIG_HOME") {
@@ -395,7 +413,6 @@ fn theme_dirs() -> Vec<PathBuf> {
     if let Some(resources) = env::var_os("GHOSTTY_RESOURCES_DIR") {
         dirs.push(PathBuf::from(resources).join("themes"));
     }
-    dirs.push(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/ghostty/themes"));
     dirs
 }
 
@@ -419,5 +436,15 @@ mod tests {
         assert_eq!(theme.background, rgb(0x28, 0x2a, 0x36));
         assert_eq!(theme.foreground, rgb(0xf8, 0xf8, 0xf2));
         assert_eq!(theme.palette[4], rgb(0xbd, 0x93, 0xf9));
+    }
+
+    #[test]
+    fn loads_github_dark_from_embedded_ghostty_themes() {
+        let theme = TerminalTheme::from_name("GitHub Dark").unwrap();
+
+        assert_eq!(theme.name, "GitHub Dark");
+        assert_eq!(theme.background, rgb(0x10, 0x12, 0x16));
+        assert_eq!(theme.foreground, rgb(0x8b, 0x94, 0x9e));
+        assert_eq!(theme.palette[4], rgb(0x6c, 0xa4, 0xf8));
     }
 }
