@@ -108,7 +108,7 @@ dependencies = [
 
 [[package]]
 name = "betamax"
-version = "0.1.12"
+version = "0.1.13"
 dependencies = [
  "anyhow",
  "betamax-core",
@@ -128,7 +128,7 @@ dependencies = [
 
 [[package]]
 name = "betamax-core"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "cosmic-text",
  "gif",
