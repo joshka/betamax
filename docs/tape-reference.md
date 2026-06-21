@@ -58,6 +58,11 @@ subtracted from width and height first, then padding, font size, letter spacing,
 determine the PTY columns and rows. Extremely small dimensions are clamped to at least one row and
 one column.
 
+Treat larger `FontSize`, larger `Margin`, and decorative frame settings as presentation zoom. When
+the tape is proving modal placement, centered content, wrapping, or split-pane layout, prefer the
+default `FontSize`, default `Margin`, and a wider `Width` or `Height` so the proof matches the
+application layout rather than the demo framing.
+
 For built-in shell names such as `bash`, `zsh`, and `fish`, Betamax starts a clean recording shell
 with startup files and history disabled where possible. Those shells use the VHS-style colored `>`
 prompt by default, so captures do not inherit prompts such as `bash-5.3$` from the host
@@ -115,6 +120,10 @@ capture frames during the sleep so animations show output that appears while wai
 Durations accept compact forms such as `500ms` and `1s`, as well as VHS-style forms such as `0.5`,
 `500 ms`, and `1 s`. Bare numeric durations are seconds.
 
+In validation tapes, use sleeps as a last resort for behavior that cannot be matched with a prompt,
+status line, or visible screen text. In example and review-media tapes, sleeps are presentation
+pacing after a semantic wait has already proved the screen state.
+
 ### `Type[@duration] <text>`
 
 Types Unicode text into the PTY one scalar value at a time. `Type@duration` overrides the default
@@ -138,6 +147,9 @@ and `Paste` writes nothing.
 
 Waits until terminal text matches a pattern while continuing to drain output and capture frames.
 Bare `Wait` inspects the current cursor line and uses `Set WaitPattern` as its pattern.
+
+Waits are assertions and synchronization points. Put `Wait`, `Wait+Line`, or `Wait+Screen` before
+any sleep that only exists to make a GIF, video, or review artifact readable.
 
 Pattern forms:
 

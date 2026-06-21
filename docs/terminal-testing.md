@@ -5,6 +5,17 @@ wait for text on the screen, capture PNG screenshots at checkpoints, write struc
 state, and fail when expected terminal output does not appear before a timeout. That makes it useful
 for CLI and TUI smoke tests in the same broad role that Playwright fills for browser flows.
 
+Validation tapes and review-media tapes optimize for different readers. Validation tapes exercise a
+user journey, wait for semantic screen state, and write focused `State` or `Screenshot` checkpoints
+for assertions. Review-media tapes make the same kind of journey readable for humans in a GIF,
+video, screenshot, or pull-request artifact.
+
+Waits are assertions and synchronization points. In validation tapes, put a semantic `Wait`,
+`Wait+Line`, or `Wait+Screen` after each meaningful app transition, then add `Sleep` only when the
+generated media needs human pacing or no semantic wait is possible. Useful review-media pauses are
+300-700 ms after simple transitions, 1.5-2.5 seconds for stable simple screens, and 4-5 seconds
+only for final review endpoints.
+
 For test-oriented tapes, prefer:
 
 - `Require` for external programs the test depends on.

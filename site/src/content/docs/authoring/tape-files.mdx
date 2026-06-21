@@ -121,6 +121,71 @@ Wait+Screen "test result:"
 </aside>
 </section>
 
+<section class="bm-manual-row bm-manual-row-top" aria-labelledby="validation-and-review-media">
+<div class="bm-manual-copy">
+
+## Validation And Review Media
+
+Most tapes have one primary job. Validation tapes exercise a user journey, wait for semantic
+screen state, and write focused `State` or `Screenshot` checkpoints for assertions. Example and
+review-media tapes make a stable state readable for humans in a GIF, video, or PR artifact.
+
+Waits are assertions and synchronization points. Use `Wait`, `Wait+Line`, or `Wait+Screen` to name
+the state that must exist before the tape continues. Sleeps are presentation pacing after that
+state is true, unless the application has no semantic text or prompt that Betamax can wait for.
+
+</div>
+
+<div class="bm-manual-code">
+
+```text
+Type "my-app --demo"
+Enter
+Wait+Screen "Ready"
+Screenshot target/review/ready.png
+Sleep 500ms
+```
+
+</div>
+
+<aside class="bm-manual-note">
+  <p class="bm-note-label">Pacing</p>
+  <ul>
+    <li>Use 300-500 ms before submission when a GIF should feel human.</li>
+    <li>Use 300-700 ms after simple UI transitions.</li>
+    <li>Use 1.5-2.5 seconds for stable simple screens.</li>
+    <li>Use reading-time-based holds for dense output.</li>
+    <li>Use 4-5 seconds only for final GIF states or equivalent review endpoints.</li>
+  </ul>
+</aside>
+</section>
+
+<section class="bm-manual-row bm-manual-row-split" aria-labelledby="presentation-and-layout-proof">
+<div class="bm-manual-copy">
+
+## Presentation And Layout Proof
+
+Larger `FontSize`, `Margin`, window bars, and border radius are presentation choices. They make a
+demo easier to read, but they also change the terminal grid and available layout space.
+
+When a tape proves modal placement, centering, wrapping, or split-pane behavior, start with the
+default `FontSize` and `Margin`. Increase `Width` and `Height` when the proof needs a wider canvas.
+Use a separate review-media tape when the same journey also needs zoomed presentation.
+
+</div>
+
+<div class="bm-manual-code bm-compact-code">
+
+```text
+Set Width 1600
+Set Height 900
+Wait+Screen "Preview"
+Screenshot target/layout/proof.png
+```
+
+</div>
+</section>
+
 <section class="bm-manual-row bm-manual-row-split" aria-labelledby="hidden-work">
 <div class="bm-manual-copy">
 
