@@ -54,8 +54,8 @@ impl PtySession {
             .openpty(PtySize {
                 rows: settings.rows,
                 cols: settings.columns,
-                pixel_width: settings.width as u16,
-                pixel_height: settings.height as u16,
+                pixel_width: settings.terminal_canvas_width() as u16,
+                pixel_height: settings.terminal_canvas_height() as u16,
             })
             .map_err(|error| miette!("failed to open PTY: {error}"))?;
 

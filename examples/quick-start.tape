@@ -7,8 +7,8 @@ Require cargo-binstall
 # Use the local Brownout Ghostty theme and a warm outer margin.
 Set Shell "bash"
 Set Theme "Betamax Brownout"
-Set Width 1000
-Set Height 820
+Set Width 1032
+Set Height 886
 Set Margin 16
 Set MarginFill "#20140d"
 Set WindowBar Colorful

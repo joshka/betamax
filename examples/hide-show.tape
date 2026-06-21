@@ -5,8 +5,8 @@ Require printf
 Set Shell "bash"
 Set Theme "GitHub Dark"
 Set FontSize 24
-Set Width 940
-Set Height 500
+Set Width 968
+Set Height 558
 Set Margin 14
 Set WindowBar RingsRight
 Set BorderRadius 10

@@ -5,8 +5,8 @@ Require printf
 Set Shell "bash"
 Set Theme "Dracula"
 Set FontSize 24
-Set Width 960
-Set Height 520
+Set Width 992
+Set Height 588
 Set Margin 16
 Set MarginFill "#111111"
 Set WindowBar Colorful

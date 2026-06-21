@@ -86,8 +86,8 @@ Output examples/output/basic.gif
 Set Shell "bash"
 Set Theme "Aardvark Blue"
 Set FontSize 28
-Set Width 900
-Set Height 480
+Set Width 924
+Set Height 534
 Set Margin 12
 Set WindowBar Colorful
 Set BorderRadius 8

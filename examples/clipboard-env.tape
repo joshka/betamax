@@ -7,8 +7,8 @@ Env BETAMAX_EXAMPLE clipboard-env
 Set Shell "bash"
 Set Theme "TokyoNight Night"
 Set FontSize 24
-Set Width 980
-Set Height 500
+Set Width 1004
+Set Height 554
 Set Margin 12
 Set WindowBar RingsRight
 Set BorderRadius 8
