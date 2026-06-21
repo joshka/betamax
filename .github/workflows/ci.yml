@@ -53,6 +53,9 @@ jobs:
 
       - name: Cache Rust builds
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        with:
+          prefix-key: v1-rust-no-target
+          cache-targets: false
 
       - name: Check formatting
         run: mise run fmt-check
@@ -105,6 +108,9 @@ jobs:
 
       - name: Cache Rust builds
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        with:
+          prefix-key: v1-rust-no-target
+          cache-targets: false
 
       - name: Check workspace
         run: mise run cargo-check
@@ -151,6 +157,9 @@ jobs:
 
       - name: Cache Rust builds
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        with:
+          prefix-key: v1-rust-no-target
+          cache-targets: false
 
       - name: Package crates
         run: mise run package
@@ -209,6 +218,9 @@ jobs:
 
       - name: Cache Rust builds
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        with:
+          prefix-key: v1-rust-no-target
+          cache-targets: false
 
       - name: Install cargo maintenance tools
         uses: taiki-e/install-action@7a79fe8c3a13344501c80d99cae481c1c9085912 # v2.81.10
