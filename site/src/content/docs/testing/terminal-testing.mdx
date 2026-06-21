@@ -60,6 +60,24 @@ Env BETAMAX_TEST 1
 
 Use `Set CursorBlink false` when animation frame differences do not matter to the test.
 
+## Wait Before Sleep
+
+Validation tapes should synchronize on behavior before they add presentation pacing. Put a semantic
+`Wait`, `Wait+Line`, or `Wait+Screen` after every meaningful app transition, then add `Sleep` only
+when the generated media needs a human-readable pause.
+
+```text
+Type "my-tui --scripted"
+Enter
+Wait+Screen "Loaded 12 rows"
+State target/snapshots/loaded.json
+Sleep 500ms
+```
+
+Keep validation sleeps short and rare. If a sleep is compensating for behavior that cannot be
+matched with visible text, a prompt, or a status line, keep it as small as the program allows and
+leave a tape comment explaining what external effect it covers.
+
 ## Snapshot Workflow
 
 A common Rust test shape is:

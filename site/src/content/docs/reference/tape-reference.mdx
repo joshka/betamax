@@ -75,6 +75,11 @@ subtracted from width and height first, then padding, font size, letter spacing,
 determine the PTY columns and rows. Extremely small dimensions are clamped to at least one row and
 one column.
 
+Treat larger `FontSize`, larger `Margin`, and decorative frame settings as presentation zoom. When
+the tape is proving modal placement, centered content, wrapping, or split-pane layout, prefer the
+default `FontSize`, default `Margin`, and a wider `Width` or `Height` so the proof matches the
+application layout rather than the demo framing.
+
 ## Command Reference
 
 ### `Output <path>`
@@ -131,11 +136,18 @@ Pauses tape execution while continuing to drain PTY output and capture frames. D
 compact forms such as `500ms`, `1s`, and `2m`, split forms such as `500 ms`, and bare numbers as
 seconds.
 
+In validation tapes, use sleeps as a last resort for behavior that cannot be matched with a prompt,
+status line, or visible screen text. In example and review-media tapes, sleeps are presentation
+pacing after a semantic wait has already proved the screen state.
+
 ### `Wait[@duration] [/regex/|text]`
 
 Waits for terminal text while continuing to drain output and capture frames. A bare `Wait` checks
 the current cursor line with `WaitPattern`, which defaults to the VHS-style prompt regex `>$`.
 `Wait@5s` overrides the timeout for that command.
+
+Waits are assertions and synchronization points. Put `Wait`, `Wait+Line`, or `Wait+Screen` before
+any sleep that only exists to make a GIF, video, or review artifact readable.
 
 Use `/.../` for regex patterns and plain text for substring patterns.
 

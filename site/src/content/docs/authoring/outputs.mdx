@@ -34,6 +34,28 @@ Frame directories are useful when debugging capture timing or feeding rendered f
 tooling. The path must not have an extension; `Output target/frames` writes numbered PNG files under
 that directory.
 
+## Validation And Review Artifacts
+
+Validation artifacts should be easy to assert automatically. Prefer `State` checkpoints or final
+state JSON for the behavioral contract, and add checkpoint screenshots when the visual frame helps
+debug failures.
+
+Review-media artifacts should be easy for a human to inspect. Pair animated GIF or video output
+with a final PNG or a checkpoint screenshot whose path describes the state, so reviewers can cite
+one stable frame without scrubbing an animation. Place checkpoint outputs immediately after a
+semantic wait:
+
+```text
+Wait+Screen "Profile saved"
+State target/snapshots/profile-saved.json
+Screenshot target/review/profile-saved.png
+Sleep 2s
+```
+
+In review media, sleeps after waits are presentation pacing. Use 300-700 ms after simple
+transitions, 1.5-2.5 seconds for stable simple screens, and 4-5 seconds only for final review
+endpoints. Dense output needs a reading-time-based hold instead of a fixed one-size pause.
+
 ## Video Encoding
 
 MP4 and WebM use `ffmpeg` as a focused encoder boundary. Terminal execution, terminal parsing,
