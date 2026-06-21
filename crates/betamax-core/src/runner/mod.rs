@@ -356,14 +356,19 @@ where
         tracing::debug!(
             columns = settings.columns,
             rows = settings.rows,
-            width = settings.width,
-            height = settings.height,
+            output.width = settings.width,
+            output.height = settings.height,
+            canvas.width = settings.terminal_canvas_width(),
+            canvas.height = settings.terminal_canvas_height(),
             commands = tape.commands.len(),
             "starting captured tape run",
         );
         tracing::debug!("opening Ghostty frame capture");
         let mut terminal = self.capture.open(CaptureRequest {
-            canvas: PixelSize::new(settings.width, settings.height),
+            canvas: PixelSize::new(
+                settings.terminal_canvas_width(),
+                settings.terminal_canvas_height(),
+            ),
             grid: TerminalGrid::new(settings.columns, settings.rows),
             text: settings.text.clone(),
             theme: settings.theme.clone(),
@@ -908,6 +913,69 @@ mod tests {
     }
 
     #[test]
+    fn frame_style_reduces_terminal_canvas_like_vhs() {
+        let tape = Tape::parse(
+            r#"
+            Set Width 900
+            Set Height 480
+            Set Margin 12
+            Set WindowBar Colorful
+            Set WindowBarSize 34
+            "#,
+        )
+        .unwrap();
+        let settings = Settings::from_tape(&tape).unwrap();
+
+        assert_eq!(settings.width, 900);
+        assert_eq!(settings.height, 480);
+        assert_eq!(settings.terminal_canvas_width(), 876);
+        assert_eq!(settings.terminal_canvas_height(), 422);
+    }
+
+    #[test]
+    fn empty_margin_fill_disables_margin_like_vhs() {
+        let tape = Tape::parse(
+            r#"
+            Set Width 900
+            Set Height 480
+            Set Margin 12
+            Set MarginFill ""
+            "#,
+        )
+        .unwrap();
+        let settings = Settings::from_tape(&tape).unwrap();
+
+        assert_eq!(settings.terminal_canvas_width(), 900);
+        assert_eq!(settings.terminal_canvas_height(), 480);
+    }
+
+    #[test]
+    fn decoration_keeps_requested_output_dimensions() {
+        let tape = Tape::parse(
+            r#"
+            Set Width 10
+            Set Height 8
+            Set Padding 0
+            Set Margin 1
+            Set WindowBar Colorful
+            Set WindowBarSize 2
+            "#,
+        )
+        .unwrap();
+        let settings = Settings::from_tape(&tape).unwrap();
+        let frame = sized_test_frame(
+            settings.terminal_canvas_width(),
+            settings.terminal_canvas_height(),
+            [255, 0, 0, 255],
+        );
+
+        let decorated = settings.decorate_frame(&frame).unwrap();
+
+        assert_eq!(decorated.width, 10);
+        assert_eq!(decorated.height, 8);
+    }
+
+    #[test]
     fn unknown_settings_are_errors() {
         let tape = Tape::parse("Set Wdith 900").unwrap();
         let error = Settings::from_tape(&tape).unwrap_err().to_string();
@@ -969,12 +1037,17 @@ mod tests {
     }
 
     fn test_frame(pixel: [u8; 4]) -> Frame {
+        sized_test_frame(1, 1, pixel)
+    }
+
+    fn sized_test_frame(width: u32, height: u32, pixel: [u8; 4]) -> Frame {
+        let pixel_count = width as usize * height as usize;
         Frame {
-            width: 1,
-            height: 1,
-            stride: 4,
+            width,
+            height,
+            stride: width as usize * 4,
             format: crate::media::PixelFormat::Rgba8,
-            pixels: pixel.to_vec(),
+            pixels: pixel.repeat(pixel_count),
         }
     }
 }

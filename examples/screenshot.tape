@@ -6,8 +6,8 @@ Require printf
 Set Shell "bash"
 Set Theme "TokyoNight Night"
 Set FontSize 24
-Set Width 900
-Set Height 460
+Set Width 924
+Set Height 514
 Set Margin 12
 Set WindowBar ColorfulRight
 Set BorderRadius 8

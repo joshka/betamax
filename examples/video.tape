@@ -7,8 +7,8 @@ Require printf
 Set Shell "bash"
 Set Theme "Catppuccin Mocha"
 Set FontSize 24
-Set Width 900
-Set Height 480
+Set Width 924
+Set Height 534
 Set Margin 12
 Set WindowBar Colorful
 Set BorderRadius 8

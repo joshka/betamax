@@ -34,8 +34,8 @@ Common settings:
 | `FontSize`      | number                                     | `22`             | Pixels.                                     |
 | `LetterSpacing` | number                                     | `1`              | Additional pixels between cells.            |
 | `LineHeight`    | number                                     | `1`              | Multiplier applied to font size.            |
-| `Width`         | number                                     | `1200`           | Raw terminal canvas width in pixels.        |
-| `Height`        | number                                     | `600`            | Raw terminal canvas height in pixels.       |
+| `Width`         | number                                     | `1200`           | Final output width in pixels.               |
+| `Height`        | number                                     | `600`            | Final output height in pixels.              |
 | `Padding`       | number                                     | `60`             | Inner padding before terminal cells.        |
 | `Framerate`     | number                                     | `50`             | Capture cadence in frames per second.       |
 | `TypingSpeed`   | duration                                   | `50ms`           | Default delay between typed characters.     |
@@ -52,6 +52,11 @@ Common settings:
 
 Unknown settings and type mismatches are errors. For example, `Set Wdith 900` and
 `Set Width "wide"` fail before the shell starts instead of silently falling back to defaults.
+
+The terminal grid is derived after all settings are applied. Margin and window-bar decoration are
+subtracted from width and height first, then padding, font size, letter spacing, and line height
+determine the PTY columns and rows. Extremely small dimensions are clamped to at least one row and
+one column.
 
 For built-in shell names such as `bash`, `zsh`, and `fish`, Betamax starts a clean recording shell
 with startup files and history disabled where possible. Those shells use the VHS-style colored `>`

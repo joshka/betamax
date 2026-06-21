@@ -23,9 +23,9 @@ use crate::tape::{Command, Tape, Value, WaitPattern};
 use crate::wait::regex_source;
 use crate::Result;
 
-/// Default raw terminal canvas width in pixels.
+/// Default final output width in pixels.
 const DEFAULT_WIDTH: u32 = 1200;
-/// Default raw terminal canvas height in pixels.
+/// Default final output height in pixels.
 const DEFAULT_HEIGHT: u32 = 600;
 /// Default capture cadence in frames per second.
 const DEFAULT_FRAMERATE: u16 = 50;
@@ -70,9 +70,9 @@ const CURSOR_BLINK_PHASES: usize = 2;
 pub(super) struct Settings {
     /// Shell command and optional explicit arguments from `Set Shell`.
     pub(super) shell: Vec<OsString>,
-    /// Output canvas width before margin/window decoration.
+    /// Final output width after margin/window decoration.
     pub(super) width: u32,
-    /// Output canvas height before margin/window decoration.
+    /// Final output height after margin/window decoration.
     pub(super) height: u32,
     /// Terminal grid columns derived from canvas width, padding, and text metrics.
     pub(super) columns: u16,
@@ -262,16 +262,49 @@ impl Settings {
         Ok(())
     }
 
+    /// Width of the terminal canvas before margin and window-bar decoration.
+    pub(super) fn terminal_canvas_width(&self) -> u32 {
+        self.width
+            .saturating_sub(self.effective_margin().saturating_mul(2))
+    }
+
+    /// Height of the terminal canvas before margin and window-bar decoration.
+    pub(super) fn terminal_canvas_height(&self) -> u32 {
+        self.height
+            .saturating_sub(self.effective_margin().saturating_mul(2))
+            .saturating_sub(self.window_bar_height())
+    }
+
+    /// VHS only applies margin when a margin fill is configured.
+    fn effective_margin(&self) -> u32 {
+        if self.style.margin_fill.is_empty() {
+            0
+        } else {
+            self.style.margin
+        }
+    }
+
+    /// Height reserved above the terminal canvas for the synthetic window bar.
+    fn window_bar_height(&self) -> u32 {
+        if self.style.window_bar.is_empty() {
+            0
+        } else {
+            self.style.window_bar_size
+        }
+    }
+
     /// Derive terminal rows and columns from pixel dimensions.
     ///
-    /// The terminal render area is the canvas minus text padding on each side. Each dimension is
-    /// clamped to at least one cell so pathological settings still create a valid PTY.
+    /// `Width` and `Height` describe the final output frame, matching VHS. Margin and window bar
+    /// decoration are subtracted first, then text padding is subtracted from the terminal canvas.
+    /// Each dimension is clamped to at least one cell so pathological settings still create a valid
+    /// PTY.
     fn apply_terminal_grid(&mut self) {
         let inner_width = self
-            .width
+            .terminal_canvas_width()
             .saturating_sub(self.text.padding.saturating_mul(2));
         let inner_height = self
-            .height
+            .terminal_canvas_height()
             .saturating_sub(self.text.padding.saturating_mul(2));
         self.columns = fit_cells(inner_width, self.text.cell_width());
         self.rows = fit_cells(inner_height, self.text.cell_height());
@@ -353,20 +386,11 @@ impl Settings {
     /// Invalid color strings are treated as the theme background instead of failing the render.
     /// That keeps old tapes usable while output styling is still gaining validation.
     pub(super) fn decorate_frame(&self, frame: &Frame) -> Result<Frame> {
-        let margin = self.style.margin;
-        let bar_height = if self.style.window_bar.is_empty() {
-            0
-        } else {
-            self.style.window_bar_size
-        };
+        let margin = self.effective_margin();
+        let bar_height = self.window_bar_height();
         let fill = parse_hex_color(&self.style.margin_fill).unwrap_or(self.theme.background);
         let bar = parse_hex_color(&self.style.window_bar_color).unwrap_or(self.theme.background);
-        let output_width = frame.width.saturating_add(margin.saturating_mul(2));
-        let output_height = frame
-            .height
-            .saturating_add(bar_height)
-            .saturating_add(margin.saturating_mul(2));
-        let mut output = SolidFrame::new(output_width, output_height, fill)?;
+        let mut output = SolidFrame::new(self.width, self.height, fill)?;
         output.blit(frame, margin, margin + bar_height)?;
         if bar_height > 0 {
             output.fill_rect(margin, margin, frame.width, bar_height, bar);

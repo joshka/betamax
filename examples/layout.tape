@@ -5,8 +5,8 @@ Require printf
 Set Shell "bash"
 Set Theme "GitHub Light Default"
 Set FontSize 24
-Set Width 980
-Set Height 520
+Set Width 1028
+Set Height 610
 Set Padding 72
 Set Margin 24
 Set MarginFill "#1d3557"
