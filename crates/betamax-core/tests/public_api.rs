@@ -104,6 +104,67 @@ fn runner_accepts_custom_capture_backend() {
     let _ = fs::remove_file(output);
 }
 
+#[test]
+fn captions_affect_screenshots_not_state_json() {
+    let final_state = temp_output("betamax-public-api-caption-final.json");
+    let checkpoint_state = temp_output("betamax-public-api-caption-checkpoint.json");
+    let plain_screenshot = temp_output("betamax-public-api-caption-plain.png");
+    let captioned_screenshot = temp_output("betamax-public-api-caption-captioned.png");
+    let caption = "Review-only caption";
+    let tape = Tape::parse(&format!(
+        r#"
+        Output {final_state}
+        Set Shell "bash"
+        Set Width 180
+        Set Height 120
+        Set Padding 0
+        Screenshot {plain_screenshot}
+        Caption "{caption}"
+        Screenshot {captioned_screenshot}
+        Type "printf 'terminal only\n'"
+        Enter
+        Wait+Screen "terminal only"
+        State {checkpoint_state}
+        "#,
+        final_state = final_state.display(),
+        plain_screenshot = plain_screenshot.display(),
+        captioned_screenshot = captioned_screenshot.display(),
+        checkpoint_state = checkpoint_state.display(),
+    ))
+    .unwrap();
+
+    let artifacts = Runner::with_capture(
+        RunOptions {
+            publish: false,
+            quiet: true,
+        },
+        FakeCapture,
+    )
+    .run_artifacts(&tape)
+    .unwrap();
+
+    let final_json = fs::read_to_string(&final_state).unwrap();
+    let checkpoint_json = fs::read_to_string(&checkpoint_state).unwrap();
+    let plain_png = fs::read(&plain_screenshot).unwrap();
+    let captioned_png = fs::read(&captioned_screenshot).unwrap();
+
+    assert_eq!(artifacts.output_paths, vec![final_state.clone()]);
+    assert!(final_json.contains("terminal only"));
+    assert!(!final_json.contains(caption));
+    assert!(checkpoint_json.contains("terminal only"));
+    assert!(!checkpoint_json.contains(caption));
+    assert_ne!(plain_png, captioned_png);
+
+    for path in [
+        final_state,
+        checkpoint_state,
+        plain_screenshot,
+        captioned_screenshot,
+    ] {
+        let _ = fs::remove_file(path);
+    }
+}
+
 fn temp_output(name: &str) -> PathBuf {
     let suffix = SystemTime::now()
         .duration_since(UNIX_EPOCH)

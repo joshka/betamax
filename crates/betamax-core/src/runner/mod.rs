@@ -1100,6 +1100,13 @@ mod tests {
         assert!(frames_equal(&capture.frames[0].0.frame, &frame));
     }
 
+    #[test]
+    fn empty_caption_text_clears_overlay_state() {
+        assert_eq!(active_caption(""), None);
+        assert_eq!(active_caption("   "), None);
+        assert_eq!(active_caption("  Step 1  ").as_deref(), Some("  Step 1  "));
+    }
+
     fn test_frame(pixel: [u8; 4]) -> Frame {
         sized_test_frame(1, 1, pixel)
     }
