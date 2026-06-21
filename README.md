@@ -122,6 +122,7 @@ The checked-in examples are small smoke-test tapes that demonstrate core behavio
 | `examples/waits.tape`            | line, screen, regex, and default prompt waits  | `waits.gif`         |
 | `examples/keys.tape`             | key commands, repeats, editing, and interrupt  | `keys.gif`          |
 | `examples/clipboard-env.tape`    | `Env`, `Copy`, and `Paste`                     | `clipboard-env.gif` |
+| `examples/captions.tape`         | visual captions for review media               | `captions.*`        |
 | `examples/outputs.tape`          | GIF, PNG, JSON, screenshot, state, frame dir   | `outputs.*`         |
 | `examples/scrollback.tape`       | scrollback-inclusive state JSON                | `scrollback.*`      |
 | `examples/text-styles.tape`      | ANSI styles, truecolor, and styled state spans | `text-styles.*`     |

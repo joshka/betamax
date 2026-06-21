@@ -22,7 +22,12 @@ pub(super) struct CaptureState {
     ///
     /// The frame pixels represent the raw terminal render before final margin/window decoration.
     /// Decoration is applied once at the end so all outputs share the same styling path.
-    pub(super) frames: Vec<(Frame, Duration)>,
+    pub(super) frames: Vec<(CapturedFrame, Duration)>,
+    /// Caption rendered onto later media frames.
+    ///
+    /// This is presentation metadata only. It does not affect PTY execution, terminal state, or
+    /// semantic wait matching.
+    pub(super) caption: Option<String>,
 }
 
 impl Default for CaptureState {
@@ -30,8 +35,18 @@ impl Default for CaptureState {
         Self {
             visible: true,
             frames: Vec::new(),
+            caption: None,
         }
     }
+}
+
+/// Raw captured terminal frame plus presentation metadata for final media decoration.
+#[derive(Debug, Clone)]
+pub(super) struct CapturedFrame {
+    /// Raw terminal frame before final margin/window/caption decoration.
+    pub(super) frame: Frame,
+    /// Caption active when this frame was captured.
+    pub(super) caption: Option<String>,
 }
 
 /// Capture one raw terminal frame with runner-controlled cursor blinking.
@@ -48,19 +63,25 @@ pub(super) fn capture_frame(
     terminal.capture_frame_with_cursor(cursor_visible)
 }
 
-/// Append one visible frame or extend the previous frame when pixels have not changed.
+/// Append one visible frame or extend the previous frame when pixels and caption have not changed.
 ///
 /// This preserves wall-clock dwell time for static terminal states. Without delay coalescing, a
 /// `Sleep 2s` after the final output only contributes as many nominal frame delays as the renderer
 /// can sample during those two seconds, which can make GIFs play much faster than the tape timing.
+///
+/// Captions are included in the coalescing key even though they are not terminal pixels yet. A
+/// repeated terminal frame with a new caption is a visible media change after final decoration.
 pub(super) fn append_visible_frame(capture: &mut CaptureState, frame: Frame, delay: Duration) {
+    let caption = capture.caption.clone();
     if let Some((last_frame, last_delay)) = capture.frames.last_mut() {
-        if frames_equal(last_frame, &frame) {
+        if last_frame.caption == caption && frames_equal(&last_frame.frame, &frame) {
             *last_delay += delay;
             return;
         }
     }
-    capture.frames.push((frame, delay));
+    capture
+        .frames
+        .push((CapturedFrame { frame, caption }, delay));
 }
 
 /// Append the final still frame for animated outputs when it differs from the last visible frame.
@@ -72,7 +93,13 @@ pub(super) fn append_final_gif_frame(capture: &mut CaptureState, frame: Frame, d
         append_visible_frame(capture, frame.clone(), delay);
     }
     if capture.frames.is_empty() {
-        capture.frames.push((frame, delay));
+        capture.frames.push((
+            CapturedFrame {
+                frame,
+                caption: capture.caption.clone(),
+            },
+            delay,
+        ));
     }
 }
 
@@ -88,4 +115,37 @@ pub(super) fn frames_equal(left: &Frame, right: &Frame) -> bool {
         && left.stride == right.stride
         && left.format == right.format
         && left.pixels == right.pixels
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::media::PixelFormat;
+
+    #[test]
+    fn caption_changes_keep_repeated_frames_separate() {
+        let frame = test_frame();
+        let mut capture = CaptureState {
+            caption: Some("First step".to_string()),
+            ..Default::default()
+        };
+
+        append_visible_frame(&mut capture, frame.clone(), Duration::from_millis(20));
+        capture.caption = Some("Second step".to_string());
+        append_visible_frame(&mut capture, frame.clone(), Duration::from_millis(20));
+
+        assert_eq!(capture.frames.len(), 2);
+        assert_eq!(capture.frames[0].0.caption.as_deref(), Some("First step"));
+        assert_eq!(capture.frames[1].0.caption.as_deref(), Some("Second step"));
+    }
+
+    fn test_frame() -> Frame {
+        Frame {
+            width: 1,
+            height: 1,
+            stride: 4,
+            format: PixelFormat::Rgba8,
+            pixels: vec![255, 0, 0, 255],
+        }
+    }
 }

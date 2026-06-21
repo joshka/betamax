@@ -12,7 +12,8 @@ mise run render-examples
 ```
 
 Generated files are written under `examples/output` and copied to `target/betamax-examples` for
-local inspection. README and site GIF previews are hosted as GitHub Release assets; see
+local inspection. README GIF previews are hosted as GitHub Release assets; curated site previews may
+also live under `site/public/assets` with Git LFS. See
 [Generated Media Storage](../authoring/generated-media/) for the full storage guidance.
 
 ## Example Index
@@ -25,6 +26,7 @@ local inspection. README and site GIF previews are hosted as GitHub Release asse
 | [`waits.tape`][waits-src]                 | line, screen, regex, and default prompt waits   | [Wait commands](../reference/tape-reference/#waitduration-regextext)   |
 | [`keys.tape`][keys-src]                   | key commands, repeats, editing, and interrupt   | [Key commands](../reference/tape-reference/#key-commands)              |
 | [`clipboard-env.tape`][clipboard-env-src] | `Env`, `Copy`, and `Paste`                      | [Tape reference](../reference/tape-reference/#copy-text-and-paste)     |
+| [`captions.tape`][captions-src]           | visual captions for review media                | [Caption command](../reference/tape-reference/#caption-text)           |
 | [`outputs.tape`][outputs-src]             | GIF, PNG, JSON, screenshot, state, frame dir    | [Outputs](../authoring/outputs/)                                       |
 | [`scrollback.tape`][scrollback-src]       | scrollback-inclusive state JSON                 | [State JSON](../testing/state-json/)                                   |
 | [`text-styles.tape`][text-styles-src]     | ANSI styles, truecolor, and styled state spans  | [State JSON](../testing/state-json/#styles-and-spans)                  |
@@ -58,6 +60,13 @@ one command, waits for the result, and hides shell cleanup.
 `hide-show.tape` demonstrates the most important authoring trick. Hidden setup still runs and
 updates terminal state, but the animation starts only when `Show` reveals the prepared screen.
 
+### Captions
+
+![Captioned Betamax GIF](/betamax/assets/betamax-captions.gif)
+
+`captions.tape` annotates rendered media without changing the terminal session. Caption changes are
+presentation metadata: waits and state outputs keep matching the terminal itself.
+
 ### Themes
 
 ![Ghostty theme Betamax GIF](https://github.com/joshka/betamax/releases/download/readme-assets/themes.gif)
@@ -86,6 +95,7 @@ Use `examples/waits.tape` when debugging timing. It shows the three wait targets
 `WaitPattern`, which is usually preferable to adding sleeps.
 
 [basic-src]: https://github.com/joshka/betamax/blob/main/examples/basic.tape
+[captions-src]: https://github.com/joshka/betamax/blob/main/examples/captions.tape
 [clipboard-env-src]: https://github.com/joshka/betamax/blob/main/examples/clipboard-env.tape
 [hide-show-src]: https://github.com/joshka/betamax/blob/main/examples/hide-show.tape
 [keys-src]: https://github.com/joshka/betamax/blob/main/examples/keys.tape

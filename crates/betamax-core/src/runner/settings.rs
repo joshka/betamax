@@ -14,6 +14,7 @@ use std::env;
 use std::ffi::OsString;
 use std::time::Duration;
 
+use cosmic_text::{Attrs, Buffer, Color, Family, FontSystem, Metrics, Shaping, SwashCache, Weight};
 use miette::miette;
 use regex::Regex;
 
@@ -60,6 +61,20 @@ const WINDOW_BUTTON_GAP_RADIUS_MULTIPLIER: u32 = 3;
 const MIN_EFFECTIVE_FRAMERATE: u16 = 1;
 /// Cursor blink uses a two-phase on/off cycle.
 const CURSOR_BLINK_PHASES: usize = 2;
+/// Caption font size relative to the tape font size.
+const CAPTION_FONT_SCALE: f32 = 0.9;
+/// Minimum readable caption font size.
+const MIN_CAPTION_FONT_SIZE: f32 = 14.0;
+/// Caption line height relative to caption font size.
+const CAPTION_LINE_HEIGHT: f32 = 1.35;
+/// Horizontal caption padding relative to caption font size.
+const CAPTION_HORIZONTAL_PADDING: f32 = 0.75;
+/// Vertical caption padding relative to caption font size.
+const CAPTION_VERTICAL_PADDING: f32 = 0.45;
+/// Caption background alpha. The output frame remains fully opaque after blending.
+const CAPTION_BACKGROUND_ALPHA: u8 = 0xdd;
+/// Denominator for 8-bit alpha blending.
+const ALPHA_DENOMINATOR: u16 = 255;
 
 /// Shell command and all derived execution, rendering, timing, and styling settings.
 ///
@@ -354,7 +369,7 @@ impl Settings {
     /// This is applied after the final frame has been appended. Static outputs ignore loop offset.
     /// Fractional offsets in `0.0..=1.0` mean a percentage of the frame list. Other values are
     /// interpreted as seconds at the capture framerate to match VHS's time-based option.
-    pub(super) fn apply_loop_offset(&self, frames: &mut [(Frame, Duration)]) {
+    pub(super) fn apply_loop_offset<T>(&self, frames: &mut [(T, Duration)]) {
         if frames.len() < 2 || self.loop_offset == 0.0 {
             return;
         }
@@ -368,24 +383,54 @@ impl Settings {
         frames.rotate_left(offset % len);
     }
 
-    /// Apply margin, window-bar, and rounded-corner decoration to all captured frames.
+    /// Decorate a single raw terminal frame and optionally render a caption overlay.
     ///
-    /// The function drains and replaces the frame vector so callers cannot accidentally mix raw and
-    /// decorated frames. Delays are preserved exactly.
-    pub(super) fn decorate_frames(&self, frames: &mut Vec<(Frame, Duration)>) -> Result<()> {
-        let mut decorated = Vec::with_capacity(frames.len());
-        for (frame, delay) in frames.drain(..) {
-            decorated.push((self.decorate_frame(&frame)?, delay));
-        }
-        *frames = decorated;
-        Ok(())
+    /// Captions are presentation metadata. They are applied after the terminal has rendered, using
+    /// the final output dimensions, and therefore do not affect PTY size, terminal state, or waits.
+    pub(super) fn decorate_frame_with_caption(
+        &self,
+        frame: &Frame,
+        caption: Option<&str>,
+    ) -> Result<Frame> {
+        let mut caption_renderer = CaptionRenderer::new();
+        self.decorate_frame_with_caption_renderer(frame, caption, &mut caption_renderer)
     }
 
-    /// Decorate a single raw terminal frame.
+    /// Decorate captured frames with one reusable caption renderer.
     ///
-    /// Invalid color strings are treated as the theme background instead of failing the render.
-    /// That keeps old tapes usable while output styling is still gaining validation.
-    pub(super) fn decorate_frame(&self, frame: &Frame) -> Result<Frame> {
+    /// Animated outputs may render hundreds of frames with the same caption text and font. Keeping
+    /// one renderer here preserves the shaping and glyph caches for the batch without making cache
+    /// lifetime part of `Settings`.
+    pub(super) fn decorate_captioned_frames(
+        &self,
+        frames: impl IntoIterator<Item = (Frame, Option<String>, Duration)>,
+    ) -> Result<Vec<(Frame, Duration)>> {
+        let mut caption_renderer = CaptionRenderer::new();
+        let mut decorated = Vec::new();
+        for (frame, caption, delay) in frames {
+            decorated.push((
+                self.decorate_frame_with_caption_renderer(
+                    &frame,
+                    caption.as_deref(),
+                    &mut caption_renderer,
+                )?,
+                delay,
+            ));
+        }
+        Ok(decorated)
+    }
+
+    /// Decorate a frame using a caller-owned caption renderer cache.
+    ///
+    /// Decoration happens in final output coordinates: margin, window bar, rounded mask, then
+    /// caption overlay. Keeping captions last makes them independent from terminal canvas sizing
+    /// and guarantees the same overlay path for final PNGs, screenshots, GIFs, and videos.
+    fn decorate_frame_with_caption_renderer(
+        &self,
+        frame: &Frame,
+        caption: Option<&str>,
+        caption_renderer: &mut CaptionRenderer,
+    ) -> Result<Frame> {
         let margin = self.effective_margin();
         let bar_height = self.window_bar_height();
         let fill = parse_hex_color(&self.style.margin_fill).unwrap_or(self.theme.background);
@@ -411,7 +456,152 @@ impl Settings {
                 fill,
             );
         }
+        if let Some(caption) = caption.filter(|caption| !caption.trim().is_empty()) {
+            self.draw_caption(&mut output, caption, caption_renderer);
+        }
         Ok(output.into_frame())
+    }
+
+    /// Draw a caption into the final decorated frame.
+    ///
+    /// The background is alpha-blended into the opaque output frame before text is drawn. This
+    /// keeps output formats simple while still making captions readable over arbitrary terminal
+    /// content.
+    fn draw_caption(
+        &self,
+        output: &mut SolidFrame,
+        caption: &str,
+        caption_renderer: &mut CaptionRenderer,
+    ) {
+        let Some(layout) = self.caption_layout() else {
+            return;
+        };
+        output.fill_rect_alpha(
+            layout.x,
+            layout.y,
+            layout.width,
+            layout.height,
+            self.theme.background,
+            CAPTION_BACKGROUND_ALPHA,
+        );
+        caption_renderer.draw(output, caption, layout, &self.text, self.theme.foreground);
+    }
+
+    /// Compute caption geometry in final output-frame coordinates.
+    ///
+    /// The overlay spans the decorated content width inside the outer margin and is anchored to the
+    /// bottom of the final output. It may cover terminal pixels by design; tapes that need more
+    /// room should increase height, margin, or padding instead of changing PTY behavior.
+    fn caption_layout(&self) -> Option<CaptionLayout> {
+        let margin = self.effective_margin();
+        let width = self.width.saturating_sub(margin.saturating_mul(2));
+        if width == 0 || self.height == 0 {
+            return None;
+        }
+
+        let font_size = (self.text.font_size * CAPTION_FONT_SCALE).max(MIN_CAPTION_FONT_SIZE);
+        let line_height = (font_size * CAPTION_LINE_HEIGHT).ceil();
+        let horizontal_padding = (font_size * CAPTION_HORIZONTAL_PADDING).ceil() as u32;
+        let vertical_padding = (font_size * CAPTION_VERTICAL_PADDING).ceil() as u32;
+        let height = (line_height as u32)
+            .saturating_add(vertical_padding.saturating_mul(2))
+            .min(self.height);
+        let text_width = width.saturating_sub(horizontal_padding.saturating_mul(2));
+        if text_width == 0 {
+            return None;
+        }
+
+        let y = self.height.saturating_sub(margin).saturating_sub(height);
+        Some(CaptionLayout {
+            x: margin,
+            y,
+            width,
+            height,
+            text_x: margin.saturating_add(horizontal_padding),
+            text_y: y.saturating_add(vertical_padding),
+            text_width,
+            text_height: height.saturating_sub(vertical_padding.saturating_mul(2)),
+            font_size,
+            line_height,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct CaptionLayout {
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
+    text_x: u32,
+    text_y: u32,
+    text_width: u32,
+    text_height: u32,
+    font_size: f32,
+    line_height: f32,
+}
+
+/// Text renderer for caption overlays.
+///
+/// This owns `cosmic_text`'s mutable shaping and raster caches. The renderer is kept outside
+/// `Settings` so decoration remains a pure operation from caller input to media frame, while
+/// callers that render many frames can still reuse the expensive font state.
+struct CaptionRenderer {
+    /// Font database and shaping context.
+    font_system: FontSystem,
+    /// Glyph raster cache.
+    swash_cache: SwashCache,
+}
+
+impl CaptionRenderer {
+    /// Create a caption renderer with reusable font and glyph caches.
+    fn new() -> Self {
+        Self {
+            font_system: FontSystem::new(),
+            swash_cache: SwashCache::new(),
+        }
+    }
+
+    /// Draw caption text into the given layout.
+    ///
+    /// The bounded text buffer clips overflow instead of resizing the media frame. That matches
+    /// the tape contract: captions are annotations on fixed-size output, not layout inputs.
+    fn draw(
+        &mut self,
+        target: &mut SolidFrame,
+        caption: &str,
+        layout: CaptionLayout,
+        text_settings: &TextSettings,
+        color: libghostty_vt::style::RgbColor,
+    ) {
+        let metrics = Metrics::new(layout.font_size, layout.line_height);
+        let mut buffer = Buffer::new(&mut self.font_system, metrics);
+        let mut buffer = buffer.borrow_with(&mut self.font_system);
+        let family = text_settings
+            .font_family
+            .as_deref()
+            .map(Family::Name)
+            .unwrap_or(Family::Monospace);
+        let attrs = Attrs::new().family(family).weight(Weight::BOLD);
+
+        buffer.set_size(
+            Some(layout.text_width as f32),
+            Some(layout.text_height as f32),
+        );
+        buffer.set_text(caption, &attrs, Shaping::Advanced, None);
+        buffer.draw(
+            &mut self.swash_cache,
+            Color::rgb(color.r, color.g, color.b),
+            |glyph_x, glyph_y, width, height, glyph_color| {
+                target.blend_rect(
+                    layout.text_x as i32 + glyph_x,
+                    layout.text_y as i32 + glyph_y,
+                    width,
+                    height,
+                    glyph_color,
+                );
+            },
+        );
     }
 }
 
@@ -475,10 +665,11 @@ impl SolidFrame {
         height: u32,
         color: libghostty_vt::style::RgbColor,
     ) {
-        let x1 = x.saturating_add(width).min(self.width);
-        let y1 = y.saturating_add(height).min(self.height);
-        for yy in y..y1 {
-            for xx in x..x1 {
+        let Some((x0, y0, x1, y1)) = self.clipped_rect(x as i32, y as i32, width, height) else {
+            return;
+        };
+        for yy in y0..y1 {
+            for xx in x0..x1 {
                 let offset = self.offset(xx, yy);
                 self.pixels[offset..offset + BYTES_PER_PIXEL].copy_from_slice(&[
                     color.r,
@@ -486,6 +677,48 @@ impl SolidFrame {
                     color.b,
                     OPAQUE_ALPHA,
                 ]);
+            }
+        }
+    }
+
+    /// Fill a clipped rectangle with alpha blending.
+    ///
+    /// Caption backgrounds are composited onto an opaque frame instead of introducing transparent
+    /// output pixels, because the media encoders currently treat rendered frames as opaque RGBA.
+    fn fill_rect_alpha(
+        &mut self,
+        x: u32,
+        y: u32,
+        width: u32,
+        height: u32,
+        color: libghostty_vt::style::RgbColor,
+        alpha: u8,
+    ) {
+        let Some((x0, y0, x1, y1)) = self.clipped_rect(x as i32, y as i32, width, height) else {
+            return;
+        };
+        for yy in y0..y1 {
+            for xx in x0..x1 {
+                self.blend_pixel(xx, yy, color.r, color.g, color.b, alpha);
+            }
+        }
+    }
+
+    /// Alpha-blend a glyph rectangle into the frame.
+    ///
+    /// `cosmic_text` reports glyph rectangles in signed coordinates relative to the text origin.
+    /// Clipping here lets shaped glyphs extend beyond the overlay bounds without panicking.
+    fn blend_rect(&mut self, x: i32, y: i32, width: u32, height: u32, color: Color) {
+        let [r, g, b, a] = color.as_rgba();
+        if a == 0 {
+            return;
+        }
+        let Some((x0, y0, x1, y1)) = self.clipped_rect(x, y, width, height) else {
+            return;
+        };
+        for yy in y0..y1 {
+            for xx in x0..x1 {
+                self.blend_pixel(xx, yy, r, g, b, a);
             }
         }
     }
@@ -595,6 +828,37 @@ impl SolidFrame {
     /// Return the byte offset for a pixel in the tightly packed RGBA buffer.
     fn offset(&self, x: u32, y: u32) -> usize {
         ((y as usize * self.width as usize) + x as usize) * BYTES_PER_PIXEL
+    }
+
+    /// Return a clipped rectangle as `(x0, y0, x1, y1)`.
+    fn clipped_rect(
+        &self,
+        x: i32,
+        y: i32,
+        width: u32,
+        height: u32,
+    ) -> Option<(u32, u32, u32, u32)> {
+        let x0 = x.max(0) as u32;
+        let y0 = y.max(0) as u32;
+        let x1 = x.saturating_add(width as i32).clamp(0, self.width as i32) as u32;
+        let y1 = y.saturating_add(height as i32).clamp(0, self.height as i32) as u32;
+        (x0 < x1 && y0 < y1).then_some((x0, y0, x1, y1))
+    }
+
+    /// Alpha-blend one pixel over the existing frame color.
+    fn blend_pixel(&mut self, x: u32, y: u32, r: u8, g: u8, b: u8, a: u8) {
+        let offset = self.offset(x, y);
+        let alpha = u16::from(a);
+        let inv_alpha = ALPHA_DENOMINATOR - alpha;
+        self.pixels[offset] = ((u16::from(r) * alpha + u16::from(self.pixels[offset]) * inv_alpha)
+            / ALPHA_DENOMINATOR) as u8;
+        self.pixels[offset + 1] = ((u16::from(g) * alpha
+            + u16::from(self.pixels[offset + 1]) * inv_alpha)
+            / ALPHA_DENOMINATOR) as u8;
+        self.pixels[offset + 2] = ((u16::from(b) * alpha
+            + u16::from(self.pixels[offset + 2]) * inv_alpha)
+            / ALPHA_DENOMINATOR) as u8;
+        self.pixels[offset + 3] = OPAQUE_ALPHA;
     }
 
     /// Convert the solid frame into the shared media frame type.

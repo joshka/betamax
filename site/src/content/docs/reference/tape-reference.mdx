@@ -21,7 +21,7 @@ errors fail before the PTY is spawned.
 - Startup commands must appear before runtime commands.
 
 Startup commands are `Output`, `Require`, `Set`, and `Env`. Runtime commands include typing, keys,
-waits, sleeps, screenshots, state checkpoints, `Hide`, `Show`, `Copy`, and `Paste`.
+waits, sleeps, captions, screenshots, state checkpoints, `Hide`, `Show`, `Copy`, and `Paste`.
 
 ## Outputs
 
@@ -159,6 +159,23 @@ or teardown that should not appear in the final GIF/video.
 
 Resumes frame capture and immediately captures the current terminal. This reveals the prepared
 state without showing the hidden commands that produced it.
+
+### `Caption <text>`
+
+Sets a caption rendered onto later visual media frames. The text is one token, so quote captions
+that contain spaces. Use `Caption ""` to clear the active caption.
+
+Captions are presentation metadata only. They do not write to the PTY, alter terminal state, affect
+wait matching, or change output dimensions. Active captions appear on GIF, PNG, MP4, WebM, frame
+directory, and `Screenshot` outputs. `State` JSON does not include captions.
+
+`Caption` does not capture a frame or add time to animated output by itself. The new caption appears
+on the next visual frame Betamax renders, such as a frame captured during a later `Sleep`, `Wait`,
+typing, key press, `Show`, final-frame output, or `Screenshot`. Add `Sleep` after a caption-only
+change when an animation should dwell on the new caption without changing terminal content.
+
+Betamax renders captions as a bottom overlay. If the overlay covers important terminal content,
+increase the tape height, margin, or padding, or clear the caption before the affected frame.
 
 ### `Screenshot <path>.png`
 

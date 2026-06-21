@@ -134,6 +134,11 @@ pub enum Command {
     Copy(String),
     /// Write the tape-local clipboard into the PTY.
     Paste,
+    /// Set presentation text rendered on later media frames.
+    ///
+    /// Captions are not PTY input and do not participate in waits. An empty string clears the
+    /// active caption.
+    Caption(String),
     /// Parsed placeholder for VHS `Source`; execution is intentionally not implemented yet.
     Source(PathBuf),
     /// Capture an immediate PNG screenshot without changing the primary outputs.

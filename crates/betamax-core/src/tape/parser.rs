@@ -85,6 +85,11 @@ fn parse_tokens(line_number: usize, tokens: &[String], commands: &mut Vec<Comman
                 cursor += 1;
             }
             "Paste" => commands.push(Command::Paste),
+            "Caption" => {
+                let text = required_token(line_number, tokens, cursor, "caption text")?;
+                commands.push(Command::Caption(text.to_string()));
+                cursor += 1;
+            }
             "Type" => {
                 let text = required_token(line_number, tokens, cursor, "text to type")?;
                 commands.push(Command::Type {
@@ -386,6 +391,7 @@ fn is_command_token(token: &str) -> bool {
             | "Env"
             | "Copy"
             | "Paste"
+            | "Caption"
             | "Source"
             | "Screenshot"
             | "State"
@@ -511,12 +517,14 @@ mod tests {
 
     #[test]
     fn parses_copy_paste_and_modified_keys() {
-        let tape = Tape::parse(r#"Copy "hello" Paste Ctrl+Alt+C F5 Shift+Tab"#).unwrap();
+        let tape =
+            Tape::parse(r#"Copy "hello" Paste Caption "Ready" Ctrl+Alt+C F5 Shift+Tab"#).unwrap();
         assert_eq!(
             tape.commands,
             vec![
                 Command::Copy("hello".to_string()),
                 Command::Paste,
+                Command::Caption("Ready".to_string()),
                 Command::Key {
                     key: Key::Press {
                         key: KeyCode::Char('C'),
@@ -557,6 +565,22 @@ mod tests {
     fn rejects_settings_after_runtime_commands() {
         let err = Tape::parse("Type hi\nSet Width 800").unwrap_err();
         assert!(err.to_string().contains("before runtime tape commands"));
+    }
+
+    #[test]
+    fn keeps_caption_as_command_after_wait_without_pattern() {
+        let tape = Tape::parse(r#"Wait+Screen Caption "Loaded""#).unwrap();
+        assert_eq!(
+            tape.commands,
+            vec![
+                Command::Wait {
+                    target: WaitTarget::Screen,
+                    pattern: None,
+                    timeout: None,
+                },
+                Command::Caption("Loaded".to_string()),
+            ]
+        );
     }
 
     #[test]
