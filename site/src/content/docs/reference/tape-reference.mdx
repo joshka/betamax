@@ -62,6 +62,7 @@ an error rather than a quiet fallback.
 | `PlaybackSpeed` | number                | `1.0`            | Output playback multiplier; does not speed up command execution       |
 | `LoopOffset`    | number or percentage  | `0.0`            | Rotates animated output frames to move the loop boundary              |
 | `CursorBlink`   | bool                  | `true`           | Simulates cursor blink in captured frames                             |
+| KeyboardOverlay | enum                  | `Off`            | Draws recent input over generated media                               |
 | `WaitTimeout`   | duration or number    | `15s`            | Default timeout for wait commands; bare numbers are seconds           |
 | `WaitPattern`   | regex string          | `>$`             | Regex used by bare `Wait`                                             |
 | `Margin`        | number                | `0`              | Outer decoration margin in pixels                                     |
@@ -79,6 +80,18 @@ Treat larger `FontSize`, larger `Margin`, and decorative frame settings as prese
 the tape is proving modal placement, centered content, wrapping, or split-pane layout, prefer the
 default `FontSize`, default `Margin`, and a wider `Width` or `Height` so the proof matches the
 application layout rather than the demo framing.
+
+`Set KeyboardOverlay Input` draws a compact time-aware input HUD over generated PNG, GIF, video,
+screenshot, and frame-sequence media. Labels appear when input is queued and linger briefly after
+the input is typed, so review GIFs show the action near the terminal change it caused. The overlay
+is presentation-only: it does not change PTY input bytes, terminal dimensions, waits, or state JSON.
+
+Keyboard overlay modes are:
+
+- `Off`: no overlay.
+- `Keys`: explicit key commands only, such as `Ctrl+P`, `Down`, `Enter`, and `Escape`.
+- `Input`: key commands plus short typed input that reads like user intent.
+- `All`: every visible input event, including long `Type` commands summarized by character count.
 
 ## Command Reference
 

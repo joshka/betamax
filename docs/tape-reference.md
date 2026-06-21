@@ -43,6 +43,7 @@ Common settings:
 | `PlaybackSpeed` | number                                     | `1.0`            | Changes output playback, not PTY timing.    |
 | `LoopOffset`    | number                                     | `0.0`            | `0..=1` is a fraction; otherwise seconds.   |
 | `CursorBlink`   | bool                                       | `true`           | Simulates a half-second blink cadence.      |
+| KeyboardOverlay | `Off`, `Keys`, `Input`, or `All`           | `Off`            | Draws recent input over generated media.    |
 | `WaitTimeout`   | duration or number                         | `15s`            | Number values are seconds.                  |
 | `WaitPattern`   | regex string                               | `>$`             | Used by `Wait` without explicit pattern.    |
 | `Margin`        | number                                     | `0`              | Outer decoration margin in pixels.          |
@@ -63,6 +64,18 @@ Treat larger `FontSize`, larger `Margin`, and decorative frame settings as prese
 the tape is proving modal placement, centered content, wrapping, or split-pane layout, prefer the
 default `FontSize`, default `Margin`, and a wider `Width` or `Height` so the proof matches the
 application layout rather than the demo framing.
+
+`Set KeyboardOverlay Input` draws a compact time-aware input HUD over generated PNG, GIF, video,
+screenshot, and frame-sequence media. Labels appear when input is queued and linger briefly after
+the input is typed, so review GIFs show the action near the terminal change it caused. The overlay
+is presentation-only: it does not change PTY input bytes, terminal dimensions, waits, or state JSON.
+
+Keyboard overlay modes are:
+
+- `Off`: no overlay.
+- `Keys`: explicit key commands only, such as `Ctrl+P`, `Down`, `Enter`, and `Escape`.
+- `Input`: key commands plus short typed input that reads like user intent.
+- `All`: every visible input event, including long `Type` commands summarized by character count.
 
 For built-in shell names such as `bash`, `zsh`, and `fish`, Betamax starts a clean recording shell
 with startup files and history disabled where possible. Those shells use the VHS-style colored `>`

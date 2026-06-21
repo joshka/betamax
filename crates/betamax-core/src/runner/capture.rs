@@ -7,6 +7,9 @@ use crate::media::Frame;
 use crate::runner::TerminalSession;
 use crate::Result;
 
+/// How long a keyboard overlay label remains visible after being queued.
+const KEYBOARD_OVERLAY_LINGER: Duration = Duration::from_millis(1500);
+
 /// Mutable frame-collection state for one captured run.
 ///
 /// Visibility is a recording concern, not a terminal-state concern. Hidden commands still mutate
@@ -28,6 +31,8 @@ pub(super) struct CaptureState {
     /// This is presentation metadata only. It does not affect PTY execution, terminal state, or
     /// semantic wait matching.
     pub(super) caption: Option<String>,
+    /// Keyboard overlay labels that are currently visible.
+    keyboard_overlay_events: Vec<KeyboardOverlayEvent>,
 }
 
 impl Default for CaptureState {
@@ -36,6 +41,7 @@ impl Default for CaptureState {
             visible: true,
             frames: Vec::new(),
             caption: None,
+            keyboard_overlay_events: Vec::new(),
         }
     }
 }
@@ -43,10 +49,29 @@ impl Default for CaptureState {
 /// Raw captured terminal frame plus presentation metadata for final media decoration.
 #[derive(Debug, Clone)]
 pub(super) struct CapturedFrame {
-    /// Raw terminal frame before final margin/window/caption decoration.
+    /// Raw terminal frame before final margin/window/caption/overlay decoration.
     pub(super) frame: Frame,
     /// Caption active when this frame was captured.
     pub(super) caption: Option<String>,
+    /// Keyboard overlay labels visible when this frame was captured.
+    pub(super) keyboard_overlay_labels: Vec<String>,
+}
+
+/// One keyboard overlay event that is currently visible.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct KeyboardOverlayEvent {
+    /// Label drawn in the overlay HUD.
+    label: String,
+    /// Remaining visible time for this label.
+    remaining: Duration,
+}
+
+/// Queue a keyboard overlay label for the next captured frames.
+pub(super) fn queue_keyboard_overlay_label(capture: &mut CaptureState, label: String) {
+    capture.keyboard_overlay_events.push(KeyboardOverlayEvent {
+        label,
+        remaining: KEYBOARD_OVERLAY_LINGER,
+    });
 }
 
 /// Capture one raw terminal frame with runner-controlled cursor blinking.
@@ -63,25 +88,39 @@ pub(super) fn capture_frame(
     terminal.capture_frame_with_cursor(cursor_visible)
 }
 
-/// Append one visible frame or extend the previous frame when pixels and caption have not changed.
+/// Append one visible frame or extend the previous frame when pixels and metadata have not changed.
 ///
 /// This preserves wall-clock dwell time for static terminal states. Without delay coalescing, a
 /// `Sleep 2s` after the final output only contributes as many nominal frame delays as the renderer
 /// can sample during those two seconds, which can make GIFs play much faster than the tape timing.
 ///
-/// Captions are included in the coalescing key even though they are not terminal pixels yet. A
-/// repeated terminal frame with a new caption is a visible media change after final decoration.
+/// Presentation metadata is included in the coalescing key even though it is not terminal pixels
+/// yet. A repeated terminal frame with a new caption or keyboard overlay is a visible media change
+/// after final decoration. Active keyboard overlays intentionally avoid coalescing so their linger
+/// timers can age across recorded frame time.
 pub(super) fn append_visible_frame(capture: &mut CaptureState, frame: Frame, delay: Duration) {
     let caption = capture.caption.clone();
+    let keyboard_overlay_labels = active_keyboard_overlay_labels(capture);
     if let Some((last_frame, last_delay)) = capture.frames.last_mut() {
-        if last_frame.caption == caption && frames_equal(&last_frame.frame, &frame) {
+        if frames_equal(&last_frame.frame, &frame)
+            && last_frame.caption == caption
+            && last_frame.keyboard_overlay_labels == keyboard_overlay_labels
+            && keyboard_overlay_labels.is_empty()
+        {
             *last_delay += delay;
+            age_keyboard_overlay_labels(capture, delay);
             return;
         }
     }
-    capture
-        .frames
-        .push((CapturedFrame { frame, caption }, delay));
+    capture.frames.push((
+        CapturedFrame {
+            frame,
+            caption,
+            keyboard_overlay_labels,
+        },
+        delay,
+    ));
+    age_keyboard_overlay_labels(capture, delay);
 }
 
 /// Append the final still frame for animated outputs when it differs from the last visible frame.
@@ -97,10 +136,30 @@ pub(super) fn append_final_gif_frame(capture: &mut CaptureState, frame: Frame, d
             CapturedFrame {
                 frame,
                 caption: capture.caption.clone(),
+                keyboard_overlay_labels: active_keyboard_overlay_labels(capture),
             },
             delay,
         ));
     }
+}
+
+/// Return active keyboard overlay labels in queue order.
+pub(super) fn active_keyboard_overlay_labels(capture: &CaptureState) -> Vec<String> {
+    capture
+        .keyboard_overlay_events
+        .iter()
+        .map(|event| event.label.clone())
+        .collect()
+}
+
+/// Age active keyboard overlay labels by recorded frame time.
+fn age_keyboard_overlay_labels(capture: &mut CaptureState, delay: Duration) {
+    for event in &mut capture.keyboard_overlay_events {
+        event.remaining = event.remaining.saturating_sub(delay);
+    }
+    capture
+        .keyboard_overlay_events
+        .retain(|event| !event.remaining.is_zero());
 }
 
 /// Compare frames byte-for-byte.

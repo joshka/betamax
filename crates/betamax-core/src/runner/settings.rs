@@ -20,7 +20,7 @@ use regex::Regex;
 
 use crate::ghostty::{TerminalTheme, TextSettings};
 use crate::media::{Frame, PixelFormat};
-use crate::tape::{Command, Tape, Value, WaitPattern};
+use crate::tape::{Command, Key, KeyCode, Tape, Value, WaitPattern};
 use crate::wait::regex_source;
 use crate::Result;
 
@@ -75,6 +75,32 @@ const CAPTION_VERTICAL_PADDING: f32 = 0.45;
 const CAPTION_BACKGROUND_ALPHA: u8 = 0xdd;
 /// Denominator for 8-bit alpha blending.
 const ALPHA_DENOMINATOR: u16 = 255;
+/// Maximum number of recent overlay events drawn over the output frame.
+const KEYBOARD_OVERLAY_MAX_CHIPS: usize = 5;
+/// Maximum number of overlay rows drawn over the output frame.
+const KEYBOARD_OVERLAY_MAX_ROWS: usize = 2;
+/// Font size used by the compact keyboard overlay.
+const KEYBOARD_OVERLAY_FONT_SIZE: f32 = 18.0;
+/// Line height used by the compact keyboard overlay.
+const KEYBOARD_OVERLAY_LINE_HEIGHT: f32 = 25.0;
+/// Approximate label glyph width for row wrapping.
+const KEYBOARD_OVERLAY_CHAR_WIDTH: u32 = 12;
+/// Horizontal inset around the overlay HUD.
+const KEYBOARD_OVERLAY_INSET_X: u32 = 14;
+/// Vertical inset around the overlay HUD.
+const KEYBOARD_OVERLAY_INSET_Y: u32 = 12;
+/// Horizontal padding inside one key chip.
+const KEYBOARD_OVERLAY_CHIP_PAD_X: u32 = 10;
+/// Vertical padding inside one key chip.
+const KEYBOARD_OVERLAY_CHIP_PAD_Y: u32 = 4;
+/// Gap between key chips.
+const KEYBOARD_OVERLAY_CHIP_GAP: u32 = 8;
+/// Maximum number of displayed characters from one `Type` command.
+const KEYBOARD_OVERLAY_TYPE_MAX_CHARS: usize = 26;
+/// Alpha used for the overlay HUD.
+const KEYBOARD_OVERLAY_PANEL_ALPHA: u8 = 210;
+/// Alpha used for individual key chips.
+const KEYBOARD_OVERLAY_CHIP_ALPHA: u8 = 235;
 
 /// Shell command and all derived execution, rendering, timing, and styling settings.
 ///
@@ -110,6 +136,8 @@ pub(super) struct Settings {
     pub(super) theme: TerminalTheme,
     /// Outer frame decoration settings.
     pub(super) style: StyleSettings,
+    /// Optional input-sequence overlay for review media.
+    pub(super) keyboard_overlay: KeyboardOverlaySettings,
     /// Whether captured frames should blink the cursor according to the output framerate.
     pub(super) cursor_blink: bool,
     /// Default wait pattern used when a wait command does not provide one.
@@ -139,6 +167,37 @@ pub(super) struct StyleSettings {
     pub(super) window_bar_color: String,
     /// Radius for masking the captured terminal plus window bar.
     pub(super) border_radius: u32,
+}
+
+/// Presentation-only input labels drawn over generated media.
+///
+/// The labels are derived from tape commands and are never fed back into PTY execution. This keeps
+/// review media decoration separate from validation semantics and terminal sizing.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(super) struct KeyboardOverlaySettings {
+    /// Which input commands are eligible for the overlay.
+    pub(super) mode: KeyboardOverlayMode,
+}
+
+impl KeyboardOverlaySettings {
+    /// Return whether a frame should draw the overlay.
+    fn visible(&self, labels: &[String]) -> bool {
+        self.mode != KeyboardOverlayMode::Off && !labels.is_empty()
+    }
+}
+
+/// Input event filtering used by the keyboard overlay.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(super) enum KeyboardOverlayMode {
+    /// Do not draw any keyboard overlay.
+    #[default]
+    Off,
+    /// Draw only explicit key commands such as `Ctrl+P`, arrows, `Enter`, and `Escape`.
+    Keys,
+    /// Draw key commands and short typed input that reads like user intent.
+    Input,
+    /// Draw every visible input event, including long `Type` commands summarized for space.
+    All,
 }
 
 impl StyleSettings {
@@ -184,6 +243,7 @@ impl Settings {
             typing_delay: DEFAULT_TYPING_DELAY,
             text: TextSettings::default(),
             style: StyleSettings::new(&theme),
+            keyboard_overlay: KeyboardOverlaySettings::default(),
             theme,
             cursor_blink: true,
             wait_pattern: WaitPattern::Regex(DEFAULT_WAIT_PATTERN.to_string()),
@@ -249,6 +309,9 @@ impl Settings {
                 self.style.border_radius = *border_radius as u32;
             }
             ("CursorBlink", Value::Bool(cursor_blink)) => self.cursor_blink = *cursor_blink,
+            ("KeyboardOverlay", Value::String(mode)) => {
+                self.keyboard_overlay.mode = parse_keyboard_overlay_mode(mode)?;
+            }
             ("WaitTimeout", Value::Duration(wait_timeout)) => self.wait_timeout = *wait_timeout,
             ("WaitTimeout", Value::Number(wait_timeout)) => {
                 self.wait_timeout = Duration::from_secs_f64(*wait_timeout);
@@ -383,17 +446,20 @@ impl Settings {
         frames.rotate_left(offset % len);
     }
 
-    /// Decorate a single raw terminal frame and optionally render a caption overlay.
-    ///
-    /// Captions are presentation metadata. They are applied after the terminal has rendered, using
-    /// the final output dimensions, and therefore do not affect PTY size, terminal state, or waits.
-    pub(super) fn decorate_frame_with_caption(
+    /// Decorate a single raw terminal frame with caption text and keyboard labels.
+    pub(super) fn decorate_frame_with_overlays(
         &self,
         frame: &Frame,
         caption: Option<&str>,
+        keyboard_overlay_labels: &[String],
     ) -> Result<Frame> {
         let mut caption_renderer = CaptionRenderer::new();
-        self.decorate_frame_with_caption_renderer(frame, caption, &mut caption_renderer)
+        self.decorate_frame_with_overlay_renderer(
+            frame,
+            caption,
+            keyboard_overlay_labels,
+            &mut caption_renderer,
+        )
     }
 
     /// Decorate captured frames with one reusable caption renderer.
@@ -401,17 +467,18 @@ impl Settings {
     /// Animated outputs may render hundreds of frames with the same caption text and font. Keeping
     /// one renderer here preserves the shaping and glyph caches for the batch without making cache
     /// lifetime part of `Settings`.
-    pub(super) fn decorate_captioned_frames(
+    pub(super) fn decorate_captured_frames(
         &self,
-        frames: impl IntoIterator<Item = (Frame, Option<String>, Duration)>,
+        frames: impl IntoIterator<Item = (super::capture::CapturedFrame, Duration)>,
     ) -> Result<Vec<(Frame, Duration)>> {
         let mut caption_renderer = CaptionRenderer::new();
         let mut decorated = Vec::new();
-        for (frame, caption, delay) in frames {
+        for (captured, delay) in frames {
             decorated.push((
-                self.decorate_frame_with_caption_renderer(
-                    &frame,
-                    caption.as_deref(),
+                self.decorate_frame_with_overlay_renderer(
+                    &captured.frame,
+                    captured.caption.as_deref(),
+                    &captured.keyboard_overlay_labels,
                     &mut caption_renderer,
                 )?,
                 delay,
@@ -425,10 +492,11 @@ impl Settings {
     /// Decoration happens in final output coordinates: margin, window bar, rounded mask, then
     /// caption overlay. Keeping captions last makes them independent from terminal canvas sizing
     /// and guarantees the same overlay path for final PNGs, screenshots, GIFs, and videos.
-    fn decorate_frame_with_caption_renderer(
+    fn decorate_frame_with_overlay_renderer(
         &self,
         frame: &Frame,
         caption: Option<&str>,
+        keyboard_overlay_labels: &[String],
         caption_renderer: &mut CaptionRenderer,
     ) -> Result<Frame> {
         let margin = self.effective_margin();
@@ -458,6 +526,9 @@ impl Settings {
         }
         if let Some(caption) = caption.filter(|caption| !caption.trim().is_empty()) {
             self.draw_caption(&mut output, caption, caption_renderer);
+        }
+        if self.keyboard_overlay.visible(keyboard_overlay_labels) {
+            output.draw_keyboard_overlay(keyboard_overlay_labels, &self.text);
         }
         Ok(output.into_frame())
     }
@@ -524,6 +595,11 @@ impl Settings {
             font_size,
             line_height,
         })
+    }
+
+    /// Return the keyboard overlay label for a visible input command, if enabled.
+    pub(super) fn keyboard_overlay_label(&self, command: &Command) -> Option<String> {
+        keyboard_overlay_label(command, self.keyboard_overlay.mode)
     }
 }
 
@@ -723,6 +799,68 @@ impl SolidFrame {
         }
     }
 
+    /// Draw the configured input sequence as compact key chips over the bottom of the frame.
+    fn draw_keyboard_overlay(&mut self, labels: &[String], text_settings: &TextSettings) {
+        let labels = recent_keyboard_overlay_labels(labels);
+        let rows = keyboard_overlay_rows(&labels, self.width);
+        if rows.is_empty() {
+            return;
+        }
+
+        let row_height = KEYBOARD_OVERLAY_LINE_HEIGHT.ceil() as u32;
+        let row_width = rows
+            .iter()
+            .map(|row| keyboard_overlay_row_width(row))
+            .max()
+            .unwrap_or(0);
+        let panel_width = row_width
+            .saturating_add(KEYBOARD_OVERLAY_INSET_X.saturating_mul(2))
+            .min(self.width);
+        let panel_height = KEYBOARD_OVERLAY_INSET_Y
+            .saturating_mul(2)
+            .saturating_add(row_height.saturating_mul(rows.len() as u32))
+            .min(self.height);
+        let panel_x = self.width.saturating_sub(panel_width) / 2;
+        let panel_y = self.height.saturating_sub(panel_height);
+        self.fill_rect_alpha(
+            panel_x,
+            panel_y,
+            panel_width,
+            panel_height,
+            rgb(0x08, 0x0a, 0x0f),
+            KEYBOARD_OVERLAY_PANEL_ALPHA,
+        );
+
+        let mut text = OverlayTextRenderer::new(text_settings.font_family.clone());
+        let mut y = panel_y.saturating_add(KEYBOARD_OVERLAY_INSET_Y);
+        for row in rows {
+            let row_width = keyboard_overlay_row_width(&row);
+            let mut x = panel_x.saturating_add(panel_width.saturating_sub(row_width) / 2);
+            for chip in row {
+                self.fill_rect_alpha(
+                    x,
+                    y,
+                    chip.width,
+                    row_height,
+                    rgb(0xf3, 0xf4, 0xf6),
+                    KEYBOARD_OVERLAY_CHIP_ALPHA,
+                );
+                text.draw(
+                    self,
+                    &chip.label,
+                    x.saturating_add(KEYBOARD_OVERLAY_CHIP_PAD_X),
+                    y.saturating_add(KEYBOARD_OVERLAY_CHIP_PAD_Y),
+                    chip.width
+                        .saturating_sub(KEYBOARD_OVERLAY_CHIP_PAD_X.saturating_mul(2)),
+                );
+                x = x
+                    .saturating_add(chip.width)
+                    .saturating_add(KEYBOARD_OVERLAY_CHIP_GAP);
+            }
+            y = y.saturating_add(row_height);
+        }
+    }
+
     /// Draw macOS-style window buttons.
     ///
     /// The current style language treats any non-empty mode as enabled. Modes ending in `Right`
@@ -873,6 +1011,69 @@ impl SolidFrame {
     }
 }
 
+/// One wrapped key chip ready for drawing.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct KeyboardOverlayChip {
+    /// Display label.
+    label: String,
+    /// Approximate chip width in pixels.
+    width: u32,
+}
+
+/// Text renderer used for keyboard overlay labels.
+struct OverlayTextRenderer {
+    /// Preferred font family inherited from terminal text settings.
+    font_family: Option<String>,
+    /// Font database and shaping context.
+    font_system: FontSystem,
+    /// Glyph raster cache.
+    swash_cache: SwashCache,
+}
+
+impl OverlayTextRenderer {
+    /// Create a renderer for overlay text.
+    fn new(font_family: Option<String>) -> Self {
+        Self {
+            font_family,
+            font_system: FontSystem::new(),
+            swash_cache: SwashCache::new(),
+        }
+    }
+
+    /// Draw one overlay label, clipped to the provided width.
+    fn draw(&mut self, target: &mut SolidFrame, text: &str, x: u32, y: u32, width: u32) {
+        if width == 0 {
+            return;
+        }
+
+        let metrics = Metrics::new(KEYBOARD_OVERLAY_FONT_SIZE, KEYBOARD_OVERLAY_LINE_HEIGHT);
+        let mut buffer = Buffer::new(&mut self.font_system, metrics);
+        let mut buffer = buffer.borrow_with(&mut self.font_system);
+        let family = self
+            .font_family
+            .as_deref()
+            .map(Family::Name)
+            .unwrap_or(Family::Monospace);
+        let attrs = Attrs::new().family(family);
+
+        buffer.set_size(Some(width as f32), Some(KEYBOARD_OVERLAY_LINE_HEIGHT));
+        buffer.set_text(text, &attrs, Shaping::Advanced, None);
+        buffer.draw(
+            &mut self.swash_cache,
+            Color::rgb(0x10, 0x18, 0x27),
+            |glyph_x, glyph_y, width, height, glyph_color| {
+                target.blend_rect(
+                    x as i32 + glyph_x,
+                    y as i32 + glyph_y,
+                    width,
+                    height,
+                    glyph_color,
+                );
+            },
+        );
+    }
+}
+
 /// Parse a `#RRGGBB` color.
 ///
 /// Decoration colors are parsed leniently. Invalid values return `None` so callers can fall back
@@ -903,6 +1104,200 @@ fn fit_cells(pixels: u32, cell_pixels: u32) -> u16 {
     u16::try_from(cells).unwrap_or(u16::MAX)
 }
 
+/// Parse the presentation mode accepted by `Set KeyboardOverlay`.
+fn parse_keyboard_overlay_mode(mode: &str) -> Result<KeyboardOverlayMode> {
+    match mode.to_ascii_lowercase().as_str() {
+        "off" => Ok(KeyboardOverlayMode::Off),
+        "keys" => Ok(KeyboardOverlayMode::Keys),
+        "input" => Ok(KeyboardOverlayMode::Input),
+        "all" => Ok(KeyboardOverlayMode::All),
+        _ => Err(
+            miette!("Set KeyboardOverlay expects Off, Keys, Input, or All, got `{mode}`").into(),
+        ),
+    }
+}
+
+/// Return the overlay label for one input-producing command.
+fn keyboard_overlay_label(command: &Command, mode: KeyboardOverlayMode) -> Option<String> {
+    match command {
+        Command::Type { text, .. } if mode == KeyboardOverlayMode::All && !text.is_empty() => {
+            Some(describe_overlay_type(text))
+        }
+        Command::Type { text, .. }
+            if mode == KeyboardOverlayMode::Input && is_short_input_text(text) =>
+        {
+            Some(format!("Type \"{}\"", describe_overlay_text(text)))
+        }
+        Command::Key { key, count, .. } if mode != KeyboardOverlayMode::Off => {
+            let key = describe_overlay_key(key);
+            if *count == 1 {
+                Some(key)
+            } else {
+                Some(format!("{key} x{count}"))
+            }
+        }
+        Command::Paste if matches!(mode, KeyboardOverlayMode::Input | KeyboardOverlayMode::All) => {
+            Some("Paste".to_string())
+        }
+        _ => None,
+    }
+}
+
+/// Return the bounded set of recent labels shown in the HUD.
+fn recent_keyboard_overlay_labels(labels: &[String]) -> Vec<String> {
+    let start = labels.len().saturating_sub(KEYBOARD_OVERLAY_MAX_CHIPS);
+    labels[start..].to_vec()
+}
+
+/// Wrap overlay labels into bounded rows of key chips.
+fn keyboard_overlay_rows(labels: &[String], width: u32) -> Vec<Vec<KeyboardOverlayChip>> {
+    let usable_width = width
+        .saturating_sub(KEYBOARD_OVERLAY_INSET_X.saturating_mul(2))
+        .max(1);
+    let mut rows: Vec<Vec<KeyboardOverlayChip>> = Vec::new();
+    let mut current_row = Vec::new();
+    let mut current_width = 0u32;
+
+    for label in labels {
+        let chip = KeyboardOverlayChip {
+            label: label.clone(),
+            width: keyboard_overlay_chip_width(label, usable_width),
+        };
+        let gap = if current_row.is_empty() {
+            0
+        } else {
+            KEYBOARD_OVERLAY_CHIP_GAP
+        };
+        if !current_row.is_empty()
+            && current_width.saturating_add(gap).saturating_add(chip.width) > usable_width
+        {
+            rows.push(current_row);
+            current_row = Vec::new();
+            current_width = 0;
+        }
+        current_width = current_width
+            .saturating_add(if current_row.is_empty() {
+                0
+            } else {
+                KEYBOARD_OVERLAY_CHIP_GAP
+            })
+            .saturating_add(chip.width);
+        current_row.push(chip);
+    }
+
+    if !current_row.is_empty() {
+        rows.push(current_row);
+    }
+    if rows.len() > KEYBOARD_OVERLAY_MAX_ROWS {
+        let keep_from = rows.len() - KEYBOARD_OVERLAY_MAX_ROWS;
+        rows.drain(0..keep_from);
+        if let Some(first_row) = rows.first_mut() {
+            first_row.insert(
+                0,
+                KeyboardOverlayChip {
+                    label: "...".to_string(),
+                    width: keyboard_overlay_chip_width("...", usable_width),
+                },
+            );
+        }
+    }
+    rows
+}
+
+/// Approximate the width of one overlay row.
+fn keyboard_overlay_row_width(row: &[KeyboardOverlayChip]) -> u32 {
+    let chips_width = row
+        .iter()
+        .map(|chip| chip.width)
+        .fold(0u32, u32::saturating_add);
+    let gaps = row.len().saturating_sub(1).try_into().unwrap_or(u32::MAX);
+    chips_width.saturating_add(KEYBOARD_OVERLAY_CHIP_GAP.saturating_mul(gaps))
+}
+
+/// Estimate one key chip width while keeping very long labels inside the overlay.
+fn keyboard_overlay_chip_width(label: &str, usable_width: u32) -> u32 {
+    let text_width = label.chars().count() as u32 * KEYBOARD_OVERLAY_CHAR_WIDTH;
+    text_width
+        .saturating_add(KEYBOARD_OVERLAY_CHIP_PAD_X.saturating_mul(2))
+        .min(usable_width)
+        .max(KEYBOARD_OVERLAY_CHIP_PAD_X.saturating_mul(2))
+}
+
+/// Describe typed text compactly for the overlay.
+fn describe_overlay_text(text: &str) -> String {
+    let mut output = String::new();
+    let mut chars = text.chars();
+    for ch in chars.by_ref().take(KEYBOARD_OVERLAY_TYPE_MAX_CHARS) {
+        match ch {
+            '\n' => output.push_str("\\n"),
+            '\r' => output.push_str("\\r"),
+            '\t' => output.push_str("\\t"),
+            '"' => output.push_str("\\\""),
+            '\\' => output.push_str("\\\\"),
+            ch => output.push(ch),
+        }
+    }
+    if chars.next().is_some() {
+        output.push_str("...");
+    }
+    output
+}
+
+/// Describe one `Type` command for the overlay.
+fn describe_overlay_type(text: &str) -> String {
+    if is_short_input_text(text) {
+        return format!("Type \"{}\"", describe_overlay_text(text));
+    }
+    format!("Type {} chars", text.chars().count())
+}
+
+/// Return whether typed text is short enough to show as user intent in `Input` mode.
+fn is_short_input_text(text: &str) -> bool {
+    !text.is_empty()
+        && text.chars().count() <= KEYBOARD_OVERLAY_TYPE_MAX_CHARS
+        && !text.chars().any(|ch| matches!(ch, '\n' | '\r' | ';'))
+}
+
+/// Describe a key press compactly for the overlay.
+fn describe_overlay_key(key: &Key) -> String {
+    let Key::Press { key, modifiers } = key;
+    let mut parts = Vec::new();
+    if modifiers.ctrl {
+        parts.push("Ctrl".to_string());
+    }
+    if modifiers.alt {
+        parts.push("Alt".to_string());
+    }
+    if modifiers.shift {
+        parts.push("Shift".to_string());
+    }
+    parts.push(describe_overlay_key_code(*key));
+    parts.join("+")
+}
+
+/// Describe the logical key code used by a key press.
+fn describe_overlay_key_code(key: KeyCode) -> String {
+    match key {
+        KeyCode::Backspace => "Backspace".to_string(),
+        KeyCode::Delete => "Delete".to_string(),
+        KeyCode::Down => "Down".to_string(),
+        KeyCode::End => "End".to_string(),
+        KeyCode::Enter => "Enter".to_string(),
+        KeyCode::Escape => "Escape".to_string(),
+        KeyCode::Function(number) => format!("F{number}"),
+        KeyCode::Home => "Home".to_string(),
+        KeyCode::Insert => "Insert".to_string(),
+        KeyCode::Left => "Left".to_string(),
+        KeyCode::PageDown => "PageDown".to_string(),
+        KeyCode::PageUp => "PageUp".to_string(),
+        KeyCode::Right => "Right".to_string(),
+        KeyCode::Space => "Space".to_string(),
+        KeyCode::Tab => "Tab".to_string(),
+        KeyCode::Up => "Up".to_string(),
+        KeyCode::Char(ch) => ch.to_string(),
+    }
+}
+
 /// Return whether a key is a recognized `Set` setting.
 ///
 /// This is separate from `apply_set`'s main match so diagnostics can distinguish unknown setting
@@ -928,6 +1323,7 @@ fn known_setting(key: &str) -> bool {
             | "WindowBarSize"
             | "BorderRadius"
             | "CursorBlink"
+            | "KeyboardOverlay"
             | "WaitTimeout"
             | "WaitPattern"
             | "Theme"
@@ -943,6 +1339,7 @@ fn setting_expected_type(key: &str) -> &'static str {
         | "BorderRadius" => "number",
         "TypingSpeed" => "duration",
         "CursorBlink" => "bool",
+        "KeyboardOverlay" => "Off, Keys, Input, or All",
         "WaitTimeout" => "duration or number",
         _ => "known value",
     }

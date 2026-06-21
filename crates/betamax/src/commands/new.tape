@@ -34,6 +34,8 @@
 #   Set WindowBarSize <number>      Set window bar size, in pixels. Default is 30.
 #   Set TypingSpeed <time>          Set the typing speed of the terminal. Default is 50ms.
 #   Set CursorBlink <bool>          Toggle cursor blinking in captured frames
+#   Set KeyboardOverlay <mode>      Draw recent input labels over generated media
+#                                   Modes: Off, Keys, Input, All
 #   Set WaitTimeout <time>          Set the default timeout for Wait commands
 #   Set WaitPattern <regex>         Set the default regex for bare Wait commands
 #
