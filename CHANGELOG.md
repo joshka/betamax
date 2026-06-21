@@ -2,6 +2,18 @@
 
 <!-- markdownlint-disable no-duplicate-heading -->
 
+## [0.1.13](https://github.com/joshka/betamax/compare/betamax-v0.1.12...betamax-v0.1.13) - 2026-06-21
+
+### Other
+
+- Align frame sizing with VHS ([#82](https://github.com/joshka/betamax/pull/82))
+
+## [0.1.9](https://github.com/joshka/betamax/compare/betamax-core-v0.1.8...betamax-core-v0.1.9) - 2026-06-21
+
+### Other
+
+- Align frame sizing with VHS ([#82](https://github.com/joshka/betamax/pull/82))
+
 ## [0.1.12](https://github.com/joshka/betamax/compare/betamax-v0.1.11...betamax-v0.1.12) - 2026-06-19
 
 ### Other
