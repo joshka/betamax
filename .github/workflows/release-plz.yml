@@ -153,6 +153,28 @@ jobs:
           ARCHIVE: ${{ steps.package.outputs.archive }}
         run: gh release upload "$RELEASE_TAG" "$ARCHIVE" --clobber
 
+  bump-homebrew-tap:
+    name: Bump Homebrew tap
+    runs-on: ubuntu-latest
+    needs:
+      - prepare-release-assets
+      - release-assets
+    if: ${{ needs.prepare-release-assets.outputs.betamax_released == 'true' }}
+    permissions: {}
+    steps:
+      - name: Dispatch tap bump
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          VERSION: ${{ needs.prepare-release-assets.outputs.version }}
+          TAG: ${{ needs.prepare-release-assets.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh workflow run bump-package.yml \
+            --repo joshka/homebrew-tap \
+            --field package=betamax \
+            --field version="$VERSION" \
+            --field tag="$TAG"
+
   release-plz-pr:
     name: Release-plz PR
     runs-on: ubuntu-latest
