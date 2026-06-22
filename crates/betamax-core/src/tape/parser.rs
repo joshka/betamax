@@ -584,6 +584,18 @@ mod tests {
     }
 
     #[test]
+    fn parses_empty_caption_for_clear() {
+        let tape = Tape::parse(r#"Caption "" Caption "Next""#).unwrap();
+        assert_eq!(
+            tape.commands,
+            vec![
+                Command::Caption(String::new()),
+                Command::Caption("Next".to_string()),
+            ]
+        );
+    }
+
+    #[test]
     fn parses_documentation_style_tape() {
         let tape = Tape::parse(
             r##"
