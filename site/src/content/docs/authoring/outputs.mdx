@@ -30,6 +30,10 @@ Use GIF for documentation and release notes. Use PNG screenshots when a human ne
 single stable state. Use state JSON when a test should compare text, scrollback, cursor metadata,
 and styles without doing pixel comparisons.
 
+Use [`Caption`](../../reference/tape-reference/#caption-text) when generated visual media should
+explain a workflow step or review checkpoint without changing terminal behavior. Captions render on
+visual outputs only; they do not appear in state JSON.
+
 Frame directories are useful when debugging capture timing or feeding rendered frames to custom
 tooling. The path must not have an extension; `Output target/frames` writes numbered PNG files under
 that directory.
@@ -97,3 +101,38 @@ State target/snapshots/ready.json
 The [`Screenshot`](../../reference/tape-reference/#screenshot-pathpng) preserves the decorated
 visual frame. The [`State`](../../reference/tape-reference/#state-pathjson) JSON preserves terminal
 text and styles in a compact comparison format.
+
+## Captions
+
+Captions annotate rendered media without changing the terminal session. They are useful when a GIF
+or screenshot needs to explain hidden setup, a review checkpoint, or a step in a TUI flow. Keep
+semantic checks in waits and state outputs; captions are presentation metadata.
+
+```text
+Caption "Step 1: prepare the review frame"
+Hide
+Type "my-app --demo"
+Enter
+Wait+Screen "Ready"
+Show
+Sleep 700ms
+
+Caption "Step 2: capture the ready state"
+Screenshot target/snapshots/ready.png
+State target/snapshots/ready.json
+
+Caption ""
+Sleep 300ms
+```
+
+The caption remains active until the next `Caption` command. Use `Caption ""` before later frames
+that should not have an overlay. Quote caption text that contains spaces.
+
+`Caption` has no duration and does not capture a frame by itself. It changes the caption used by
+the next rendered visual frame: animation frames captured during later `Sleep`, `Wait`, typing,
+keys, `Show`, or final-frame output, and checkpoint screenshots captured by `Screenshot`. If the
+terminal is already stable and only the caption changed, add `Sleep` after `Caption` so GIF and
+video outputs hold that caption for a visible amount of time.
+
+Captions render on visual outputs: GIF, PNG, MP4, WebM, frame directories, and screenshots. They do
+not appear in state JSON.

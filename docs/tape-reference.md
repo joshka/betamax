@@ -21,6 +21,7 @@ is requested. Install it with `brew install ffmpeg` on macOS or
 `sudo apt-get update && sudo apt-get install ffmpeg` on Debian/Ubuntu.
 
 An extensionless `Output` path is treated as a directory for numbered PNG frames.
+`Caption <text>` commands render presentation text onto visual outputs, but do not create files.
 
 ## Settings
 
@@ -185,6 +186,23 @@ affect final state. `Hide` is for recording visibility, not execution isolation.
 Resumes appending frames to animated outputs and immediately captures the current terminal frame.
 This avoids a visible gap after hidden setup work and is the usual way to reveal a prepared terminal
 state.
+
+### `Caption <text>`
+
+Sets a caption rendered onto later visual media frames. The text is one token, so quote captions
+that contain spaces. Use `Caption ""` to clear the active caption.
+
+Captions are presentation metadata only. They do not write to the PTY, alter terminal state, affect
+wait matching, or change output dimensions. Active captions appear on GIF, PNG, MP4, WebM, frame
+directory, and `Screenshot` outputs. `State` JSON does not include captions.
+
+`Caption` does not capture a frame or add time to animated output by itself. The new caption appears
+on the next visual frame Betamax renders, such as a frame captured during a later `Sleep`, `Wait`,
+typing, key press, `Show`, final-frame output, or `Screenshot`. Add `Sleep` after a caption-only
+change when an animation should dwell on the new caption without changing terminal content.
+
+Betamax renders captions as a bottom overlay. If the overlay covers important terminal content,
+increase the tape height, margin, or padding, or clear the caption before the affected frame.
 
 ### `Screenshot <path>.png`
 

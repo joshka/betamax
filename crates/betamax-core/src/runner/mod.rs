@@ -406,20 +406,22 @@ where
         tracing::debug!("draining final PTY output");
         session.drain_into(&mut terminal, FINAL_COMMAND_IDLE)?;
         tracing::trace!("drained final PTY output");
-        let frame = settings.decorate_frame(&capture_frame(
-            &mut terminal,
-            &settings,
-            capture.frames.len(),
-        )?)?;
-        settings.decorate_frames(&mut capture.frames)?;
-        if !outputs.gifs.is_empty()
+        let final_raw_frame = capture_frame(&mut terminal, &settings, capture.frames.len())?;
+        let writes_animated_media = !outputs.gifs.is_empty()
             || !outputs.mp4s.is_empty()
             || !outputs.webms.is_empty()
-            || !outputs.frame_dirs.is_empty()
-        {
-            append_final_gif_frame(&mut capture, frame.clone(), settings.frame_delay());
+            || !outputs.frame_dirs.is_empty();
+        if writes_animated_media {
+            append_final_gif_frame(
+                &mut capture,
+                final_raw_frame.clone(),
+                settings.frame_delay(),
+            );
             settings.apply_loop_offset(&mut capture.frames);
         }
+        let frame =
+            settings.decorate_frame_with_caption(&final_raw_frame, capture.caption.as_deref())?;
+        let media_frames = decorate_captured_frames(&settings, &mut capture)?;
 
         let output_paths = outputs.paths();
         tracing::debug!("reading final terminal state");
@@ -447,7 +449,7 @@ where
                 ANSI_YELLOW,
                 format_args!("combining frames into gif {}", path.display()),
             );
-            write_gif_with_progress(&path, &capture.frames, &mut self.media_progress)?;
+            write_gif_with_progress(&path, &media_frames, &mut self.media_progress)?;
             self.progress(ANSI_GREEN, format_args!("wrote {}", path.display()));
         }
         for path in outputs.frame_dirs {
@@ -455,14 +457,14 @@ where
                 ANSI_YELLOW,
                 format_args!("writing frame sequence {}", path.display()),
             );
-            write_png_sequence_with_progress(&path, &capture.frames, &mut self.media_progress)?;
+            write_png_sequence_with_progress(&path, &media_frames, &mut self.media_progress)?;
             self.progress(ANSI_GREEN, format_args!("wrote {}", path.display()));
         }
         for path in outputs.mp4s {
             self.progress(ANSI_YELLOW, format_args!("encoding mp4 {}", path.display()));
             write_mp4_with_progress(
                 &path,
-                &capture.frames,
+                &media_frames,
                 settings.output_framerate(),
                 &mut self.media_progress,
             )?;
@@ -475,7 +477,7 @@ where
             );
             write_webm_with_progress(
                 &path,
-                &capture.frames,
+                &media_frames,
                 settings.output_framerate(),
                 &mut self.media_progress,
             )?;
@@ -550,15 +552,20 @@ where
                 session.write_all(clipboard.as_bytes())?;
                 session.drain_for(terminal, settings.frame_delay(), settings, capture)?;
             }
+            Command::Caption(text) => {
+                // Caption changes are presentation state only. They intentionally do not drain,
+                // wait, or capture because the PTY has not changed; the next visual frame applies
+                // the active caption during decoration.
+                capture.caption = active_caption(text);
+            }
             Command::Screenshot(path) => {
                 session.drain_into(terminal, CHECKPOINT_IDLE)?;
                 write_png(
                     path,
-                    &settings.decorate_frame(&capture_frame(
-                        terminal,
-                        settings,
-                        capture.frames.len(),
-                    )?)?,
+                    &settings.decorate_frame_with_caption(
+                        &capture_frame(terminal, settings, capture.frames.len())?,
+                        capture.caption.as_deref(),
+                    )?,
                 )?;
             }
             Command::State(path) => {
@@ -627,6 +634,7 @@ where
                 }
                 Command::Copy(text) => clipboard = text.clone(),
                 Command::Paste => session.write_all(clipboard.as_bytes())?,
+                Command::Caption(_) => {}
                 Command::Env { .. }
                 | Command::Hide
                 | Command::Output(_)
@@ -679,7 +687,7 @@ where
             | Command::Env { .. } => (ANSI_DIM, "setup"),
             Command::Sleep(_) | Command::Wait { .. } => (ANSI_YELLOW, "wait"),
             Command::Screenshot(_) | Command::State(_) => (ANSI_YELLOW, "capture"),
-            Command::Hide | Command::Show => (ANSI_DIM, "display"),
+            Command::Hide | Command::Show | Command::Caption(_) => (ANSI_DIM, "display"),
             _ => (ANSI_CYAN, "run"),
         };
         self.progress(
@@ -696,6 +704,26 @@ where
             println!("{style}{args}{ANSI_RESET}");
         }
     }
+}
+
+fn decorate_captured_frames(
+    settings: &Settings,
+    capture: &mut CaptureState,
+) -> Result<Vec<(Frame, Duration)>> {
+    settings.decorate_captioned_frames(
+        capture
+            .frames
+            .drain(..)
+            .map(|(captured, delay)| (captured.frame, captured.caption, delay)),
+    )
+}
+
+/// Convert parsed caption text into the active presentation state.
+///
+/// Empty or whitespace-only captions clear the overlay. Non-empty captions keep their original
+/// spacing so authors can intentionally align short labels within the rendered overlay.
+fn active_caption(text: &str) -> Option<String> {
+    (!text.trim().is_empty()).then(|| text.to_string())
 }
 
 fn describe_command(command: &Command) -> String {
@@ -748,6 +776,7 @@ fn describe_command(command: &Command) -> String {
         Command::Env { key, .. } => format!("Env {key} <value>"),
         Command::Copy(text) => format!("Copy \"{}\"", describe_text(text)),
         Command::Paste => "Paste".to_string(),
+        Command::Caption(text) => format!("Caption \"{}\"", describe_text(text)),
         Command::Source(path) => format!("Source {}", path.display()),
         Command::Screenshot(path) => format!("Screenshot {}", path.display()),
         Command::State(path) => format!("State {}", path.display()),
@@ -768,6 +797,7 @@ fn command_kind(command: &Command) -> &'static str {
         Command::Env { .. } => "Env",
         Command::Copy(_) => "Copy",
         Command::Paste => "Paste",
+        Command::Caption(_) => "Caption",
         Command::Screenshot(_) => "Screenshot",
         Command::State(_) => "State",
         Command::Source(_) => "Source",
@@ -857,7 +887,7 @@ fn describe_text(text: &str) -> String {
 mod tests {
     use super::*;
     use crate::media::Frame;
-    use crate::runner::capture::frames_equal;
+    use crate::runner::capture::{frames_equal, CapturedFrame};
 
     #[test]
     fn uses_vhs_typography_defaults() {
@@ -969,10 +999,37 @@ mod tests {
             [255, 0, 0, 255],
         );
 
-        let decorated = settings.decorate_frame(&frame).unwrap();
+        let decorated = settings.decorate_frame_with_caption(&frame, None).unwrap();
 
         assert_eq!(decorated.width, 10);
         assert_eq!(decorated.height, 8);
+    }
+
+    #[test]
+    fn caption_decoration_preserves_dimensions_and_changes_pixels() {
+        let tape = Tape::parse(
+            r#"
+            Set Width 180
+            Set Height 120
+            Set Padding 0
+            "#,
+        )
+        .unwrap();
+        let settings = Settings::from_tape(&tape).unwrap();
+        let frame = sized_test_frame(
+            settings.terminal_canvas_width(),
+            settings.terminal_canvas_height(),
+            [255, 0, 0, 255],
+        );
+
+        let plain = settings.decorate_frame_with_caption(&frame, None).unwrap();
+        let captioned = settings
+            .decorate_frame_with_caption(&frame, Some("Review checkpoint"))
+            .unwrap();
+
+        assert_eq!(captioned.width, plain.width);
+        assert_eq!(captioned.height, plain.height);
+        assert_ne!(captioned.pixels, plain.pixels);
     }
 
     #[test]
@@ -1013,13 +1070,20 @@ mod tests {
         let cleanup_frame = test_frame([0, 255, 0, 255]);
         let mut capture = CaptureState {
             visible: false,
-            frames: vec![(visible_frame.clone(), Duration::from_millis(20))],
+            frames: vec![(
+                CapturedFrame {
+                    frame: visible_frame.clone(),
+                    caption: None,
+                },
+                Duration::from_millis(20),
+            )],
+            caption: None,
         };
 
         append_final_gif_frame(&mut capture, cleanup_frame, Duration::from_millis(20));
 
         assert_eq!(capture.frames.len(), 1);
-        assert!(frames_equal(&capture.frames[0].0, &visible_frame));
+        assert!(frames_equal(&capture.frames[0].0.frame, &visible_frame));
     }
 
     #[test]
@@ -1033,7 +1097,7 @@ mod tests {
 
         assert_eq!(capture.frames.len(), 1);
         assert_eq!(capture.frames[0].1, Duration::from_millis(60));
-        assert!(frames_equal(&capture.frames[0].0, &frame));
+        assert!(frames_equal(&capture.frames[0].0.frame, &frame));
     }
 
     fn test_frame(pixel: [u8; 4]) -> Frame {
