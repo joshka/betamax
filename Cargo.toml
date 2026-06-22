@@ -7,7 +7,7 @@ default-members = ["crates/betamax"]
 resolver = "2"
 
 [workspace.package]
-version = "0.1.9"
+version = "0.1.10"
 edition = "2021"
 rust-version = "1.93"
 license = "MIT OR Apache-2.0"
@@ -17,7 +17,7 @@ documentation = "https://www.joshka.net/betamax/"
 
 [workspace.dependencies]
 anyhow = "1.0.102"
-betamax-core = { path = "crates/betamax-core", version = "0.1.9" }
+betamax-core = { path = "crates/betamax-core", version = "0.1.10" }
 clap = { version = "4.5.20", features = ["derive", "wrap_help"] }
 clap-stdin = "0.8"
 cosmic-text = "0.19"

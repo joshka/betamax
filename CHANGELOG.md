@@ -2,6 +2,20 @@
 
 <!-- markdownlint-disable no-duplicate-heading -->
 
+## [0.1.14](https://github.com/joshka/betamax/compare/betamax-v0.1.13...betamax-v0.1.14) - 2026-06-22
+
+### Other
+
+- Add keyboard overlay rendering ([#89](https://github.com/joshka/betamax/pull/89))
+
+## [0.1.10](https://github.com/joshka/betamax/compare/betamax-core-v0.1.9...betamax-core-v0.1.10) - 2026-06-22
+
+### Other
+
+- Add keyboard overlay rendering ([#89](https://github.com/joshka/betamax/pull/89))
+- Add caption behavior tests ([#90](https://github.com/joshka/betamax/pull/90))
+- Add media captions ([#86](https://github.com/joshka/betamax/pull/86))
+
 ## [0.1.13](https://github.com/joshka/betamax/compare/betamax-v0.1.12...betamax-v0.1.13) - 2026-06-21
 
 ### Other
