@@ -11,8 +11,8 @@
   },
   "dependencies": {
     "@astrojs/check": "0.9.9",
-    "@astrojs/starlight": "0.39.3",
-    "astro": "6.4.6",
+    "@astrojs/starlight": "0.40.0",
+    "astro": "6.4.7",
     "typescript": "6.0.3"
   },
   "pnpm": {
@@ -26,6 +26,6 @@
     ]
   },
   "devDependencies": {
-    "@astrojs/mdx": "5.0.6"
+    "@astrojs/mdx": "6.0.3"
   }
 }
