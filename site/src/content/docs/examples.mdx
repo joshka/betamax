@@ -25,6 +25,7 @@ also live under `site/public/assets` with Git LFS. See
 | [`hide-show.tape`][hide-show-src]         | hidden setup and hidden trailing cleanup        | [Hidden work](../authoring/tape-files/#hidden-work)                    |
 | [`waits.tape`][waits-src]                 | line, screen, regex, and default prompt waits   | [Wait commands](../reference/tape-reference/#waitduration-regextext)   |
 | [`keys.tape`][keys-src]                   | key commands, repeats, editing, and interrupt   | [Key commands](../reference/tape-reference/#key-commands)              |
+| [keyboard-overlay][keyboard-overlay-src]  | input labels over review media                  | [Keyboard overlay](../reference/tape-reference/#settings)              |
 | [`clipboard-env.tape`][clipboard-env-src] | `Env`, `Copy`, and `Paste`                      | [Tape reference](../reference/tape-reference/#copy-text-and-paste)     |
 | [`captions.tape`][captions-src]           | visual captions for review media                | [Caption command](../reference/tape-reference/#caption-text)           |
 | [`outputs.tape`][outputs-src]             | GIF, PNG, JSON, screenshot, state, frame dir    | [Outputs](../authoring/outputs/)                                       |
@@ -67,6 +68,14 @@ updates terminal state, but the animation starts only when `Show` reveals the pr
 `captions.tape` annotates rendered media without changing the terminal session. Caption changes are
 presentation metadata: waits and state outputs keep matching the terminal itself.
 
+### Keyboard Overlay
+
+![Keyboard overlay Betamax GIF](/betamax/assets/betamax-keyboard-overlay.gif)
+
+`keyboard-overlay.tape` shows typed commands and key presses as compact labels over generated media.
+Labels appear when input is queued and linger briefly after typing, which keeps review GIFs readable
+without turning the overlay into a permanent command log.
+
 ### Themes
 
 ![Ghostty theme Betamax GIF](https://github.com/joshka/betamax/releases/download/readme-assets/themes.gif)
@@ -98,6 +107,7 @@ Use `examples/waits.tape` when debugging timing. It shows the three wait targets
 [captions-src]: https://github.com/joshka/betamax/blob/main/examples/captions.tape
 [clipboard-env-src]: https://github.com/joshka/betamax/blob/main/examples/clipboard-env.tape
 [hide-show-src]: https://github.com/joshka/betamax/blob/main/examples/hide-show.tape
+[keyboard-overlay-src]: https://github.com/joshka/betamax/blob/main/examples/keyboard-overlay.tape
 [keys-src]: https://github.com/joshka/betamax/blob/main/examples/keys.tape
 [layout-src]: https://github.com/joshka/betamax/blob/main/examples/layout.tape
 [outputs-src]: https://github.com/joshka/betamax/blob/main/examples/outputs.tape

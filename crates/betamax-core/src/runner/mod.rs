@@ -49,7 +49,10 @@ mod settings;
 
 #[doc(inline)]
 pub use artifacts::RunArtifacts;
-use capture::{append_final_gif_frame, append_visible_frame, capture_frame, CaptureState};
+use capture::{
+    active_keyboard_overlay_labels, append_final_gif_frame, append_visible_frame, capture_frame,
+    queue_keyboard_overlay_label, CaptureState,
+};
 #[doc(inline)]
 pub use options::RunOptions;
 use pty::PtySession;
@@ -419,8 +422,11 @@ where
             );
             settings.apply_loop_offset(&mut capture.frames);
         }
-        let frame =
-            settings.decorate_frame_with_caption(&final_raw_frame, capture.caption.as_deref())?;
+        let frame = settings.decorate_frame_with_overlays(
+            &final_raw_frame,
+            capture.caption.as_deref(),
+            &active_keyboard_overlay_labels(&capture),
+        )?;
         let media_frames = decorate_captured_frames(&settings, &mut capture)?;
 
         let output_paths = outputs.paths();
@@ -508,6 +514,11 @@ where
             kind = command_kind(command),
             "running captured tape command"
         );
+        if capture.visible {
+            if let Some(label) = settings.keyboard_overlay_label(command) {
+                queue_keyboard_overlay_label(capture, label);
+            }
+        }
         match command {
             Command::Sleep(duration) => {
                 session.drain_for(terminal, *duration, settings, capture)?;
@@ -562,9 +573,10 @@ where
                 session.drain_into(terminal, CHECKPOINT_IDLE)?;
                 write_png(
                     path,
-                    &settings.decorate_frame_with_caption(
+                    &settings.decorate_frame_with_overlays(
                         &capture_frame(terminal, settings, capture.frames.len())?,
                         capture.caption.as_deref(),
+                        &active_keyboard_overlay_labels(capture),
                     )?,
                 )?;
             }
@@ -710,12 +722,7 @@ fn decorate_captured_frames(
     settings: &Settings,
     capture: &mut CaptureState,
 ) -> Result<Vec<(Frame, Duration)>> {
-    settings.decorate_captioned_frames(
-        capture
-            .frames
-            .drain(..)
-            .map(|(captured, delay)| (captured.frame, captured.caption, delay)),
-    )
+    settings.decorate_captured_frames(capture.frames.drain(..))
 }
 
 /// Convert parsed caption text into the active presentation state.
@@ -885,6 +892,7 @@ fn describe_text(text: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    use super::settings::KeyboardOverlayMode;
     use super::*;
     use crate::media::Frame;
     use crate::runner::capture::{frames_equal, CapturedFrame};
@@ -910,6 +918,7 @@ mod tests {
         assert_eq!(settings.style.window_bar_size, 30);
         assert_eq!(settings.style.window_bar_color, "#102040");
         assert_eq!(settings.style.border_radius, 0);
+        assert_eq!(settings.keyboard_overlay.mode, KeyboardOverlayMode::Off);
     }
 
     #[test]
@@ -940,6 +949,148 @@ mod tests {
         assert_eq!(settings.style.window_bar, "Colorful");
         assert_eq!(settings.style.window_bar_size, 40);
         assert_eq!(settings.style.border_radius, 8);
+    }
+
+    #[test]
+    fn keyboard_overlay_keys_mode_shows_only_key_commands() {
+        let tape = Tape::parse(
+            r#"
+            Set KeyboardOverlay Keys
+            Type "open palette"
+            Ctrl+P
+            Down 2
+            Enter
+            Copy "from clipboard"
+            Paste
+            "#,
+        )
+        .unwrap();
+
+        let settings = Settings::from_tape(&tape).unwrap();
+
+        assert_eq!(settings.keyboard_overlay.mode, KeyboardOverlayMode::Keys);
+        assert_eq!(
+            tape.commands
+                .iter()
+                .filter_map(|command| settings.keyboard_overlay_label(command))
+                .collect::<Vec<_>>(),
+            vec!["Ctrl+P", "Down x2", "Enter"]
+        );
+    }
+
+    #[test]
+    fn keyboard_overlay_input_mode_shows_short_typed_intent() {
+        let tape = Tape::parse(
+            r#"
+            Set KeyboardOverlay Input
+            Type "echo foo"
+            Type "printf 'too implementation-shaped\n'"
+            Ctrl+P
+            Paste
+            "#,
+        )
+        .unwrap();
+
+        let settings = Settings::from_tape(&tape).unwrap();
+
+        assert_eq!(settings.keyboard_overlay.mode, KeyboardOverlayMode::Input);
+        assert_eq!(
+            tape.commands
+                .iter()
+                .filter_map(|command| settings.keyboard_overlay_label(command))
+                .collect::<Vec<_>>(),
+            vec!["Type \"echo foo\"", "Ctrl+P", "Paste"]
+        );
+    }
+
+    #[test]
+    fn keyboard_overlay_all_mode_summarizes_every_visible_input() {
+        let tape = Tape::parse(
+            r#"
+            Set KeyboardOverlay All
+            Type "echo foo"
+            Type "printf 'implementation-shaped but visible\n'"
+            Ctrl+P
+            Paste
+            "#,
+        )
+        .unwrap();
+
+        let settings = Settings::from_tape(&tape).unwrap();
+
+        assert_eq!(settings.keyboard_overlay.mode, KeyboardOverlayMode::All);
+        assert_eq!(
+            tape.commands
+                .iter()
+                .filter_map(|command| settings.keyboard_overlay_label(command))
+                .collect::<Vec<_>>(),
+            vec!["Type \"echo foo\"", "Type 44 chars", "Ctrl+P", "Paste",]
+        );
+    }
+
+    #[test]
+    fn keyboard_overlay_labels_hidden_input_only_at_runtime() {
+        let tape = Tape::parse(
+            r#"
+            Set KeyboardOverlay Input
+            Type "visible"
+            Hide
+            Type "secret"
+            Enter
+            Show
+            Down
+            "#,
+        )
+        .unwrap();
+
+        let settings = Settings::from_tape(&tape).unwrap();
+
+        assert_eq!(
+            tape.commands
+                .iter()
+                .filter_map(|command| settings.keyboard_overlay_label(command))
+                .collect::<Vec<_>>(),
+            vec!["Type \"visible\"", "Type \"secret\"", "Enter", "Down"]
+        );
+    }
+
+    #[test]
+    fn keyboard_overlay_changes_pixels_without_resizing_output() {
+        let tape = Tape::parse(
+            r#"
+            Set Width 80
+            Set Height 40
+            Set Padding 0
+            Set KeyboardOverlay Input
+            Type "abc"
+            "#,
+        )
+        .unwrap();
+        let settings = Settings::from_tape(&tape).unwrap();
+        let frame = sized_test_frame(
+            settings.terminal_canvas_width(),
+            settings.terminal_canvas_height(),
+            [255, 0, 0, 255],
+        );
+
+        let labels = vec!["Type \"abc\"".to_string()];
+        let decorated = settings
+            .decorate_frame_with_overlays(&frame, None, &labels)
+            .unwrap();
+        let rgba = decorated.rgba().unwrap();
+        let bottom_left = rgba_pixel(&rgba, decorated.width, 1, decorated.height - 1);
+
+        assert_eq!(decorated.width, 80);
+        assert_eq!(decorated.height, 40);
+        assert_ne!(bottom_left, [255, 0, 0, 255]);
+    }
+
+    #[test]
+    fn invalid_keyboard_overlay_modes_are_errors() {
+        let tape = Tape::parse("Set KeyboardOverlay floating").unwrap();
+        let error = Settings::from_tape(&tape).unwrap_err().to_string();
+
+        assert!(error.contains("Set KeyboardOverlay expects Off, Keys, Input, or All"));
     }
 
     #[test]
@@ -999,7 +1150,9 @@ mod tests {
             [255, 0, 0, 255],
         );
 
-        let decorated = settings.decorate_frame_with_caption(&frame, None).unwrap();
+        let decorated = settings
+            .decorate_frame_with_overlays(&frame, None, &[])
+            .unwrap();
 
         assert_eq!(decorated.width, 10);
         assert_eq!(decorated.height, 8);
@@ -1022,9 +1175,11 @@ mod tests {
             [255, 0, 0, 255],
         );
 
-        let plain = settings.decorate_frame_with_caption(&frame, None).unwrap();
+        let plain = settings
+            .decorate_frame_with_overlays(&frame, None, &[])
+            .unwrap();
         let captioned = settings
-            .decorate_frame_with_caption(&frame, Some("Review checkpoint"))
+            .decorate_frame_with_overlays(&frame, Some("Review checkpoint"), &[])
             .unwrap();
 
         assert_eq!(captioned.width, plain.width);
@@ -1068,17 +1223,16 @@ mod tests {
     fn trailing_hide_keeps_cleanup_frame_out_of_gif() {
         let visible_frame = test_frame([255, 0, 0, 255]);
         let cleanup_frame = test_frame([0, 255, 0, 255]);
-        let mut capture = CaptureState {
-            visible: false,
-            frames: vec![(
-                CapturedFrame {
-                    frame: visible_frame.clone(),
-                    caption: None,
-                },
-                Duration::from_millis(20),
-            )],
-            caption: None,
-        };
+        let mut capture = CaptureState::default();
+        capture.visible = false;
+        capture.frames.push((
+            CapturedFrame {
+                frame: visible_frame.clone(),
+                caption: None,
+                keyboard_overlay_labels: Vec::new(),
+            },
+            Duration::from_millis(20),
+        ));
 
         append_final_gif_frame(&mut capture, cleanup_frame, Duration::from_millis(20));
 
@@ -1107,6 +1261,24 @@ mod tests {
         assert_eq!(active_caption("  Step 1  ").as_deref(), Some("  Step 1  "));
     }
 
+    #[test]
+    fn keyboard_overlay_lingers_then_expires() {
+        let frame = test_frame([255, 0, 0, 255]);
+        let mut capture = CaptureState::default();
+
+        queue_keyboard_overlay_label(&mut capture, "Enter".to_string());
+        append_visible_frame(&mut capture, frame.clone(), Duration::from_millis(500));
+        append_visible_frame(&mut capture, frame.clone(), Duration::from_millis(500));
+        append_visible_frame(&mut capture, frame.clone(), Duration::from_millis(600));
+        append_visible_frame(&mut capture, frame, Duration::from_millis(20));
+
+        assert_eq!(capture.frames.len(), 4);
+        assert_eq!(capture.frames[0].0.keyboard_overlay_labels, vec!["Enter"]);
+        assert_eq!(capture.frames[1].0.keyboard_overlay_labels, vec!["Enter"]);
+        assert_eq!(capture.frames[2].0.keyboard_overlay_labels, vec!["Enter"]);
+        assert!(capture.frames[3].0.keyboard_overlay_labels.is_empty());
+    }
+
     fn test_frame(pixel: [u8; 4]) -> Frame {
         sized_test_frame(1, 1, pixel)
     }
@@ -1120,5 +1292,15 @@ mod tests {
             format: crate::media::PixelFormat::Rgba8,
             pixels: pixel.repeat(pixel_count),
         }
+    }
+
+    fn rgba_pixel(rgba: &[u8], width: u32, x: u32, y: u32) -> [u8; 4] {
+        let offset = ((y as usize * width as usize) + x as usize) * 4;
+        [
+            rgba[offset],
+            rgba[offset + 1],
+            rgba[offset + 2],
+            rgba[offset + 3],
+        ]
     }
 }
