@@ -95,6 +95,8 @@ const KEYBOARD_OVERLAY_CHIP_PAD_X: u32 = 8;
 const KEYBOARD_OVERLAY_TEXT_OFFSET_Y: u32 = 1;
 /// Gap between key chips.
 const KEYBOARD_OVERLAY_CHIP_GAP: u32 = 8;
+/// Inset used when keyboard chips are anchored inside the terminal canvas.
+const KEYBOARD_OVERLAY_CORNER_INSET: u32 = 18;
 /// Maximum number of displayed characters from one `Type` command.
 const KEYBOARD_OVERLAY_TYPE_MAX_CHARS: usize = 26;
 /// Alpha used for individual key chips.
@@ -181,6 +183,8 @@ pub(super) struct StyleSettings {
 pub(super) struct KeyboardOverlaySettings {
     /// Which input commands are eligible for the overlay.
     pub(super) mode: KeyboardOverlayMode,
+    /// Where the overlay is drawn in the final output frame.
+    pub(super) location: KeyboardOverlayLocation,
 }
 
 impl KeyboardOverlaySettings {
@@ -202,6 +206,22 @@ pub(super) enum KeyboardOverlayMode {
     Input,
     /// Draw every visible input event, including long `Type` commands summarized for space.
     All,
+}
+
+/// Placement for keyboard overlay chips.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(super) enum KeyboardOverlayLocation {
+    /// Draw the overlay in the presentation row below the terminal.
+    #[default]
+    CaptionRow,
+    /// Draw the overlay inside the terminal's upper-left corner.
+    TopLeft,
+    /// Draw the overlay inside the terminal's upper-right corner.
+    TopRight,
+    /// Draw the overlay inside the terminal's lower-left corner.
+    BottomLeft,
+    /// Draw the overlay inside the terminal's lower-right corner.
+    BottomRight,
 }
 
 impl StyleSettings {
@@ -320,6 +340,9 @@ impl Settings {
             ("KeyboardOverlay", Value::String(mode)) => {
                 self.keyboard_overlay.mode = parse_keyboard_overlay_mode(mode)?;
             }
+            ("KeyboardOverlayLocation", Value::String(location)) => {
+                self.keyboard_overlay.location = parse_keyboard_overlay_location(location)?;
+            }
             ("WaitTimeout", Value::Duration(wait_timeout)) => self.wait_timeout = *wait_timeout,
             ("WaitTimeout", Value::Number(wait_timeout)) => {
                 self.wait_timeout = Duration::from_secs_f64(*wait_timeout);
@@ -382,8 +405,13 @@ impl Settings {
 
     /// Height reserved below the terminal canvas for presentation-only overlays.
     fn presentation_overlay_height(&self) -> u32 {
-        self.caption_overlay_height()
-            .max(self.keyboard_overlay_height())
+        let keyboard_overlay_height =
+            if self.keyboard_overlay.location == KeyboardOverlayLocation::CaptionRow {
+                self.keyboard_overlay_height()
+            } else {
+                0
+            };
+        self.caption_overlay_height().max(keyboard_overlay_height)
     }
 
     /// Height reserved for captions when any non-empty caption appears in the tape.
@@ -576,7 +604,9 @@ impl Settings {
             );
         }
         let active_caption = caption.filter(|caption| !caption.trim().is_empty());
-        let keyboard_avoid_width = if self.keyboard_overlay.visible(keyboard_overlay_labels) {
+        let keyboard_avoid_width = if self.keyboard_overlay.visible(keyboard_overlay_labels)
+            && self.keyboard_overlay.location == KeyboardOverlayLocation::CaptionRow
+        {
             keyboard_overlay_panel_width(keyboard_overlay_labels, output.width)
                 .saturating_add(PRESENTATION_OVERLAY_GAP)
         } else {
@@ -589,8 +619,7 @@ impl Settings {
             output.draw_keyboard_overlay(
                 keyboard_overlay_labels,
                 &self.text,
-                self.keyboard_overlay_bottom_y(),
-                self.keyboard_overlay_right_x(),
+                self.keyboard_overlay_anchor(),
             );
         }
         Ok(output.into_frame())
@@ -645,13 +674,15 @@ impl Settings {
             .saturating_add(height.saturating_sub(caption_height) / 2)
             .saturating_add(vertical_padding);
         let text_y = if avoid_right_width > 0 {
+            let keyboard_anchor = self.keyboard_overlay_anchor();
             let keyboard_row_height = KEYBOARD_OVERLAY_LINE_HEIGHT.ceil() as u32;
-            let keyboard_text_y = self
-                .keyboard_overlay_bottom_y()
+            let keyboard_text_y = keyboard_anchor
+                .bottom_y
                 .saturating_sub(keyboard_row_height)
                 .saturating_add(KEYBOARD_OVERLAY_TEXT_OFFSET_Y);
             keyboard_text_y.min(
-                self.keyboard_overlay_bottom_y()
+                keyboard_anchor
+                    .bottom_y
                     .saturating_sub(caption_height.saturating_sub(vertical_padding * 2)),
             )
         } else {
@@ -667,15 +698,75 @@ impl Settings {
         })
     }
 
-    /// Bottom edge for keyboard overlay chips in final output-frame coordinates.
-    fn keyboard_overlay_bottom_y(&self) -> u32 {
-        self.height.saturating_sub(self.effective_margin())
-    }
+    /// Anchor for keyboard overlay chips in final output-frame coordinates.
+    fn keyboard_overlay_anchor(&self) -> KeyboardOverlayAnchor {
+        let margin = self.effective_margin();
+        let terminal_left_x = margin.min(self.width);
+        let terminal_right_x = self.width.saturating_sub(margin);
+        let terminal_top_y = margin
+            .saturating_add(self.window_bar_height())
+            .min(self.height);
+        let terminal_bottom_y = terminal_top_y
+            .saturating_add(self.terminal_canvas_height())
+            .min(self.height.saturating_sub(margin));
 
-    /// Right edge for keyboard chips after optical compensation for rounded terminal corners.
-    fn keyboard_overlay_right_x(&self) -> u32 {
-        self.presentation_overlay_right_x()
-            .saturating_sub(self.presentation_overlay_optical_inset_x())
+        match self.keyboard_overlay.location {
+            KeyboardOverlayLocation::CaptionRow => KeyboardOverlayAnchor {
+                horizontal: HorizontalAnchor::Right,
+                vertical: VerticalAnchor::Bottom,
+                left_x: self.presentation_overlay_left_x(),
+                top_y: self
+                    .height
+                    .saturating_sub(margin)
+                    .saturating_sub(self.presentation_overlay_height().min(self.height)),
+                right_x: self
+                    .presentation_overlay_right_x()
+                    .saturating_sub(self.presentation_overlay_optical_inset_x()),
+                bottom_y: self.height.saturating_sub(margin),
+                inset_x: 0,
+                inset_y: 0,
+            },
+            KeyboardOverlayLocation::TopLeft => KeyboardOverlayAnchor {
+                horizontal: HorizontalAnchor::Left,
+                vertical: VerticalAnchor::Top,
+                left_x: terminal_left_x,
+                top_y: terminal_top_y,
+                right_x: terminal_right_x,
+                bottom_y: terminal_bottom_y,
+                inset_x: KEYBOARD_OVERLAY_CORNER_INSET,
+                inset_y: KEYBOARD_OVERLAY_CORNER_INSET,
+            },
+            KeyboardOverlayLocation::TopRight => KeyboardOverlayAnchor {
+                horizontal: HorizontalAnchor::Right,
+                vertical: VerticalAnchor::Top,
+                left_x: terminal_left_x,
+                top_y: terminal_top_y,
+                right_x: terminal_right_x,
+                bottom_y: terminal_bottom_y,
+                inset_x: KEYBOARD_OVERLAY_CORNER_INSET,
+                inset_y: KEYBOARD_OVERLAY_CORNER_INSET,
+            },
+            KeyboardOverlayLocation::BottomLeft => KeyboardOverlayAnchor {
+                horizontal: HorizontalAnchor::Left,
+                vertical: VerticalAnchor::Bottom,
+                left_x: terminal_left_x,
+                top_y: terminal_top_y,
+                right_x: terminal_right_x,
+                bottom_y: terminal_bottom_y,
+                inset_x: KEYBOARD_OVERLAY_CORNER_INSET,
+                inset_y: KEYBOARD_OVERLAY_CORNER_INSET,
+            },
+            KeyboardOverlayLocation::BottomRight => KeyboardOverlayAnchor {
+                horizontal: HorizontalAnchor::Right,
+                vertical: VerticalAnchor::Bottom,
+                left_x: terminal_left_x,
+                top_y: terminal_top_y,
+                right_x: terminal_right_x,
+                bottom_y: terminal_bottom_y,
+                inset_x: KEYBOARD_OVERLAY_CORNER_INSET,
+                inset_y: KEYBOARD_OVERLAY_CORNER_INSET,
+            },
+        }
     }
 
     /// Left edge for captions after optical compensation for rounded terminal corners.
@@ -704,6 +795,52 @@ struct CaptionLayout {
     text_height: u32,
     font_size: f32,
     line_height: f32,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct KeyboardOverlayAnchor {
+    horizontal: HorizontalAnchor,
+    vertical: VerticalAnchor,
+    left_x: u32,
+    top_y: u32,
+    right_x: u32,
+    bottom_y: u32,
+    inset_x: u32,
+    inset_y: u32,
+}
+
+impl KeyboardOverlayAnchor {
+    fn width(self) -> u32 {
+        self.right_x.saturating_sub(self.left_x)
+    }
+
+    fn inner_left_x(self) -> u32 {
+        self.left_x.saturating_add(self.inset_x).min(self.right_x)
+    }
+
+    fn inner_right_x(self) -> u32 {
+        self.right_x.saturating_sub(self.inset_x).max(self.left_x)
+    }
+
+    fn inner_top_y(self) -> u32 {
+        self.top_y.saturating_add(self.inset_y).min(self.bottom_y)
+    }
+
+    fn inner_bottom_y(self) -> u32 {
+        self.bottom_y.saturating_sub(self.inset_y).max(self.top_y)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum HorizontalAnchor {
+    Left,
+    Right,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum VerticalAnchor {
+    Top,
+    Bottom,
 }
 
 impl CaptionLayout {
@@ -1075,11 +1212,10 @@ impl SolidFrame {
         &mut self,
         labels: &[String],
         text_settings: &TextSettings,
-        bottom_y: u32,
-        right_x: u32,
+        anchor: KeyboardOverlayAnchor,
     ) {
         let labels = recent_keyboard_overlay_labels(labels);
-        let rows = keyboard_overlay_rows(&labels, self.width);
+        let rows = keyboard_overlay_rows(&labels, anchor.width());
         if rows.is_empty() {
             return;
         }
@@ -1090,18 +1226,32 @@ impl SolidFrame {
             .map(|row| keyboard_overlay_row_width(row))
             .max()
             .unwrap_or(0);
-        let panel_right_x = right_x.min(self.width);
-        let panel_width = row_width.min(panel_right_x);
-        let panel_height = KEYBOARD_OVERLAY_INSET_Y
-            .saturating_add(row_height.saturating_mul(rows.len() as u32))
-            .min(self.height);
-        let panel_x = panel_right_x.saturating_sub(panel_width);
-        let panel_y = bottom_y.min(self.height).saturating_sub(panel_height);
+        let panel_left_x = anchor.inner_left_x().min(self.width);
+        let panel_right_x = anchor.inner_right_x().min(self.width);
+        let panel_width = row_width.min(panel_right_x.saturating_sub(panel_left_x));
+        if panel_width == 0 {
+            return;
+        }
+        let row_block_height = row_height.saturating_mul(rows.len() as u32);
+        let panel_x = match anchor.horizontal {
+            HorizontalAnchor::Left => panel_left_x,
+            HorizontalAnchor::Right => panel_right_x.saturating_sub(panel_width),
+        };
+        let panel_top_y = anchor.inner_top_y().min(self.height);
+        let panel_bottom_y = anchor.inner_bottom_y().min(self.height);
+        let mut y = match anchor.vertical {
+            VerticalAnchor::Top => panel_top_y,
+            VerticalAnchor::Bottom => panel_bottom_y.saturating_sub(row_block_height),
+        };
         let mut text = OverlayTextRenderer::new(text_settings.font_family.clone());
-        let mut y = panel_y.saturating_add(KEYBOARD_OVERLAY_INSET_Y);
         for row in rows {
             let row_width = keyboard_overlay_row_width(&row);
-            let mut x = panel_x.saturating_add(panel_width.saturating_sub(row_width));
+            let mut x = match anchor.horizontal {
+                HorizontalAnchor::Left => panel_x,
+                HorizontalAnchor::Right => {
+                    panel_x.saturating_add(panel_width.saturating_sub(row_width))
+                }
+            };
             for chip in row {
                 self.fill_rounded_rect_alpha(
                     PixelRect {
@@ -1413,6 +1563,25 @@ fn parse_keyboard_overlay_mode(mode: &str) -> Result<KeyboardOverlayMode> {
     }
 }
 
+/// Parse the placement accepted by `Set KeyboardOverlayLocation`.
+fn parse_keyboard_overlay_location(location: &str) -> Result<KeyboardOverlayLocation> {
+    match location.to_ascii_lowercase().as_str() {
+        "captionrow" | "caption-row" | "caption_row" => {
+            Ok(KeyboardOverlayLocation::CaptionRow)
+        }
+        "topleft" | "top-left" | "top_left" => Ok(KeyboardOverlayLocation::TopLeft),
+        "topright" | "top-right" | "top_right" => Ok(KeyboardOverlayLocation::TopRight),
+        "bottomleft" | "bottom-left" | "bottom_left" => Ok(KeyboardOverlayLocation::BottomLeft),
+        "bottomright" | "bottom-right" | "bottom_right" => {
+            Ok(KeyboardOverlayLocation::BottomRight)
+        }
+        _ => Err(miette!(
+            "Set KeyboardOverlayLocation expects CaptionRow, TopLeft, TopRight, BottomLeft, or BottomRight, got `{location}`"
+        )
+        .into()),
+    }
+}
+
 /// Return the overlay label for one input-producing command.
 fn keyboard_overlay_label(command: &Command, mode: KeyboardOverlayMode) -> Option<String> {
     match command {
@@ -1640,6 +1809,7 @@ fn known_setting(key: &str) -> bool {
             | "BorderRadius"
             | "CursorBlink"
             | "KeyboardOverlay"
+            | "KeyboardOverlayLocation"
             | "WaitTimeout"
             | "WaitPattern"
             | "Theme"
@@ -1656,6 +1826,7 @@ fn setting_expected_type(key: &str) -> &'static str {
         "TypingSpeed" => "duration",
         "CursorBlink" => "bool",
         "KeyboardOverlay" => "Off, Keys, Input, or All",
+        "KeyboardOverlayLocation" => "CaptionRow, TopLeft, TopRight, BottomLeft, or BottomRight",
         "WaitTimeout" => "duration or number",
         _ => "known value",
     }
@@ -1783,7 +1954,7 @@ mod tests {
                 .saturating_sub(avoid_width)
         );
         assert_eq!(settings.presentation_overlay_right_x(), 304);
-        assert_eq!(settings.keyboard_overlay_right_x(), 304);
+        assert_eq!(settings.keyboard_overlay_anchor().right_x, 304);
         assert_eq!(settings.caption_overlay_left_x(), 16);
     }
 
@@ -1809,7 +1980,53 @@ mod tests {
 
         assert_eq!(settings.presentation_overlay_right_x(), 304);
         assert_eq!(settings.caption_overlay_left_x(), 20);
-        assert_eq!(settings.keyboard_overlay_right_x(), 300);
+        assert_eq!(settings.keyboard_overlay_anchor().right_x, 300);
         assert_eq!(layout.text_x, 20);
+    }
+
+    #[test]
+    fn corner_keyboard_overlay_does_not_reserve_presentation_row() {
+        let tape = Tape::parse(
+            r#"
+            Set Width 320
+            Set Height 200
+            Set Margin 16
+            Set KeyboardOverlay Input
+            Set KeyboardOverlayLocation BottomRight
+            Type "echo done"
+            "#,
+        )
+        .unwrap();
+        let settings = Settings::from_tape(&tape).unwrap();
+
+        assert_eq!(settings.presentation_overlay_height(), 0);
+        assert_eq!(
+            settings.terminal_canvas_height(),
+            settings.height.saturating_sub(32)
+        );
+    }
+
+    #[test]
+    fn corner_keyboard_overlay_nestles_inside_terminal_edges() {
+        let tape = Tape::parse(
+            r#"
+            Set Width 320
+            Set Height 200
+            Set Margin 16
+            Set WindowBar Colorful
+            Set WindowBarSize 30
+            Set KeyboardOverlay Input
+            Set KeyboardOverlayLocation BottomLeft
+            Type "echo done"
+            "#,
+        )
+        .unwrap();
+        let settings = Settings::from_tape(&tape).unwrap();
+        let anchor = settings.keyboard_overlay_anchor();
+
+        assert!(matches!(anchor.horizontal, HorizontalAnchor::Left));
+        assert!(matches!(anchor.vertical, VerticalAnchor::Bottom));
+        assert_eq!(anchor.inner_left_x(), 34);
+        assert_eq!(anchor.inner_bottom_y(), 166);
     }
 }

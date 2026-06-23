@@ -169,11 +169,11 @@ color, typing speed, playback speed, and prompt text. The defaults are chosen to
 a readable terminal size, a visible frame, and a simple `>` prompt unless a tape asks for a real
 shell prompt.
 
-Captions and keyboard overlay chips are presentation-only annotations for visual outputs. When a
-tape uses them, Betamax reserves a bottom presentation row before deriving the terminal grid so
-labels do not cover terminal content. Captions align left, keyboard chips align right, and long
-captions truncate with `...` instead of wrapping into the chips. Caption glyphs are clipped to their
-reserved width as a final guard for font fallback and unusually wide characters.
+Captions and keyboard overlay chips are presentation-only annotations for visual outputs.
+`KeyboardOverlayLocation CaptionRow` reserves a bottom presentation row before deriving the terminal
+grid so labels do not cover terminal content. Corner locations such as `BottomRight` draw the chips
+inside the terminal canvas with a small inset from the terminal edge. Caption glyphs are clipped to
+their reserved width as a final guard for font fallback and unusually wide characters.
 
 ## Terminal Testing
 

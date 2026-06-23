@@ -1,5 +1,4 @@
-Output examples/output/keyboard-overlay.gif
-Output examples/output/keyboard-overlay.png
+Output examples/output/keyboard-overlay-bottom-left.png
 
 Require printf
 
@@ -14,16 +13,12 @@ Set BorderRadius 8
 Set TypingSpeed 35ms
 Set CursorBlink false
 Set KeyboardOverlay Input
-Set KeyboardOverlayLocation BottomRight
+Set KeyboardOverlayLocation BottomLeft
 
 Type "echo foo"
 Enter
 Wait+Screen "foo"
 
-Sleep 1800ms
-
 Type "echo bar"
 Enter
 Wait+Screen "bar"
-
-Sleep 900ms
