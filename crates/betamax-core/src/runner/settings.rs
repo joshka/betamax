@@ -82,15 +82,15 @@ const KEYBOARD_OVERLAY_FONT_SIZE: f32 = 18.0;
 /// Line height used by the compact keyboard overlay.
 const KEYBOARD_OVERLAY_LINE_HEIGHT: f32 = 25.0;
 /// Approximate label glyph width for row wrapping.
-const KEYBOARD_OVERLAY_CHAR_WIDTH: u32 = 12;
+const KEYBOARD_OVERLAY_CHAR_WIDTH: u32 = 11;
 /// Horizontal inset around the overlay HUD.
 const KEYBOARD_OVERLAY_INSET_X: u32 = 14;
-/// Vertical inset around the overlay HUD.
+/// Vertical inset reserved above keyboard chips in the presentation row.
 const KEYBOARD_OVERLAY_INSET_Y: u32 = 12;
 /// Horizontal padding inside one key chip.
-const KEYBOARD_OVERLAY_CHIP_PAD_X: u32 = 10;
-/// Vertical padding inside one key chip.
-const KEYBOARD_OVERLAY_CHIP_PAD_Y: u32 = 4;
+const KEYBOARD_OVERLAY_CHIP_PAD_X: u32 = 8;
+/// Vertical text adjustment inside one key chip.
+const KEYBOARD_OVERLAY_TEXT_OFFSET_Y: u32 = 1;
 /// Gap between key chips.
 const KEYBOARD_OVERLAY_CHIP_GAP: u32 = 8;
 /// Maximum number of displayed characters from one `Type` command.
@@ -400,7 +400,6 @@ impl Settings {
         }
         let row_height = KEYBOARD_OVERLAY_LINE_HEIGHT.ceil() as u32;
         KEYBOARD_OVERLAY_INSET_Y
-            .saturating_mul(2)
             .saturating_add(row_height.saturating_mul(KEYBOARD_OVERLAY_MAX_ROWS as u32))
     }
 
@@ -587,7 +586,7 @@ impl Settings {
                 keyboard_overlay_labels,
                 &self.text,
                 self.keyboard_overlay_bottom_y(),
-                self.presentation_overlay_right_x(),
+                self.keyboard_overlay_right_x(),
             );
         }
         Ok(output.into_frame())
@@ -619,7 +618,7 @@ impl Settings {
         if !self.caption_overlay {
             return None;
         }
-        let left_x = self.presentation_overlay_left_x();
+        let left_x = self.caption_overlay_left_x();
         let right_x = self.presentation_overlay_right_x();
         let width = right_x
             .saturating_sub(left_x)
@@ -638,9 +637,22 @@ impl Settings {
             .height
             .saturating_sub(self.effective_margin())
             .saturating_sub(height);
-        let text_y = y
+        let centered_text_y = y
             .saturating_add(height.saturating_sub(caption_height) / 2)
             .saturating_add(vertical_padding);
+        let text_y = if avoid_right_width > 0 {
+            let keyboard_row_height = KEYBOARD_OVERLAY_LINE_HEIGHT.ceil() as u32;
+            let keyboard_text_y = self
+                .keyboard_overlay_bottom_y()
+                .saturating_sub(keyboard_row_height)
+                .saturating_add(KEYBOARD_OVERLAY_TEXT_OFFSET_Y);
+            keyboard_text_y.min(
+                self.keyboard_overlay_bottom_y()
+                    .saturating_sub(caption_height.saturating_sub(vertical_padding * 2)),
+            )
+        } else {
+            centered_text_y
+        };
         Some(CaptionLayout {
             text_x: left_x,
             text_y,
@@ -654,6 +666,24 @@ impl Settings {
     /// Bottom edge for keyboard overlay chips in final output-frame coordinates.
     fn keyboard_overlay_bottom_y(&self) -> u32 {
         self.height.saturating_sub(self.effective_margin())
+    }
+
+    /// Right edge for keyboard chips after optical compensation for rounded terminal corners.
+    fn keyboard_overlay_right_x(&self) -> u32 {
+        self.presentation_overlay_right_x()
+            .saturating_sub(self.presentation_overlay_optical_inset_x())
+    }
+
+    /// Left edge for captions after optical compensation for rounded terminal corners.
+    fn caption_overlay_left_x(&self) -> u32 {
+        self.presentation_overlay_left_x()
+            .saturating_add(self.presentation_overlay_optical_inset_x())
+            .min(self.presentation_overlay_right_x())
+    }
+
+    /// Horizontal optical inset applied to presentation overlays near rounded terminal corners.
+    fn presentation_overlay_optical_inset_x(&self) -> u32 {
+        self.style.border_radius / 2
     }
 
     /// Return the keyboard overlay label for a visible input command, if enabled.
@@ -997,20 +1027,18 @@ impl SolidFrame {
             .map(|row| keyboard_overlay_row_width(row))
             .max()
             .unwrap_or(0);
-        let panel_width = row_width
-            .saturating_add(KEYBOARD_OVERLAY_INSET_X.saturating_mul(2))
-            .min(self.width);
+        let panel_right_x = right_x.min(self.width);
+        let panel_width = row_width.min(panel_right_x);
         let panel_height = KEYBOARD_OVERLAY_INSET_Y
-            .saturating_mul(2)
             .saturating_add(row_height.saturating_mul(rows.len() as u32))
             .min(self.height);
-        let panel_x = right_x.min(self.width).saturating_sub(panel_width);
+        let panel_x = panel_right_x.saturating_sub(panel_width);
         let panel_y = bottom_y.min(self.height).saturating_sub(panel_height);
         let mut text = OverlayTextRenderer::new(text_settings.font_family.clone());
         let mut y = panel_y.saturating_add(KEYBOARD_OVERLAY_INSET_Y);
         for row in rows {
             let row_width = keyboard_overlay_row_width(&row);
-            let mut x = panel_x.saturating_add(panel_width.saturating_sub(row_width) / 2);
+            let mut x = panel_x.saturating_add(panel_width.saturating_sub(row_width));
             for chip in row {
                 self.fill_rect_alpha(
                     x,
@@ -1024,7 +1052,7 @@ impl SolidFrame {
                     self,
                     &chip.label,
                     x.saturating_add(KEYBOARD_OVERLAY_CHIP_PAD_X),
-                    y.saturating_add(KEYBOARD_OVERLAY_CHIP_PAD_Y),
+                    y.saturating_add(KEYBOARD_OVERLAY_TEXT_OFFSET_Y),
                     chip.width
                         .saturating_sub(KEYBOARD_OVERLAY_CHIP_PAD_X.saturating_mul(2)),
                 );
@@ -1301,7 +1329,7 @@ fn keyboard_overlay_label(command: &Command, mode: KeyboardOverlayMode) -> Optio
         Command::Type { text, .. }
             if mode == KeyboardOverlayMode::Input && is_short_input_text(text) =>
         {
-            Some(format!("Type \"{}\"", describe_overlay_text(text)))
+            Some(describe_overlay_input_text(text))
         }
         Command::Key { key, count, .. } if mode != KeyboardOverlayMode::Off => {
             let key = describe_overlay_key(key);
@@ -1386,7 +1414,6 @@ fn keyboard_overlay_panel_width(labels: &[String], width: u32) -> u32 {
         .map(|row| keyboard_overlay_row_width(row))
         .max()
         .unwrap_or(0)
-        .saturating_add(KEYBOARD_OVERLAY_INSET_X.saturating_mul(2))
         .min(width)
 }
 
@@ -1432,9 +1459,19 @@ fn describe_overlay_text(text: &str) -> String {
 /// Describe one `Type` command for the overlay.
 fn describe_overlay_type(text: &str) -> String {
     if is_short_input_text(text) {
-        return format!("Type \"{}\"", describe_overlay_text(text));
+        return describe_overlay_input_text(text);
     }
     format!("Type {} chars", text.chars().count())
+}
+
+/// Describe short typed input as a key label.
+fn describe_overlay_input_text(text: &str) -> String {
+    let text = describe_overlay_text(text);
+    if text.chars().count() == 1 {
+        text
+    } else {
+        format!("\"{text}\"")
+    }
 }
 
 /// Return whether typed text is short enough to show as user intent in `Input` mode.
@@ -1639,7 +1676,7 @@ mod tests {
         )
         .unwrap();
         let settings = Settings::from_tape(&tape).unwrap();
-        let labels = vec!["Type \"echo done\"".to_string()];
+        let labels = vec!["\"echo done\"".to_string()];
         let avoid_width = keyboard_overlay_panel_width(&labels, settings.width)
             .saturating_add(PRESENTATION_OVERLAY_GAP);
         let layout = settings.caption_layout(avoid_width).unwrap();
@@ -1653,5 +1690,33 @@ mod tests {
                 .saturating_sub(avoid_width)
         );
         assert_eq!(settings.presentation_overlay_right_x(), 304);
+        assert_eq!(settings.keyboard_overlay_right_x(), 304);
+        assert_eq!(settings.caption_overlay_left_x(), 16);
+    }
+
+    #[test]
+    fn presentation_overlay_edges_track_rounded_corner_optics() {
+        let tape = Tape::parse(
+            r#"
+            Set Width 320
+            Set Height 200
+            Set Margin 16
+            Set BorderRadius 8
+            Set KeyboardOverlay Input
+            Caption "Long caption"
+            Type "echo done"
+            "#,
+        )
+        .unwrap();
+        let settings = Settings::from_tape(&tape).unwrap();
+        let labels = vec!["\"echo done\"".to_string()];
+        let avoid_width = keyboard_overlay_panel_width(&labels, settings.width)
+            .saturating_add(PRESENTATION_OVERLAY_GAP);
+        let layout = settings.caption_layout(avoid_width).unwrap();
+
+        assert_eq!(settings.presentation_overlay_right_x(), 304);
+        assert_eq!(settings.caption_overlay_left_x(), 20);
+        assert_eq!(settings.keyboard_overlay_right_x(), 300);
+        assert_eq!(layout.text_x, 20);
     }
 }

@@ -70,8 +70,9 @@ screenshot, and frame-sequence media. Labels appear when input is queued and lin
 the input is typed, so review GIFs show the action near the terminal change it caused. The overlay
 is presentation-only: it does not change PTY input bytes, waits, state JSON, or final output
 dimensions. When enabled, Betamax reserves a bottom presentation row before deriving the terminal
-grid so chips do not cover terminal content. Keyboard chips are right-aligned to the terminal frame
-edge and share the row with captions when both are active.
+grid so chips do not cover terminal content. Keyboard chips share the row with captions when both
+are active. Presentation overlays use a small optical inset based on half of `BorderRadius` near
+rounded terminal corners, so caption and chip edges feel aligned with the rounded frame.
 
 Keyboard overlay modes are:
 
@@ -224,7 +225,8 @@ Captions are single-line presentation text: if a caption does not fit beside rig
 chips, Betamax truncates it with `...` instead of wrapping. Caption glyphs are clipped to their
 reserved width as a final guard for font fallback and unusually wide characters. If the caption or
 keyboard overlay needs more room, increase the tape height or reduce presentation chrome such as
-margin and window bar size.
+margin and window bar size. Keyboard chips reserve caption space using their visible width, and
+caption and chip edges are optically inset by half of the rounded-corner radius.
 
 ### `Screenshot <path>.png`
 
