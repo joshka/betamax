@@ -32,7 +32,8 @@ and styles without doing pixel comparisons.
 
 Use [`Caption`](../../reference/tape-reference/#caption-text) when generated visual media should
 explain a workflow step or review checkpoint without changing terminal behavior. Captions render on
-visual outputs only; they do not appear in state JSON.
+visual outputs only; they do not appear in state JSON. Captions share a bottom presentation row with
+keyboard overlay chips when both are active.
 
 Frame directories are useful when debugging capture timing or feeding rendered frames to custom
 tooling. The path must not have an extension; `Output target/frames` writes numbered PNG files under
@@ -108,6 +109,13 @@ Captions annotate rendered media without changing the terminal session. They are
 or screenshot needs to explain hidden setup, a review checkpoint, or a step in a TUI flow. Keep
 semantic checks in waits and state outputs; captions are presentation metadata.
 
+When a tape uses captions, Betamax reserves a bottom presentation row before deriving the terminal
+grid. Captions render below the terminal canvas instead of covering terminal rows. They are
+left-aligned with the terminal frame edge and remain single-line; if a caption needs to share space
+with right-aligned keyboard overlay chips, Betamax truncates it with `...` instead of wrapping.
+Caption glyphs are clipped to their reserved width as a final guard for font fallback and unusually
+wide characters.
+
 ```text
 Caption "Step 1: prepare the review frame"
 Hide
@@ -135,4 +143,4 @@ terminal is already stable and only the caption changed, add `Sleep` after `Capt
 video outputs hold that caption for a visible amount of time.
 
 Captions render on visual outputs: GIF, PNG, MP4, WebM, frame directories, and screenshots. They do
-not appear in state JSON.
+not appear in state JSON or change final output dimensions.

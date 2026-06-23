@@ -35,6 +35,10 @@ Final [`Output`][output-command] artifacts are written after the tape finishes.
 [`Screenshot`][screenshot-command] and [`State`][state-command] commands write checkpoint artifacts
 at their position in the tape.
 
+Captions and keyboard overlays are presentation-only media annotations. They are drawn into a
+reserved row below the terminal canvas for visual outputs, so review labels can explain a workflow
+without covering terminal content or changing state JSON.
+
 ## Tape Model
 
 Most tapes have the same shape:

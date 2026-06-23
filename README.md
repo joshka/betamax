@@ -114,22 +114,23 @@ and settings behavior.
 
 The checked-in examples are small smoke-test tapes that demonstrate core behavior:
 
-| Tape                             | Demonstrates                                   | Main Output         |
-| -------------------------------- | ---------------------------------------------- | ------------------- |
-| `examples/quick-start.tape`      | installing, help, `new`, and nested `run`      | `quick-start.gif`   |
-| `examples/basic.tape`            | typing, wait, theme, window bar, border radius | `basic.gif`         |
-| `examples/hide-show.tape`        | hidden setup and hidden trailing cleanup       | `hide-show.gif`     |
-| `examples/waits.tape`            | line, screen, regex, and default prompt waits  | `waits.gif`         |
-| `examples/keys.tape`             | key commands, repeats, editing, and interrupt  | `keys.gif`          |
-| `examples/clipboard-env.tape`    | `Env`, `Copy`, and `Paste`                     | `clipboard-env.gif` |
-| `examples/captions.tape`         | visual captions for review media               | `captions.*`        |
-| `examples/outputs.tape`          | GIF, PNG, JSON, screenshot, state, frame dir   | `outputs.*`         |
-| `examples/scrollback.tape`       | scrollback-inclusive state JSON                | `scrollback.*`      |
-| `examples/text-styles.tape`      | ANSI styles, truecolor, and styled state spans | `text-styles.*`     |
-| `examples/layout.tape`           | padding, margin, fill, window bar, radius      | `layout.gif`        |
-| `examples/themes.tape`           | copied Ghostty themes and palette mapping      | `themes.gif`        |
-| `examples/screenshot.tape`       | screenshots and terminal state JSON            | `screenshot.png`    |
-| `examples/video.tape`            | GIF, MP4, and WebM from one capture            | `video.*`           |
+| Tape                                      | Demonstrates                                   | Main Output               |
+| ----------------------------------------- | ---------------------------------------------- | ------------------------- |
+| `examples/quick-start.tape`               | installing, help, `new`, and nested `run`      | `quick-start.gif`         |
+| `examples/basic.tape`                     | typing, wait, theme, window bar, border radius | `basic.gif`               |
+| `examples/hide-show.tape`                 | hidden setup and hidden trailing cleanup       | `hide-show.gif`           |
+| `examples/waits.tape`                     | line, screen, regex, and default prompt waits  | `waits.gif`               |
+| `examples/keys.tape`                      | key commands, repeats, editing, and interrupt  | `keys.gif`                |
+| `examples/clipboard-env.tape`             | `Env`, `Copy`, and `Paste`                     | `clipboard-env.gif`       |
+| `examples/captions.tape`                  | visual captions for review media               | `captions.*`              |
+| `examples/presentation-overlays.tape`     | captions plus keyboard overlay layout          | `presentation-overlays.*` |
+| `examples/outputs.tape`                   | GIF, PNG, JSON, screenshot, state, frame dir   | `outputs.*`               |
+| `examples/scrollback.tape`                | scrollback-inclusive state JSON                | `scrollback.*`            |
+| `examples/text-styles.tape`               | ANSI styles, truecolor, and styled state spans | `text-styles.*`           |
+| `examples/layout.tape`                    | padding, margin, fill, window bar, radius      | `layout.gif`              |
+| `examples/themes.tape`                    | copied Ghostty themes and palette mapping      | `themes.gif`              |
+| `examples/screenshot.tape`                | screenshots and terminal state JSON            | `screenshot.png`          |
+| `examples/video.tape`                     | GIF, MP4, and WebM from one capture            | `video.*`                 |
 
 ### Quick Start
 
@@ -146,6 +147,15 @@ The checked-in examples are small smoke-test tapes that demonstrate core behavio
 ### Themes
 
 ![Ghostty theme Betamax GIF][themes-gif]
+
+### Presentation Overlays
+
+Captions and keyboard overlay chips are visual annotations for review media. When a tape uses
+`Caption` or enables `KeyboardOverlay`, Betamax reserves a bottom presentation row before deriving
+the terminal grid so labels do not cover terminal content. Captions align to the left edge of the
+terminal frame, keyboard chips align to the right edge, and long captions truncate with `...`
+instead of wrapping into the chips. Caption glyphs are clipped to their reserved width as a final
+guard for font fallback and unusually wide characters.
 
 ### Video
 
