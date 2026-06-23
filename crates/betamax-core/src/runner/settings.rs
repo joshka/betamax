@@ -73,6 +73,8 @@ const CAPTION_LINE_HEIGHT: f32 = 1.2;
 const CAPTION_VERTICAL_PADDING: f32 = 0.25;
 /// Denominator for 8-bit alpha blending.
 const ALPHA_DENOMINATOR: u16 = 255;
+/// Sub-pixel samples per axis for anti-aliased rounded-rectangle edges.
+const ROUNDED_RECT_AA_SAMPLES: u32 = 4;
 /// Maximum number of recent overlay events drawn over the output frame.
 const KEYBOARD_OVERLAY_MAX_CHIPS: usize = 5;
 /// Maximum number of overlay rows drawn over the output frame.
@@ -97,6 +99,8 @@ const KEYBOARD_OVERLAY_CHIP_GAP: u32 = 8;
 const KEYBOARD_OVERLAY_TYPE_MAX_CHARS: usize = 26;
 /// Alpha used for individual key chips.
 const KEYBOARD_OVERLAY_CHIP_ALPHA: u8 = 235;
+/// Radius used for rounded keyboard overlay keycap corners.
+const KEYBOARD_OVERLAY_CHIP_CORNER_RADIUS: u32 = 3;
 /// Gap between caption text and right-aligned keyboard chips.
 const PRESENTATION_OVERLAY_GAP: u32 = 16;
 
@@ -952,6 +956,65 @@ impl SolidFrame {
         }
     }
 
+    /// Fill a clipped rounded rectangle with alpha blending.
+    ///
+    /// Rounded corners are computed by skipping pixels outside corner circles; interior pixels
+    /// receive normal alpha blending.
+    fn fill_rounded_rect_alpha(
+        &mut self,
+        rect: PixelRect,
+        color: libghostty_vt::style::RgbColor,
+        alpha: u8,
+        radius: u32,
+    ) {
+        let Some((x0, y0, x1, y1)) =
+            self.clipped_rect(rect.x as i32, rect.y as i32, rect.width, rect.height)
+        else {
+            return;
+        };
+        let radius = radius.min(rect.width / 2).min(rect.height / 2) as i32;
+        if radius <= 0 {
+            self.fill_rect_alpha(rect.x, rect.y, rect.width, rect.height, color, alpha);
+            return;
+        }
+        for yy in y0..y1 {
+            let top_corner = yy < rect.y.saturating_add(radius as u32);
+            let bottom_corner = yy >= y1.saturating_sub(radius as u32);
+            for xx in x0..x1 {
+                let left_corner = xx < rect.x.saturating_add(radius as u32);
+                let right_corner = xx >= x1.saturating_sub(radius as u32);
+                if (left_corner || right_corner) && (top_corner || bottom_corner) {
+                    let cx = if left_corner {
+                        rect.x as i32 + radius
+                    } else {
+                        x1 as i32 - radius - 1
+                    };
+                    let cy = if top_corner {
+                        rect.y as i32 + radius
+                    } else {
+                        y1 as i32 - radius - 1
+                    };
+                    let coverage = rounded_corner_coverage(
+                        xx,
+                        yy,
+                        cx,
+                        cy,
+                        radius as f32,
+                        ROUNDED_RECT_AA_SAMPLES,
+                    );
+                    if coverage <= 0.0 {
+                        continue;
+                    }
+                    let corner_alpha =
+                        (f32::from(alpha) * coverage).round().clamp(0.0, 255.0) as u8;
+                    self.blend_pixel(xx, yy, color.r, color.g, color.b, corner_alpha);
+                    continue;
+                }
+                self.blend_pixel(xx, yy, color.r, color.g, color.b, alpha);
+            }
+        }
+    }
+
     /// Alpha-blend a glyph rectangle into the frame.
     ///
     /// `cosmic_text` reports glyph rectangles in signed coordinates relative to the text origin.
@@ -1040,13 +1103,16 @@ impl SolidFrame {
             let row_width = keyboard_overlay_row_width(&row);
             let mut x = panel_x.saturating_add(panel_width.saturating_sub(row_width));
             for chip in row {
-                self.fill_rect_alpha(
-                    x,
-                    y,
-                    chip.width,
-                    row_height,
+                self.fill_rounded_rect_alpha(
+                    PixelRect {
+                        x,
+                        y,
+                        width: chip.width,
+                        height: row_height,
+                    },
                     rgb(0xf3, 0xf4, 0xf6),
                     KEYBOARD_OVERLAY_CHIP_ALPHA,
+                    KEYBOARD_OVERLAY_CHIP_CORNER_RADIUS,
                 );
                 text.draw(
                     self,
@@ -1151,9 +1217,9 @@ impl SolidFrame {
                 } else {
                     y1 as i32 - radius - 1
                 };
-                let dx = xx as i32 - cx;
-                let dy = yy as i32 - cy;
-                if dx * dx + dy * dy > radius * radius {
+                let coverage =
+                    rounded_corner_coverage(xx, yy, cx, cy, radius as f32, ROUNDED_RECT_AA_SAMPLES);
+                if coverage <= 0.0 {
                     let offset = self.offset(xx, yy);
                     self.pixels[offset..offset + BYTES_PER_PIXEL].copy_from_slice(&[
                         fill.r,
@@ -1161,6 +1227,11 @@ impl SolidFrame {
                         fill.b,
                         OPAQUE_ALPHA,
                     ]);
+                } else if coverage < 1.0 {
+                    let alpha = ((1.0 - coverage) * f32::from(OPAQUE_ALPHA))
+                        .round()
+                        .clamp(0.0, 255.0) as u8;
+                    self.blend_pixel(xx, yy, fill.r, fill.g, fill.b, alpha);
                 }
             }
         }
@@ -1296,6 +1367,28 @@ fn parse_hex_color(value: &str) -> Option<libghostty_vt::style::RgbColor> {
 /// Construct an RGB color.
 const fn rgb(r: u8, g: u8, b: u8) -> libghostty_vt::style::RgbColor {
     libghostty_vt::style::RgbColor { r, g, b }
+}
+
+/// Estimate how much of one pixel is inside a rounded-rectangle corner circle.
+fn rounded_corner_coverage(x: u32, y: u32, cx: i32, cy: i32, radius: f32, samples: u32) -> f32 {
+    if samples == 0 {
+        return 0.0;
+    }
+    let sample_step = 1.0 / samples as f32;
+    let radius_sq = radius * radius;
+    let mut covered = 0;
+    for sample_y in 0..samples {
+        for sample_x in 0..samples {
+            let px = x as f32 + (sample_x as f32 + 0.5) * sample_step;
+            let py = y as f32 + (sample_y as f32 + 0.5) * sample_step;
+            let dx = px - cx as f32;
+            let dy = py - cy as f32;
+            if dx * dx + dy * dy <= radius_sq {
+                covered += 1;
+            }
+        }
+    }
+    covered as f32 / (samples * samples) as f32
 }
 
 /// Fit as many terminal cells as possible in a pixel dimension.
