@@ -1,0 +1,92 @@
+---
+title: Input And Keys
+description: Type printable text, press terminal control keys, and show input in review media.
+---
+
+Betamax tapes drive a real PTY with printable text and terminal key sequences. Use `Type` for text
+the user would enter, and use key commands for navigation, editing, shortcuts, and interrupts.
+
+## Printable Text
+
+[`Type`](../../reference/tape-reference/#typeduration-text) sends text into the terminal one
+Unicode scalar at a time. The default delay comes from `Set TypingSpeed`, and a command can override
+that delay with an `@duration` suffix.
+
+```text
+Set TypingSpeed 30ms
+
+Type "printf 'hello from betamax\n'"
+Enter
+Wait+Screen "hello from betamax"
+
+Type@5ms "fast input for a long fixture"
+Enter
+```
+
+Quote text that contains spaces, shell syntax, newlines, or backslashes. `Type` is for printable
+text; use key commands when the input should be a terminal control key.
+
+## Key Commands
+
+Key commands send encoded key sequences through the terminal. They can include modifiers, an
+optional duration, and an optional repeat count.
+
+```text
+Type "abcdef"
+Left 3
+Backspace
+Delete
+End
+Enter
+
+Ctrl+C
+Shift+Tab
+Alt+F
+F5
+```
+
+Use keys for cursor movement, readline editing, interrupting commands, menu navigation, and TUI
+shortcuts. The reference lists the supported named keys and modifier syntax in
+[Key Commands](../../reference/tape-reference/#key-commands).
+
+## Editing And Interrupts
+
+The `examples/keys.tape` example is a compact smoke test for editing and terminal control keys. It
+types text, moves the cursor, deletes characters, submits the edited line, interrupts a command
+with `Ctrl+C`, and waits for the shell prompt before continuing.
+
+```text
+Type "abcdef"
+Left 3
+Backspace
+Delete
+End
+Enter
+Wait+Screen "edited=abef"
+
+Type "sleep 5"
+Ctrl+C
+Wait
+```
+
+Prefer a semantic `Wait`, `Wait+Line`, or `Wait+Screen` after input that changes terminal state.
+That keeps tapes tied to observed behavior instead of fixed delays.
+
+## On-Screen Keys
+
+Use [`KeyboardOverlay`](../presentation-overlays/#keyboard-overlays) when generated media should
+show the input that caused a terminal change. The overlay is useful for review GIFs and screenshots
+because arrow keys, shortcuts, and interrupts are otherwise invisible.
+
+```text
+Set KeyboardOverlay Input
+Set KeyboardOverlayLocation BottomRight
+
+Type "echo foo"
+Enter
+Wait+Screen "foo"
+Sleep 900ms
+```
+
+The overlay is presentation-only. It does not change the bytes written to the PTY, wait matching,
+state JSON, or final output dimensions.

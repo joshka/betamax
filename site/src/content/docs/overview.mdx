@@ -35,9 +35,9 @@ Final [`Output`][output-command] artifacts are written after the tape finishes.
 [`Screenshot`][screenshot-command] and [`State`][state-command] commands write checkpoint artifacts
 at their position in the tape.
 
-Captions and keyboard overlays are presentation-only media annotations. They are drawn into a
-reserved row below the terminal canvas for visual outputs, so review labels can explain a workflow
-without covering terminal content or changing state JSON.
+Captions and keyboard overlays are presentation-only media annotations. [Presentation
+Overlays][presentation-overlays] covers captions, on-screen key chips, and placement tradeoffs for
+visual outputs, so review labels can explain a workflow without changing state JSON.
 
 ## Tape Model
 
@@ -58,8 +58,9 @@ condition.
 ## Documentation Captures
 
 [Quick Start][quick-start] covers installation and the first rendered tape. [Tape Files][tape-files]
-explains tape structure, tokenization, waits, hidden work, outputs, and shell defaults.
-[Examples][examples] maps each checked-in tape to the behavior it demonstrates.
+explains tape structure, tokenization, waits, hidden work, outputs, and shell defaults. [Input And
+Keys][input-and-keys] covers printable text, navigation keys, shortcuts, interrupts, and on-screen
+key overlays. [Examples][examples] maps each checked-in tape to the behavior it demonstrates.
 
 [Generated Media Storage][generated-media] covers where rendered files belong when a repository
 needs stable README media, review artifacts, CI outputs, or web-hosted documentation assets.
@@ -95,6 +96,8 @@ external encoder.
 ## Next Pages
 
 - [Quick Start][quick-start] installs Betamax and renders a first tape.
+- [Input And Keys][input-and-keys] explains typing, key commands, and visible input chips.
+- [Presentation Overlays][presentation-overlays] explains captions and on-screen key labels.
 - [Examples][examples] shows each checked-in tape and the behavior it demonstrates.
 - [Tape Reference][tape-reference] documents every command, setting, default, and CLI option.
 - [Differences From VHS][vhs-differences] explains compatibility boundaries for users familiar
@@ -104,8 +107,10 @@ external encoder.
 [examples]: ../examples/
 [generated-media]: ../authoring/generated-media/
 [env-command]: ../reference/tape-reference/#env-key-value
+[input-and-keys]: ../authoring/input-and-keys/
 [outputs]: ../authoring/outputs/
 [output-command]: ../reference/tape-reference/#output-path
+[presentation-overlays]: ../authoring/presentation-overlays/
 [quick-start]: ../quick-start/
 [require-command]: ../reference/tape-reference/#require-program
 [screenshot-command]: ../reference/tape-reference/#screenshot-pathpng

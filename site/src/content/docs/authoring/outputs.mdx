@@ -30,9 +30,9 @@ Use GIF for documentation and release notes. Use PNG screenshots when a human ne
 single stable state. Use state JSON when a test should compare text, scrollback, cursor metadata,
 and styles without doing pixel comparisons.
 
-Use [`Caption`](../../reference/tape-reference/#caption-text) when generated visual media should
-explain a workflow step or review checkpoint without changing terminal behavior. Captions render on
-visual outputs only; they do not appear in state JSON. Captions share a bottom presentation row with
+Use [Presentation Overlays](../presentation-overlays/) when generated visual media should explain a
+workflow step or review checkpoint without changing terminal behavior. Captions render on visual
+outputs only; they do not appear in state JSON. Captions share a bottom presentation row with
 keyboard overlay chips when both are active.
 
 Frame directories are useful when debugging capture timing or feeding rendered frames to custom
@@ -106,8 +106,9 @@ text and styles in a compact comparison format.
 ## Captions
 
 Captions annotate rendered media without changing the terminal session. They are useful when a GIF
-or screenshot needs to explain hidden setup, a review checkpoint, or a step in a TUI flow. Keep
-semantic checks in waits and state outputs; captions are presentation metadata.
+or screenshot needs to explain hidden setup, a review checkpoint, or a step in a TUI flow. See
+[Presentation Overlays](../presentation-overlays/) for keyboard chips and placement tradeoffs.
+Keep semantic checks in waits and state outputs; captions are presentation metadata.
 
 When a tape uses captions, Betamax reserves a bottom presentation row before deriving the terminal
 grid. Captions render below the terminal canvas instead of covering terminal rows. They are

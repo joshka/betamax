@@ -24,11 +24,11 @@ also live under `site/public/assets` with Git LFS. See
 | [`basic.tape`][basic-src]                                 | typing, waits, theme, window bar, border radius | [Tape files](../authoring/tape-files/), [themes](../authoring/themes/) |
 | [`hide-show.tape`][hide-show-src]                         | hidden setup and hidden trailing cleanup        | [Hidden work](../authoring/tape-files/#hidden-work)                    |
 | [`waits.tape`][waits-src]                                 | line, screen, regex, and default prompt waits   | [Wait commands](../reference/tape-reference/#waitduration-regextext)   |
-| [`keys.tape`][keys-src]                                   | key commands, repeats, editing, and interrupt   | [Key commands](../reference/tape-reference/#key-commands)              |
-| [keyboard-overlay][keyboard-overlay-src]                  | input labels over review media                  | [Keyboard overlay](../reference/tape-reference/#settings)              |
+| [`keys.tape`][keys-src]                                   | key commands, repeats, editing, and interrupt   | [Input and keys](../authoring/input-and-keys/)                         |
+| [keyboard-overlay][keyboard-overlay-src]                  | input labels over review media                  | [Presentation overlays](../authoring/presentation-overlays/)           |
 | [`clipboard-env.tape`][clipboard-env-src]                 | `Env`, `Copy`, and `Paste`                      | [Tape reference](../reference/tape-reference/#copy-text-and-paste)     |
-| [`captions.tape`][captions-src]                           | visual captions for review media                | [Caption command](../reference/tape-reference/#caption-text)           |
-| [`presentation-overlays.tape`][presentation-overlays-src] | captions plus keyboard overlay layout           | [Captions](../authoring/outputs/#captions)                             |
+| [`captions.tape`][captions-src]                           | visual captions for review media                | [Presentation overlays](../authoring/presentation-overlays/)           |
+| [`presentation-overlays.tape`][presentation-overlays-src] | captions plus keyboard overlay layout           | [Presentation overlays](../authoring/presentation-overlays/)           |
 | [`outputs.tape`][outputs-src]                             | GIF, PNG, JSON, screenshot, state, frame dir    | [Outputs](../authoring/outputs/)                                       |
 | [`scrollback.tape`][scrollback-src]                       | scrollback-inclusive state JSON                 | [State JSON](../testing/state-json/)                                   |
 | [`text-styles.tape`][text-styles-src]                     | ANSI styles, truecolor, and styled state spans  | [State JSON](../testing/state-json/#styles-and-spans)                  |
@@ -75,6 +75,7 @@ a reserved presentation row below the terminal canvas.
 ![Keyboard overlay Betamax GIF](/betamax/assets/betamax-keyboard-overlay.gif)
 
 `keyboard-overlay.tape` shows typed commands and key presses as compact labels over generated media.
+See [Presentation Overlays](../authoring/presentation-overlays/) for overlay modes and placement.
 Labels appear when input is queued and linger briefly after typing, which keeps review GIFs readable
 without turning the overlay into a permanent command log.
 
