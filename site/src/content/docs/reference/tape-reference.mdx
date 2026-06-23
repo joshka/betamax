@@ -46,35 +46,36 @@ percentages become numbers in `0.0..=1.0`, then numbers, booleans, durations, an
 are attempted in that order. Known settings reject the wrong value kind, so `Set Width "wide"` is
 an error rather than a quiet fallback.
 
-| Setting         | Value kind            | Default          | Behavior                                                              |
-| --------------- | --------------------- | ---------------- | --------------------------------------------------------------------- |
-| `Shell`         | string                | `$SHELL` or `sh` | Shell command and optional arguments; split with shell-like rules     |
-| `Theme`         | string                | `Aardvark Blue`  | Theme name loaded from user Ghostty themes or bundled themes          |
-| `FontFamily`    | string                | `JetBrains Mono` | Preferred font family passed to the renderer                          |
-| `FontSize`      | number                | `22`             | Font size in pixels                                                   |
-| `LetterSpacing` | number                | `1`              | Extra pixels between terminal cells                                   |
-| `LineHeight`    | number                | `1`              | Multiplier applied to the font size                                   |
-| `Width`         | number                | `1200`           | Final output width in pixels                                          |
-| `Height`        | number                | `600`            | Final output height in pixels                                         |
-| `Padding`       | number                | `60`             | Inner padding between the terminal cells and terminal canvas edge     |
-| `Framerate`     | number                | `50`             | Capture cadence in frames per second                                  |
-| `TypingSpeed`   | duration              | `50ms`           | Delay between characters typed by `Type`                              |
-| `PlaybackSpeed` | number                | `1.0`            | Output playback multiplier; does not speed up command execution       |
-| `LoopOffset`    | number or percentage  | `0.0`            | Rotates animated output frames to move the loop boundary              |
-| `CursorBlink`   | bool                  | `true`           | Simulates cursor blink in captured frames                             |
-| KeyboardOverlay | enum                  | `Off`            | Shows recent input chips in media                                     |
-| `WaitTimeout`   | duration or number    | `15s`            | Default timeout for wait commands; bare numbers are seconds           |
-| `WaitPattern`   | regex string          | `>$`             | Regex used by bare `Wait`                                             |
-| `Margin`        | number                | `0`              | Outer decoration margin in pixels                                     |
-| `MarginFill`    | `#rrggbb` string      | theme background | Fill color for the outer margin; invalid colors fall back to theme bg |
-| `WindowBar`     | string                | empty / disabled | Non-empty values draw a synthetic window bar                          |
-| `WindowBarSize` | number                | `30`             | Window bar height in pixels                                           |
-| `BorderRadius`  | number                | `0`              | Rounded-corner mask radius in pixels                                  |
+| Setting                   | Value kind           | Default          | Behavior                                                              |
+| ------------------------- | -------------------- | ---------------- | --------------------------------------------------------------------- |
+| `Shell`                   | string               | `$SHELL` or `sh` | Shell command and optional arguments; split with shell-like rules     |
+| `Theme`                   | string               | `Aardvark Blue`  | Theme name loaded from user Ghostty themes or bundled themes          |
+| `FontFamily`              | string               | `JetBrains Mono` | Preferred font family passed to the renderer                          |
+| `FontSize`                | number               | `22`             | Font size in pixels                                                   |
+| `LetterSpacing`           | number               | `1`              | Extra pixels between terminal cells                                   |
+| `LineHeight`              | number               | `1`              | Multiplier applied to the font size                                   |
+| `Width`                   | number               | `1200`           | Final output width in pixels                                          |
+| `Height`                  | number               | `600`            | Final output height in pixels                                         |
+| `Padding`                 | number               | `60`             | Inner padding between the terminal cells and terminal canvas edge     |
+| `Framerate`               | number               | `50`             | Capture cadence in frames per second                                  |
+| `TypingSpeed`             | duration             | `50ms`           | Delay between characters typed by `Type`                              |
+| `PlaybackSpeed`           | number               | `1.0`            | Output playback multiplier; does not speed up command execution       |
+| `LoopOffset`              | number or percentage | `0.0`            | Rotates animated output frames to move the loop boundary              |
+| `CursorBlink`             | bool                 | `true`           | Simulates cursor blink in captured frames                             |
+| KeyboardOverlay           | enum                 | `Off`            | Shows recent input chips in media                                     |
+| KeyboardOverlayLocation   | enum                 | `CaptionRow`     | Places keyboard overlay chips                                         |
+| `WaitTimeout`             | duration or number   | `15s`            | Default timeout for wait commands; bare numbers are seconds           |
+| `WaitPattern`             | regex string         | `>$`             | Regex used by bare `Wait`                                             |
+| `Margin`                  | number               | `0`              | Outer decoration margin in pixels                                     |
+| `MarginFill`              | `#rrggbb` string     | theme background | Fill color for the outer margin; invalid colors fall back to theme bg |
+| `WindowBar`               | string               | empty / disabled | Non-empty values draw a synthetic window bar                          |
+| `WindowBarSize`           | number               | `30`             | Window bar height in pixels                                           |
+| `BorderRadius`            | number               | `0`              | Rounded-corner mask radius in pixels                                  |
 
 The terminal grid is derived after all settings are applied. Margin, window-bar decoration, and any
-presentation row needed for captions or keyboard overlay are subtracted from width and height first,
-then padding, font size, letter spacing, and line height determine the PTY columns and rows.
-Extremely small dimensions are clamped to at least one row and one column.
+presentation row needed for captions or `KeyboardOverlayLocation CaptionRow` are subtracted from
+width and height first, then padding, font size, letter spacing, and line height determine the PTY
+columns and rows. Extremely small dimensions are clamped to at least one row and one column.
 
 Treat larger `FontSize`, larger `Margin`, and decorative frame settings as presentation zoom. When
 the tape is proving modal placement, centered content, wrapping, or split-pane layout, prefer the
@@ -85,10 +86,11 @@ application layout rather than the demo framing.
 screenshot, and frame-sequence media. Labels appear when input is queued and linger briefly after
 the input is typed, so review GIFs show the action near the terminal change it caused. The overlay
 is presentation-only: it does not change PTY input bytes, waits, state JSON, or final output
-dimensions. When enabled, Betamax reserves a bottom presentation row before deriving the terminal
-grid so chips do not cover terminal content. Keyboard chips share the row with captions when both
-are active. Presentation overlays use a small optical inset based on half of `BorderRadius` near
-rounded terminal corners, so caption and chip edges feel aligned with the rounded frame.
+dimensions. `KeyboardOverlayLocation CaptionRow` reserves a bottom presentation row before deriving
+the terminal grid so chips do not cover terminal content. Corner locations such as `BottomRight`
+draw chips inside the terminal canvas with a small inset from the terminal edge. Presentation
+overlays use a small optical inset based on half of `BorderRadius` near rounded terminal corners,
+so caption and chip edges feel aligned with the rounded frame.
 
 Keyboard overlay modes are:
 

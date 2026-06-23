@@ -27,38 +27,39 @@ An extensionless `Output` path is treated as a directory for numbered PNG frames
 
 Common settings:
 
-| Setting         | Value                                      | Default          | Notes                                       |
-| --------------- | ------------------------------------------ | ---------------- | ------------------------------------------- |
-| `Shell`         | string                                     | `$SHELL` or `sh` | Shell argv is split with shell-like rules.  |
-| `Theme`         | theme name or inline JSON string           | `Aardvark Blue`  | Theme names use Ghostty-style lookup.       |
-| `FontFamily`    | string                                     | `JetBrains Mono` | Falls back through the font system.         |
-| `FontSize`      | number                                     | `22`             | Pixels.                                     |
-| `LetterSpacing` | number                                     | `1`              | Additional pixels between cells.            |
-| `LineHeight`    | number                                     | `1`              | Multiplier applied to font size.            |
-| `Width`         | number                                     | `1200`           | Final output width in pixels.               |
-| `Height`        | number                                     | `600`            | Final output height in pixels.              |
-| `Padding`       | number                                     | `60`             | Inner padding before terminal cells.        |
-| `Framerate`     | number                                     | `50`             | Capture cadence in frames per second.       |
-| `TypingSpeed`   | duration                                   | `50ms`           | Default delay between typed characters.     |
-| `PlaybackSpeed` | number                                     | `1.0`            | Changes output playback, not PTY timing.    |
-| `LoopOffset`    | number                                     | `0.0`            | `0..=1` is a fraction; otherwise seconds.   |
-| `CursorBlink`   | bool                                       | `true`           | Simulates a half-second blink cadence.      |
-| KeyboardOverlay | `Off`, `Keys`, `Input`, or `All`           | `Off`            | Shows recent input chips in media.          |
-| `WaitTimeout`   | duration or number                         | `15s`            | Number values are seconds.                  |
-| `WaitPattern`   | regex string                               | `>$`             | Used by `Wait` without explicit pattern.    |
-| `Margin`        | number                                     | `0`              | Outer decoration margin in pixels.          |
-| `MarginFill`    | `#rrggbb` string                           | `#102040`        | Invalid colors fall back to theme bg.       |
-| `WindowBar`     | `Rings`, `RingsRight`, `Colorful`, or etc. | empty / disabled | Any non-empty value enables the bar.        |
-| `WindowBarSize` | number                                     | `30`             | Bar height in pixels when enabled.          |
-| `BorderRadius`  | number                                     | `0`              | Rounded-corner mask radius in pixels.       |
+| Setting                   | Value                                      | Default          | Notes                                       |
+| ------------------------- | ------------------------------------------ | ---------------- | ------------------------------------------- |
+| `Shell`                   | string                                     | `$SHELL` or `sh` | Shell argv is split with shell-like rules.  |
+| `Theme`                   | theme name or inline JSON string           | `Aardvark Blue`  | Theme names use Ghostty-style lookup.       |
+| `FontFamily`              | string                                     | `JetBrains Mono` | Falls back through the font system.         |
+| `FontSize`                | number                                     | `22`             | Pixels.                                     |
+| `LetterSpacing`           | number                                     | `1`              | Additional pixels between cells.            |
+| `LineHeight`              | number                                     | `1`              | Multiplier applied to font size.            |
+| `Width`                   | number                                     | `1200`           | Final output width in pixels.               |
+| `Height`                  | number                                     | `600`            | Final output height in pixels.              |
+| `Padding`                 | number                                     | `60`             | Inner padding before terminal cells.        |
+| `Framerate`               | number                                     | `50`             | Capture cadence in frames per second.       |
+| `TypingSpeed`             | duration                                   | `50ms`           | Default delay between typed characters.     |
+| `PlaybackSpeed`           | number                                     | `1.0`            | Changes output playback, not PTY timing.    |
+| `LoopOffset`              | number                                     | `0.0`            | `0..=1` is a fraction; otherwise seconds.   |
+| `CursorBlink`             | bool                                       | `true`           | Simulates a half-second blink cadence.      |
+| KeyboardOverlay           | `Off`, `Keys`, `Input`, or `All`           | `Off`            | Shows recent input chips in media.          |
+| KeyboardOverlayLocation   | `CaptionRow`, `TopLeft`, `TopRight`, etc.  | `CaptionRow`     | Places keyboard overlay chips.              |
+| `WaitTimeout`             | duration or number                         | `15s`            | Number values are seconds.                  |
+| `WaitPattern`             | regex string                               | `>$`             | Used by `Wait` without explicit pattern.    |
+| `Margin`                  | number                                     | `0`              | Outer decoration margin in pixels.          |
+| `MarginFill`              | `#rrggbb` string                           | `#102040`        | Invalid colors fall back to theme bg.       |
+| `WindowBar`               | `Rings`, `RingsRight`, `Colorful`, or etc. | empty / disabled | Any non-empty value enables the bar.        |
+| `WindowBarSize`           | number                                     | `30`             | Bar height in pixels when enabled.          |
+| `BorderRadius`            | number                                     | `0`              | Rounded-corner mask radius in pixels.       |
 
 Unknown settings and type mismatches are errors. For example, `Set Wdith 900` and
 `Set Width "wide"` fail before the shell starts instead of silently falling back to defaults.
 
 The terminal grid is derived after all settings are applied. Margin, window-bar decoration, and any
-presentation row needed for captions or keyboard overlay are subtracted from width and height first,
-then padding, font size, letter spacing, and line height determine the PTY columns and rows.
-Extremely small dimensions are clamped to at least one row and one column.
+presentation row needed for captions or `KeyboardOverlayLocation CaptionRow` are subtracted from
+width and height first, then padding, font size, letter spacing, and line height determine the PTY
+columns and rows. Extremely small dimensions are clamped to at least one row and one column.
 
 Treat larger `FontSize`, larger `Margin`, and decorative frame settings as presentation zoom. When
 the tape is proving modal placement, centered content, wrapping, or split-pane layout, prefer the
@@ -69,10 +70,11 @@ application layout rather than the demo framing.
 screenshot, and frame-sequence media. Labels appear when input is queued and linger briefly after
 the input is typed, so review GIFs show the action near the terminal change it caused. The overlay
 is presentation-only: it does not change PTY input bytes, waits, state JSON, or final output
-dimensions. When enabled, Betamax reserves a bottom presentation row before deriving the terminal
-grid so chips do not cover terminal content. Keyboard chips share the row with captions when both
-are active. Presentation overlays use a small optical inset based on half of `BorderRadius` near
-rounded terminal corners, so caption and chip edges feel aligned with the rounded frame.
+dimensions. `KeyboardOverlayLocation CaptionRow` reserves a bottom presentation row before deriving
+the terminal grid so chips do not cover terminal content. Corner locations such as `BottomRight`
+draw chips inside the terminal canvas with a small inset from the terminal edge. Presentation
+overlays use a small optical inset based on half of `BorderRadius` near rounded terminal corners,
+so caption and chip edges feel aligned with the rounded frame.
 
 Keyboard overlay modes are:
 

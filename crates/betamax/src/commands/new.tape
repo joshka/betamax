@@ -36,6 +36,8 @@
 #   Set CursorBlink <bool>          Toggle cursor blinking in captured frames
 #   Set KeyboardOverlay <mode>      Draw recent input labels over generated media
 #                                   Modes: Off, Keys, Input, All
+#   Set KeyboardOverlayLocation <location>
+#                                   Locations: CaptionRow, TopLeft, TopRight, BottomLeft, BottomRight
 #   Set WaitTimeout <time>          Set the default timeout for Wait commands
 #   Set WaitPattern <regex>         Set the default regex for bare Wait commands
 #
