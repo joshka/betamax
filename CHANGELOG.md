@@ -2,6 +2,18 @@
 
 <!-- markdownlint-disable no-duplicate-heading -->
 
+## [0.1.15](https://github.com/joshka/betamax/compare/betamax-v0.1.14...betamax-v0.1.15) - 2026-06-23
+
+### Other
+
+- Place presentation overlays outside terminal ([#94](https://github.com/joshka/betamax/pull/94))
+
+## [0.1.11](https://github.com/joshka/betamax/compare/betamax-core-v0.1.10...betamax-core-v0.1.11) - 2026-06-23
+
+### Other
+
+- Place presentation overlays outside terminal ([#94](https://github.com/joshka/betamax/pull/94))
+
 ## [0.1.14](https://github.com/joshka/betamax/compare/betamax-v0.1.13...betamax-v0.1.14) - 2026-06-22
 
 ### Other
