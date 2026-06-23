@@ -18,23 +18,24 @@ also live under `site/public/assets` with Git LFS. See
 
 ## Example Index
 
-| Tape                                      | Demonstrates                                    | Useful docs                                                            |
-| ----------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------- |
-| [`quick-start.tape`][quick-start-src]     | installing, help, `new`, and nested `run`       | [Quick Start](../quick-start/)                                         |
-| [`basic.tape`][basic-src]                 | typing, waits, theme, window bar, border radius | [Tape files](../authoring/tape-files/), [themes](../authoring/themes/) |
-| [`hide-show.tape`][hide-show-src]         | hidden setup and hidden trailing cleanup        | [Hidden work](../authoring/tape-files/#hidden-work)                    |
-| [`waits.tape`][waits-src]                 | line, screen, regex, and default prompt waits   | [Wait commands](../reference/tape-reference/#waitduration-regextext)   |
-| [`keys.tape`][keys-src]                   | key commands, repeats, editing, and interrupt   | [Key commands](../reference/tape-reference/#key-commands)              |
-| [keyboard-overlay][keyboard-overlay-src]  | input labels over review media                  | [Keyboard overlay](../reference/tape-reference/#settings)              |
-| [`clipboard-env.tape`][clipboard-env-src] | `Env`, `Copy`, and `Paste`                      | [Tape reference](../reference/tape-reference/#copy-text-and-paste)     |
-| [`captions.tape`][captions-src]           | visual captions for review media                | [Caption command](../reference/tape-reference/#caption-text)           |
-| [`outputs.tape`][outputs-src]             | GIF, PNG, JSON, screenshot, state, frame dir    | [Outputs](../authoring/outputs/)                                       |
-| [`scrollback.tape`][scrollback-src]       | scrollback-inclusive state JSON                 | [State JSON](../testing/state-json/)                                   |
-| [`text-styles.tape`][text-styles-src]     | ANSI styles, truecolor, and styled state spans  | [State JSON](../testing/state-json/#styles-and-spans)                  |
-| [`layout.tape`][layout-src]               | padding, margin, fill, window bar, radius       | [Themes and styling](../authoring/themes/)                             |
-| [`themes.tape`][themes-src]               | copied Ghostty themes and palette mapping       | [Theme lookup](../authoring/themes/#theme-lookup)                      |
-| [`screenshot.tape`][screenshot-src]       | screenshots and terminal state JSON             | [Checkpoints](../authoring/outputs/#checkpoints)                       |
-| [`video.tape`][video-src]                 | GIF, MP4, and WebM from one capture             | [Video encoding](../authoring/outputs/#video-encoding)                 |
+| Tape                                                      | Demonstrates                                    | Useful docs                                                            |
+| --------------------------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------- |
+| [`quick-start.tape`][quick-start-src]                     | installing, help, `new`, and nested `run`       | [Quick Start](../quick-start/)                                         |
+| [`basic.tape`][basic-src]                                 | typing, waits, theme, window bar, border radius | [Tape files](../authoring/tape-files/), [themes](../authoring/themes/) |
+| [`hide-show.tape`][hide-show-src]                         | hidden setup and hidden trailing cleanup        | [Hidden work](../authoring/tape-files/#hidden-work)                    |
+| [`waits.tape`][waits-src]                                 | line, screen, regex, and default prompt waits   | [Wait commands](../reference/tape-reference/#waitduration-regextext)   |
+| [`keys.tape`][keys-src]                                   | key commands, repeats, editing, and interrupt   | [Key commands](../reference/tape-reference/#key-commands)              |
+| [keyboard-overlay][keyboard-overlay-src]                  | input labels over review media                  | [Keyboard overlay](../reference/tape-reference/#settings)              |
+| [`clipboard-env.tape`][clipboard-env-src]                 | `Env`, `Copy`, and `Paste`                      | [Tape reference](../reference/tape-reference/#copy-text-and-paste)     |
+| [`captions.tape`][captions-src]                           | visual captions for review media                | [Caption command](../reference/tape-reference/#caption-text)           |
+| [`presentation-overlays.tape`][presentation-overlays-src] | captions plus keyboard overlay layout           | [Captions](../authoring/outputs/#captions)                             |
+| [`outputs.tape`][outputs-src]                             | GIF, PNG, JSON, screenshot, state, frame dir    | [Outputs](../authoring/outputs/)                                       |
+| [`scrollback.tape`][scrollback-src]                       | scrollback-inclusive state JSON                 | [State JSON](../testing/state-json/)                                   |
+| [`text-styles.tape`][text-styles-src]                     | ANSI styles, truecolor, and styled state spans  | [State JSON](../testing/state-json/#styles-and-spans)                  |
+| [`layout.tape`][layout-src]                               | padding, margin, fill, window bar, radius       | [Themes and styling](../authoring/themes/)                             |
+| [`themes.tape`][themes-src]                               | copied Ghostty themes and palette mapping       | [Theme lookup](../authoring/themes/#theme-lookup)                      |
+| [`screenshot.tape`][screenshot-src]                       | screenshots and terminal state JSON             | [Checkpoints](../authoring/outputs/#checkpoints)                       |
+| [`video.tape`][video-src]                                 | GIF, MP4, and WebM from one capture             | [Video encoding](../authoring/outputs/#video-encoding)                 |
 
 ## Preview GIFs
 
@@ -66,7 +67,8 @@ updates terminal state, but the animation starts only when `Show` reveals the pr
 ![Captioned Betamax GIF](/betamax/assets/betamax-captions.gif)
 
 `captions.tape` annotates rendered media without changing the terminal session. Caption changes are
-presentation metadata: waits and state outputs keep matching the terminal itself.
+presentation metadata: waits and state outputs keep matching the terminal itself. Captions render in
+a reserved presentation row below the terminal canvas.
 
 ### Keyboard Overlay
 
@@ -75,6 +77,11 @@ presentation metadata: waits and state outputs keep matching the terminal itself
 `keyboard-overlay.tape` shows typed commands and key presses as compact labels over generated media.
 Labels appear when input is queued and linger briefly after typing, which keeps review GIFs readable
 without turning the overlay into a permanent command log.
+
+`presentation-overlays.tape` combines captions and keyboard overlay chips. The caption is
+left-aligned with the terminal frame, key chips are right-aligned, and long captions are truncated
+with `...` rather than wrapped over the chips. Caption glyphs are clipped to their reserved width as
+a final guard for font fallback and unusually wide characters.
 
 ### Themes
 
@@ -111,6 +118,7 @@ Use `examples/waits.tape` when debugging timing. It shows the three wait targets
 [keys-src]: https://github.com/joshka/betamax/blob/main/examples/keys.tape
 [layout-src]: https://github.com/joshka/betamax/blob/main/examples/layout.tape
 [outputs-src]: https://github.com/joshka/betamax/blob/main/examples/outputs.tape
+[presentation-overlays-src]: https://github.com/joshka/betamax/blob/main/examples/presentation-overlays.tape
 [quick-start-src]: https://github.com/joshka/betamax/blob/main/examples/quick-start.tape
 [screenshot-src]: https://github.com/joshka/betamax/blob/main/examples/screenshot.tape
 [scrollback-src]: https://github.com/joshka/betamax/blob/main/examples/scrollback.tape

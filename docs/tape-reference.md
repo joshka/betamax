@@ -43,7 +43,7 @@ Common settings:
 | `PlaybackSpeed` | number                                     | `1.0`            | Changes output playback, not PTY timing.    |
 | `LoopOffset`    | number                                     | `0.0`            | `0..=1` is a fraction; otherwise seconds.   |
 | `CursorBlink`   | bool                                       | `true`           | Simulates a half-second blink cadence.      |
-| KeyboardOverlay | `Off`, `Keys`, `Input`, or `All`           | `Off`            | Draws recent input over generated media.    |
+| KeyboardOverlay | `Off`, `Keys`, `Input`, or `All`           | `Off`            | Shows recent input chips in media.          |
 | `WaitTimeout`   | duration or number                         | `15s`            | Number values are seconds.                  |
 | `WaitPattern`   | regex string                               | `>$`             | Used by `Wait` without explicit pattern.    |
 | `Margin`        | number                                     | `0`              | Outer decoration margin in pixels.          |
@@ -55,20 +55,23 @@ Common settings:
 Unknown settings and type mismatches are errors. For example, `Set Wdith 900` and
 `Set Width "wide"` fail before the shell starts instead of silently falling back to defaults.
 
-The terminal grid is derived after all settings are applied. Margin and window-bar decoration are
-subtracted from width and height first, then padding, font size, letter spacing, and line height
-determine the PTY columns and rows. Extremely small dimensions are clamped to at least one row and
-one column.
+The terminal grid is derived after all settings are applied. Margin, window-bar decoration, and any
+presentation row needed for captions or keyboard overlay are subtracted from width and height first,
+then padding, font size, letter spacing, and line height determine the PTY columns and rows.
+Extremely small dimensions are clamped to at least one row and one column.
 
 Treat larger `FontSize`, larger `Margin`, and decorative frame settings as presentation zoom. When
 the tape is proving modal placement, centered content, wrapping, or split-pane layout, prefer the
 default `FontSize`, default `Margin`, and a wider `Width` or `Height` so the proof matches the
 application layout rather than the demo framing.
 
-`Set KeyboardOverlay Input` draws a compact time-aware input HUD over generated PNG, GIF, video,
+`Set KeyboardOverlay Input` draws compact time-aware input chips on generated PNG, GIF, video,
 screenshot, and frame-sequence media. Labels appear when input is queued and linger briefly after
 the input is typed, so review GIFs show the action near the terminal change it caused. The overlay
-is presentation-only: it does not change PTY input bytes, terminal dimensions, waits, or state JSON.
+is presentation-only: it does not change PTY input bytes, waits, state JSON, or final output
+dimensions. When enabled, Betamax reserves a bottom presentation row before deriving the terminal
+grid so chips do not cover terminal content. Keyboard chips are right-aligned to the terminal frame
+edge and share the row with captions when both are active.
 
 Keyboard overlay modes are:
 
@@ -206,16 +209,22 @@ Sets a caption rendered onto later visual media frames. The text is one token, s
 that contain spaces. Use `Caption ""` to clear the active caption.
 
 Captions are presentation metadata only. They do not write to the PTY, alter terminal state, affect
-wait matching, or change output dimensions. Active captions appear on GIF, PNG, MP4, WebM, frame
-directory, and `Screenshot` outputs. `State` JSON does not include captions.
+wait matching, or change final output dimensions. Active captions appear on GIF, PNG, MP4, WebM,
+frame directory, and `Screenshot` outputs. `State` JSON does not include captions. When a tape
+contains a caption, Betamax reserves a bottom presentation row before deriving the terminal grid so
+captions do not cover terminal content.
 
 `Caption` does not capture a frame or add time to animated output by itself. The new caption appears
 on the next visual frame Betamax renders, such as a frame captured during a later `Sleep`, `Wait`,
 typing, key press, `Show`, final-frame output, or `Screenshot`. Add `Sleep` after a caption-only
 change when an animation should dwell on the new caption without changing terminal content.
 
-Betamax renders captions as a bottom overlay. If the overlay covers important terminal content,
-increase the tape height, margin, or padding, or clear the caption before the affected frame.
+Betamax renders captions below the terminal canvas, left-aligned with the terminal frame edge.
+Captions are single-line presentation text: if a caption does not fit beside right-aligned keyboard
+chips, Betamax truncates it with `...` instead of wrapping. Caption glyphs are clipped to their
+reserved width as a final guard for font fallback and unusually wide characters. If the caption or
+keyboard overlay needs more room, increase the tape height or reduce presentation chrome such as
+margin and window bar size.
 
 ### `Screenshot <path>.png`
 

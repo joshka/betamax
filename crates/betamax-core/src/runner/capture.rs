@@ -49,7 +49,7 @@ impl Default for CaptureState {
 /// Raw captured terminal frame plus presentation metadata for final media decoration.
 #[derive(Debug, Clone)]
 pub(super) struct CapturedFrame {
-    /// Raw terminal frame before final margin/window/caption/overlay decoration.
+    /// Raw terminal frame before final margin, window, and presentation-row decoration.
     pub(super) frame: Frame,
     /// Caption active when this frame was captured.
     pub(super) caption: Option<String>,

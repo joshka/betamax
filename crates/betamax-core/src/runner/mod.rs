@@ -1058,8 +1058,8 @@ mod tests {
     fn keyboard_overlay_changes_pixels_without_resizing_output() {
         let tape = Tape::parse(
             r#"
-            Set Width 80
-            Set Height 40
+            Set Width 180
+            Set Height 120
             Set Padding 0
             Set KeyboardOverlay Input
             Type "abc"
@@ -1080,8 +1080,8 @@ mod tests {
         let rgba = decorated.rgba().unwrap();
         let bottom_left = rgba_pixel(&rgba, decorated.width, 1, decorated.height - 1);
 
-        assert_eq!(decorated.width, 80);
-        assert_eq!(decorated.height, 40);
+        assert_eq!(decorated.width, 180);
+        assert_eq!(decorated.height, 120);
         assert_ne!(bottom_left, [255, 0, 0, 255]);
     }
 
@@ -1165,6 +1165,7 @@ mod tests {
             Set Width 180
             Set Height 120
             Set Padding 0
+            Caption "Review checkpoint"
             "#,
         )
         .unwrap();
@@ -1185,6 +1186,48 @@ mod tests {
         assert_eq!(captioned.width, plain.width);
         assert_eq!(captioned.height, plain.height);
         assert_ne!(captioned.pixels, plain.pixels);
+    }
+
+    #[test]
+    fn presentation_overlays_reserve_space_below_terminal_canvas() {
+        let tape = Tape::parse(
+            r#"
+            Set Width 220
+            Set Height 180
+            Set Padding 0
+            Set KeyboardOverlay Input
+            Caption "Step 1"
+            Type "abc"
+            "#,
+        )
+        .unwrap();
+        let settings = Settings::from_tape(&tape).unwrap();
+
+        assert_eq!(settings.terminal_canvas_width(), 220);
+        assert!(settings.terminal_canvas_height() < 180);
+
+        let frame = sized_test_frame(
+            settings.terminal_canvas_width(),
+            settings.terminal_canvas_height(),
+            [255, 0, 0, 255],
+        );
+        let labels = vec!["Type \"abc\"".to_string()];
+        let decorated = settings
+            .decorate_frame_with_overlays(&frame, Some("Step 1"), &labels)
+            .unwrap();
+        let rgba = decorated.rgba().unwrap();
+
+        let terminal_bottom_y = settings.terminal_canvas_height().saturating_sub(1);
+        let first_overlay_y = settings.terminal_canvas_height();
+        let terminal_pixel = rgba_pixel(&rgba, decorated.width, 1, terminal_bottom_y);
+        let overlay_pixel = rgba_pixel(&rgba, decorated.width, 1, first_overlay_y);
+
+        assert_eq!(terminal_pixel, [255, 0, 0, 255]);
+        assert_ne!(overlay_pixel, [255, 0, 0, 255]);
+        assert_ne!(
+            rgba_pixel(&rgba, decorated.width, 110, decorated.height - 1),
+            [255, 0, 0, 255]
+        );
     }
 
     #[test]

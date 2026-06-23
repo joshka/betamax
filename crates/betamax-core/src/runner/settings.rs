@@ -14,7 +14,9 @@ use std::env;
 use std::ffi::OsString;
 use std::time::Duration;
 
-use cosmic_text::{Attrs, Buffer, Color, Family, FontSystem, Metrics, Shaping, SwashCache, Weight};
+use cosmic_text::{
+    Attrs, Buffer, Color, Family, FontSystem, Metrics, Shaping, SwashCache, Weight, Wrap,
+};
 use miette::miette;
 use regex::Regex;
 
@@ -66,19 +68,15 @@ const CAPTION_FONT_SCALE: f32 = 0.9;
 /// Minimum readable caption font size.
 const MIN_CAPTION_FONT_SIZE: f32 = 14.0;
 /// Caption line height relative to caption font size.
-const CAPTION_LINE_HEIGHT: f32 = 1.35;
-/// Horizontal caption padding relative to caption font size.
-const CAPTION_HORIZONTAL_PADDING: f32 = 0.75;
+const CAPTION_LINE_HEIGHT: f32 = 1.2;
 /// Vertical caption padding relative to caption font size.
-const CAPTION_VERTICAL_PADDING: f32 = 0.45;
-/// Caption background alpha. The output frame remains fully opaque after blending.
-const CAPTION_BACKGROUND_ALPHA: u8 = 0xdd;
+const CAPTION_VERTICAL_PADDING: f32 = 0.25;
 /// Denominator for 8-bit alpha blending.
 const ALPHA_DENOMINATOR: u16 = 255;
 /// Maximum number of recent overlay events drawn over the output frame.
 const KEYBOARD_OVERLAY_MAX_CHIPS: usize = 5;
 /// Maximum number of overlay rows drawn over the output frame.
-const KEYBOARD_OVERLAY_MAX_ROWS: usize = 2;
+const KEYBOARD_OVERLAY_MAX_ROWS: usize = 1;
 /// Font size used by the compact keyboard overlay.
 const KEYBOARD_OVERLAY_FONT_SIZE: f32 = 18.0;
 /// Line height used by the compact keyboard overlay.
@@ -97,10 +95,10 @@ const KEYBOARD_OVERLAY_CHIP_PAD_Y: u32 = 4;
 const KEYBOARD_OVERLAY_CHIP_GAP: u32 = 8;
 /// Maximum number of displayed characters from one `Type` command.
 const KEYBOARD_OVERLAY_TYPE_MAX_CHARS: usize = 26;
-/// Alpha used for the overlay HUD.
-const KEYBOARD_OVERLAY_PANEL_ALPHA: u8 = 210;
 /// Alpha used for individual key chips.
 const KEYBOARD_OVERLAY_CHIP_ALPHA: u8 = 235;
+/// Gap between caption text and right-aligned keyboard chips.
+const PRESENTATION_OVERLAY_GAP: u32 = 16;
 
 /// Shell command and all derived execution, rendering, timing, and styling settings.
 ///
@@ -136,6 +134,8 @@ pub(super) struct Settings {
     pub(super) theme: TerminalTheme,
     /// Outer frame decoration settings.
     pub(super) style: StyleSettings,
+    /// Whether the tape uses presentation captions.
+    pub(super) caption_overlay: bool,
     /// Optional input-sequence overlay for review media.
     pub(super) keyboard_overlay: KeyboardOverlaySettings,
     /// Whether captured frames should blink the cursor according to the output framerate.
@@ -243,6 +243,7 @@ impl Settings {
             typing_delay: DEFAULT_TYPING_DELAY,
             text: TextSettings::default(),
             style: StyleSettings::new(&theme),
+            caption_overlay: false,
             keyboard_overlay: KeyboardOverlaySettings::default(),
             theme,
             cursor_blink: true,
@@ -255,6 +256,9 @@ impl Settings {
             match command {
                 Command::Env { key, value } => settings.env.push((key.clone(), value.clone())),
                 Command::Set { key, value } => settings.apply_set(key, value)?,
+                Command::Caption(text) if !text.trim().is_empty() => {
+                    settings.caption_overlay = true;
+                }
                 _ => {}
             }
         }
@@ -351,6 +355,7 @@ impl Settings {
         self.height
             .saturating_sub(self.effective_margin().saturating_mul(2))
             .saturating_sub(self.window_bar_height())
+            .saturating_sub(self.presentation_overlay_height())
     }
 
     /// VHS only applies margin when a margin fill is configured.
@@ -369,6 +374,49 @@ impl Settings {
         } else {
             self.style.window_bar_size
         }
+    }
+
+    /// Height reserved below the terminal canvas for presentation-only overlays.
+    fn presentation_overlay_height(&self) -> u32 {
+        self.caption_overlay_height()
+            .max(self.keyboard_overlay_height())
+    }
+
+    /// Height reserved for captions when any non-empty caption appears in the tape.
+    fn caption_overlay_height(&self) -> u32 {
+        if !self.caption_overlay {
+            return 0;
+        }
+        let font_size = self.caption_font_size();
+        let line_height = (font_size * CAPTION_LINE_HEIGHT).ceil() as u32;
+        let vertical_padding = (font_size * CAPTION_VERTICAL_PADDING).ceil() as u32;
+        line_height.saturating_add(vertical_padding.saturating_mul(2))
+    }
+
+    /// Height reserved for the largest keyboard overlay panel the configured mode can draw.
+    fn keyboard_overlay_height(&self) -> u32 {
+        if self.keyboard_overlay.mode == KeyboardOverlayMode::Off {
+            return 0;
+        }
+        let row_height = KEYBOARD_OVERLAY_LINE_HEIGHT.ceil() as u32;
+        KEYBOARD_OVERLAY_INSET_Y
+            .saturating_mul(2)
+            .saturating_add(row_height.saturating_mul(KEYBOARD_OVERLAY_MAX_ROWS as u32))
+    }
+
+    /// Font size used by caption rendering and layout reservation.
+    fn caption_font_size(&self) -> f32 {
+        (self.text.font_size * CAPTION_FONT_SCALE).max(MIN_CAPTION_FONT_SIZE)
+    }
+
+    /// Left edge for presentation content, aligned with the terminal frame.
+    fn presentation_overlay_left_x(&self) -> u32 {
+        self.effective_margin().min(self.width)
+    }
+
+    /// Right edge for presentation content, aligned with the terminal frame.
+    fn presentation_overlay_right_x(&self) -> u32 {
+        self.width.saturating_sub(self.effective_margin())
     }
 
     /// Derive terminal rows and columns from pixel dimensions.
@@ -489,9 +537,9 @@ impl Settings {
 
     /// Decorate a frame using a caller-owned caption renderer cache.
     ///
-    /// Decoration happens in final output coordinates: margin, window bar, rounded mask, then
-    /// caption overlay. Keeping captions last makes them independent from terminal canvas sizing
-    /// and guarantees the same overlay path for final PNGs, screenshots, GIFs, and videos.
+    /// Decoration happens in final output coordinates: margin, window bar, rounded mask, then the
+    /// presentation row for captions and keyboard labels. Keeping presentation drawing here
+    /// guarantees the same overlay path for final PNGs, screenshots, GIFs, and videos.
     fn decorate_frame_with_overlay_renderer(
         &self,
         frame: &Frame,
@@ -524,77 +572,88 @@ impl Settings {
                 fill,
             );
         }
-        if let Some(caption) = caption.filter(|caption| !caption.trim().is_empty()) {
-            self.draw_caption(&mut output, caption, caption_renderer);
+        let active_caption = caption.filter(|caption| !caption.trim().is_empty());
+        let keyboard_avoid_width = if self.keyboard_overlay.visible(keyboard_overlay_labels) {
+            keyboard_overlay_panel_width(keyboard_overlay_labels, output.width)
+                .saturating_add(PRESENTATION_OVERLAY_GAP)
+        } else {
+            0
+        };
+        if let Some(caption) = active_caption {
+            self.draw_caption(&mut output, caption, caption_renderer, keyboard_avoid_width);
         }
         if self.keyboard_overlay.visible(keyboard_overlay_labels) {
-            output.draw_keyboard_overlay(keyboard_overlay_labels, &self.text);
+            output.draw_keyboard_overlay(
+                keyboard_overlay_labels,
+                &self.text,
+                self.keyboard_overlay_bottom_y(),
+                self.presentation_overlay_right_x(),
+            );
         }
         Ok(output.into_frame())
     }
 
     /// Draw a caption into the final decorated frame.
     ///
-    /// The background is alpha-blended into the opaque output frame before text is drawn. This
-    /// keeps output formats simple while still making captions readable over arbitrary terminal
-    /// content.
+    /// Captions are clipped to their available row width and truncated with `...` when active
+    /// keyboard labels need space on the right.
     fn draw_caption(
         &self,
         output: &mut SolidFrame,
         caption: &str,
         caption_renderer: &mut CaptionRenderer,
+        avoid_right_width: u32,
     ) {
-        let Some(layout) = self.caption_layout() else {
+        let Some(layout) = self.caption_layout(avoid_right_width) else {
             return;
         };
-        output.fill_rect_alpha(
-            layout.x,
-            layout.y,
-            layout.width,
-            layout.height,
-            self.theme.background,
-            CAPTION_BACKGROUND_ALPHA,
-        );
         caption_renderer.draw(output, caption, layout, &self.text, self.theme.foreground);
     }
 
     /// Compute caption geometry in final output-frame coordinates.
     ///
-    /// The overlay spans the decorated content width inside the outer margin and is anchored to the
-    /// bottom of the final output. It may cover terminal pixels by design; tapes that need more
-    /// room should increase height, margin, or padding instead of changing PTY behavior.
-    fn caption_layout(&self) -> Option<CaptionLayout> {
-        let margin = self.effective_margin();
-        let width = self.width.saturating_sub(margin.saturating_mul(2));
+    /// The caption sits in the shared bottom presentation row below the terminal canvas. Keyboard
+    /// labels are right-aligned in the same row; the caption width is reduced so the two surfaces
+    /// do not overlap.
+    fn caption_layout(&self, avoid_right_width: u32) -> Option<CaptionLayout> {
+        if !self.caption_overlay {
+            return None;
+        }
+        let left_x = self.presentation_overlay_left_x();
+        let right_x = self.presentation_overlay_right_x();
+        let width = right_x
+            .saturating_sub(left_x)
+            .saturating_sub(avoid_right_width);
         if width == 0 || self.height == 0 {
             return None;
         }
 
-        let font_size = (self.text.font_size * CAPTION_FONT_SCALE).max(MIN_CAPTION_FONT_SIZE);
+        let font_size = self.caption_font_size();
         let line_height = (font_size * CAPTION_LINE_HEIGHT).ceil();
-        let horizontal_padding = (font_size * CAPTION_HORIZONTAL_PADDING).ceil() as u32;
         let vertical_padding = (font_size * CAPTION_VERTICAL_PADDING).ceil() as u32;
-        let height = (line_height as u32)
-            .saturating_add(vertical_padding.saturating_mul(2))
-            .min(self.height);
-        let text_width = width.saturating_sub(horizontal_padding.saturating_mul(2));
-        if text_width == 0 {
-            return None;
-        }
+        let height = self.presentation_overlay_height().min(self.height);
+        let caption_height = self.caption_overlay_height().min(height);
 
-        let y = self.height.saturating_sub(margin).saturating_sub(height);
+        let y = self
+            .height
+            .saturating_sub(self.effective_margin())
+            .saturating_sub(height);
+        let text_y = y
+            .saturating_add(height.saturating_sub(caption_height) / 2)
+            .saturating_add(vertical_padding);
         Some(CaptionLayout {
-            x: margin,
-            y,
-            width,
-            height,
-            text_x: margin.saturating_add(horizontal_padding),
-            text_y: y.saturating_add(vertical_padding),
-            text_width,
-            text_height: height.saturating_sub(vertical_padding.saturating_mul(2)),
+            text_x: left_x,
+            text_y,
+            text_width: width,
+            text_height: caption_height.saturating_sub(vertical_padding.saturating_mul(2)),
             font_size,
             line_height,
         })
+    }
+
+    /// Bottom edge for keyboard overlay chips in final output-frame coordinates.
+    fn keyboard_overlay_bottom_y(&self) -> u32 {
+        self.height.saturating_sub(self.effective_margin())
     }
 
     /// Return the keyboard overlay label for a visible input command, if enabled.
@@ -605,16 +664,36 @@ impl Settings {
 
 #[derive(Debug, Clone, Copy)]
 struct CaptionLayout {
-    x: u32,
-    y: u32,
-    width: u32,
-    height: u32,
     text_x: u32,
     text_y: u32,
     text_width: u32,
     text_height: u32,
     font_size: f32,
     line_height: f32,
+}
+
+impl CaptionLayout {
+    /// Return the caption text bounds as a clipping rectangle.
+    fn text_rect(self) -> PixelRect {
+        PixelRect {
+            x: self.text_x,
+            y: self.text_y,
+            width: self.text_width,
+            height: self.text_height,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct PixelRect {
+    /// Left edge in output pixels.
+    x: u32,
+    /// Top edge in output pixels.
+    y: u32,
+    /// Width in output pixels.
+    width: u32,
+    /// Height in output pixels.
+    height: u32,
 }
 
 /// Text renderer for caption overlays.
@@ -640,8 +719,8 @@ impl CaptionRenderer {
 
     /// Draw caption text into the given layout.
     ///
-    /// The bounded text buffer clips overflow instead of resizing the media frame. That matches
-    /// the tape contract: captions are annotations on fixed-size output, not layout inputs.
+    /// Caption text is pre-truncated and drawn without wrapping. That keeps the presentation row
+    /// stable and avoids hiding terminal content or colliding with keyboard labels.
     fn draw(
         &mut self,
         target: &mut SolidFrame,
@@ -650,34 +729,97 @@ impl CaptionRenderer {
         text_settings: &TextSettings,
         color: libghostty_vt::style::RgbColor,
     ) {
-        let metrics = Metrics::new(layout.font_size, layout.line_height);
-        let mut buffer = Buffer::new(&mut self.font_system, metrics);
-        let mut buffer = buffer.borrow_with(&mut self.font_system);
         let family = text_settings
             .font_family
             .as_deref()
             .map(Family::Name)
             .unwrap_or(Family::Monospace);
         let attrs = Attrs::new().family(family).weight(Weight::BOLD);
+        let metrics = Metrics::new(layout.font_size, layout.line_height);
+        let caption = self.truncate_caption(caption, layout, metrics, &attrs);
 
+        let mut buffer = Buffer::new(&mut self.font_system, metrics);
+        let mut buffer = buffer.borrow_with(&mut self.font_system);
         buffer.set_size(
             Some(layout.text_width as f32),
             Some(layout.text_height as f32),
         );
-        buffer.set_text(caption, &attrs, Shaping::Advanced, None);
+        buffer.set_wrap(Wrap::None);
+        buffer.set_text(&caption, &attrs, Shaping::Advanced, None);
         buffer.draw(
             &mut self.swash_cache,
             Color::rgb(color.r, color.g, color.b),
             |glyph_x, glyph_y, width, height, glyph_color| {
-                target.blend_rect(
+                target.blend_rect_clipped(
                     layout.text_x as i32 + glyph_x,
                     layout.text_y as i32 + glyph_y,
                     width,
                     height,
                     glyph_color,
+                    layout.text_rect(),
                 );
             },
         );
+    }
+
+    /// Truncate caption text with the same shaping stack used for drawing.
+    fn truncate_caption(
+        &mut self,
+        caption: &str,
+        layout: CaptionLayout,
+        metrics: Metrics,
+        attrs: &Attrs<'_>,
+    ) -> String {
+        const ELLIPSIS: &str = "...";
+
+        if self.caption_text_width(caption, layout, metrics, attrs) <= layout.text_width as f32 {
+            return caption.to_string();
+        }
+        if self.caption_text_width(ELLIPSIS, layout, metrics, attrs) > layout.text_width as f32 {
+            return ELLIPSIS.to_string();
+        }
+
+        let char_ends = caption
+            .char_indices()
+            .map(|(index, ch)| index + ch.len_utf8())
+            .collect::<Vec<_>>();
+        let mut low = 0;
+        let mut high = char_ends.len();
+        while low < high {
+            let mid = (low + high).div_ceil(2);
+            let candidate = format!("{}{}", &caption[..char_ends[mid - 1]], ELLIPSIS);
+            if self.caption_text_width(&candidate, layout, metrics, attrs)
+                <= layout.text_width as f32
+            {
+                low = mid;
+            } else {
+                high = mid - 1;
+            }
+        }
+
+        if low == 0 {
+            return ELLIPSIS.to_string();
+        }
+        format!("{}{}", &caption[..char_ends[low - 1]], ELLIPSIS)
+    }
+
+    /// Measure a single caption line after font fallback and shaping.
+    fn caption_text_width(
+        &mut self,
+        caption: &str,
+        layout: CaptionLayout,
+        metrics: Metrics,
+        attrs: &Attrs<'_>,
+    ) -> f32 {
+        let mut buffer = Buffer::new(&mut self.font_system, metrics);
+        let mut buffer = buffer.borrow_with(&mut self.font_system);
+        buffer.set_size(None, Some(layout.text_height as f32));
+        buffer.set_wrap(Wrap::None);
+        buffer.set_text(caption, attrs, Shaping::Advanced, None);
+        buffer
+            .layout_runs()
+            .map(|run| run.line_w)
+            .fold(0.0, f32::max)
     }
 }
 
@@ -759,8 +901,8 @@ impl SolidFrame {
 
     /// Fill a clipped rectangle with alpha blending.
     ///
-    /// Caption backgrounds are composited onto an opaque frame instead of introducing transparent
-    /// output pixels, because the media encoders currently treat rendered frames as opaque RGBA.
+    /// Alpha fills are composited onto an opaque frame instead of introducing transparent output
+    /// pixels, because the media encoders currently treat rendered frames as opaque RGBA.
     fn fill_rect_alpha(
         &mut self,
         x: u32,
@@ -799,8 +941,50 @@ impl SolidFrame {
         }
     }
 
+    /// Alpha-blend a glyph rectangle clipped to a caller-provided rectangle.
+    fn blend_rect_clipped(
+        &mut self,
+        x: i32,
+        y: i32,
+        width: u32,
+        height: u32,
+        color: Color,
+        clip: PixelRect,
+    ) {
+        let [r, g, b, a] = color.as_rgba();
+        if a == 0 {
+            return;
+        }
+        let Some((x0, y0, x1, y1)) = self.clipped_rect(x, y, width, height) else {
+            return;
+        };
+        let Some((clip_x0, clip_y0, clip_x1, clip_y1)) =
+            self.clipped_rect(clip.x as i32, clip.y as i32, clip.width, clip.height)
+        else {
+            return;
+        };
+        let x0 = x0.max(clip_x0);
+        let y0 = y0.max(clip_y0);
+        let x1 = x1.min(clip_x1);
+        let y1 = y1.min(clip_y1);
+        if x0 >= x1 || y0 >= y1 {
+            return;
+        }
+        for yy in y0..y1 {
+            for xx in x0..x1 {
+                self.blend_pixel(xx, yy, r, g, b, a);
+            }
+        }
+    }
+
     /// Draw the configured input sequence as compact key chips over the bottom of the frame.
-    fn draw_keyboard_overlay(&mut self, labels: &[String], text_settings: &TextSettings) {
+    fn draw_keyboard_overlay(
+        &mut self,
+        labels: &[String],
+        text_settings: &TextSettings,
+        bottom_y: u32,
+        right_x: u32,
+    ) {
         let labels = recent_keyboard_overlay_labels(labels);
         let rows = keyboard_overlay_rows(&labels, self.width);
         if rows.is_empty() {
@@ -820,17 +1004,8 @@ impl SolidFrame {
             .saturating_mul(2)
             .saturating_add(row_height.saturating_mul(rows.len() as u32))
             .min(self.height);
-        let panel_x = self.width.saturating_sub(panel_width) / 2;
-        let panel_y = self.height.saturating_sub(panel_height);
-        self.fill_rect_alpha(
-            panel_x,
-            panel_y,
-            panel_width,
-            panel_height,
-            rgb(0x08, 0x0a, 0x0f),
-            KEYBOARD_OVERLAY_PANEL_ALPHA,
-        );
-
+        let panel_x = right_x.min(self.width).saturating_sub(panel_width);
+        let panel_y = bottom_y.min(self.height).saturating_sub(panel_height);
         let mut text = OverlayTextRenderer::new(text_settings.font_family.clone());
         let mut y = panel_y.saturating_add(KEYBOARD_OVERLAY_INSET_Y);
         for row in rows {
@@ -1204,6 +1379,17 @@ fn keyboard_overlay_rows(labels: &[String], width: u32) -> Vec<Vec<KeyboardOverl
     rows
 }
 
+/// Width of the right-aligned keyboard overlay area for the current labels.
+fn keyboard_overlay_panel_width(labels: &[String], width: u32) -> u32 {
+    keyboard_overlay_rows(&recent_keyboard_overlay_labels(labels), width)
+        .iter()
+        .map(|row| keyboard_overlay_row_width(row))
+        .max()
+        .unwrap_or(0)
+        .saturating_add(KEYBOARD_OVERLAY_INSET_X.saturating_mul(2))
+        .min(width)
+}
+
 /// Approximate the width of one overlay row.
 fn keyboard_overlay_row_width(row: &[KeyboardOverlayChip]) -> u32 {
     let chips_width = row
@@ -1352,5 +1538,120 @@ fn value_kind(value: &Value) -> &'static str {
         Value::Number(_) => "number",
         Value::Duration(_) => "duration",
         Value::Bool(_) => "bool",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn pixel(frame: &SolidFrame, x: u32, y: u32) -> [u8; 4] {
+        let offset = frame.offset(x, y);
+        [
+            frame.pixels[offset],
+            frame.pixels[offset + 1],
+            frame.pixels[offset + 2],
+            frame.pixels[offset + 3],
+        ]
+    }
+
+    #[test]
+    fn caption_truncation_uses_shaped_width_and_three_dots() {
+        let mut renderer = CaptionRenderer::new();
+        let layout = CaptionLayout {
+            text_x: 0,
+            text_y: 0,
+            text_width: 150,
+            text_height: 28,
+            font_size: 20.0,
+            line_height: 24.0,
+        };
+        let metrics = Metrics::new(layout.font_size, layout.line_height);
+        let attrs = Attrs::new().family(Family::Monospace).weight(Weight::BOLD);
+        let caption = "The bottom terminal row remains visible beside the key chips";
+
+        let truncated = renderer.truncate_caption(caption, layout, metrics, &attrs);
+
+        assert!(truncated.ends_with("..."));
+        assert!(truncated.len() < caption.len());
+        assert!(
+            renderer.caption_text_width(&truncated, layout, metrics, &attrs)
+                <= layout.text_width as f32
+        );
+    }
+
+    #[test]
+    fn caption_truncation_uses_full_ellipsis_when_space_is_tiny() {
+        let mut renderer = CaptionRenderer::new();
+        let layout = CaptionLayout {
+            text_x: 0,
+            text_y: 0,
+            text_width: 1,
+            text_height: 28,
+            font_size: 20.0,
+            line_height: 24.0,
+        };
+        let metrics = Metrics::new(layout.font_size, layout.line_height);
+        let attrs = Attrs::new().family(Family::Monospace).weight(Weight::BOLD);
+
+        assert_eq!(
+            renderer.truncate_caption("overflow", layout, metrics, &attrs),
+            "..."
+        );
+    }
+
+    #[test]
+    fn caption_glyph_blending_is_clipped_to_the_caption_rect() {
+        let mut frame = SolidFrame::new(10, 10, rgb(0, 0, 0)).unwrap();
+
+        frame.blend_rect_clipped(
+            0,
+            0,
+            10,
+            10,
+            Color::rgb(255, 0, 0),
+            PixelRect {
+                x: 2,
+                y: 3,
+                width: 4,
+                height: 2,
+            },
+        );
+
+        assert_eq!(pixel(&frame, 1, 3), [0, 0, 0, 255]);
+        assert_ne!(pixel(&frame, 2, 3), [0, 0, 0, 255]);
+        assert_ne!(pixel(&frame, 5, 4), [0, 0, 0, 255]);
+        assert_eq!(pixel(&frame, 6, 4), [0, 0, 0, 255]);
+        assert_eq!(pixel(&frame, 2, 5), [0, 0, 0, 255]);
+    }
+
+    #[test]
+    fn caption_layout_shares_terminal_frame_edges_with_keyboard_overlay() {
+        let tape = Tape::parse(
+            r#"
+            Set Width 320
+            Set Height 200
+            Set Margin 16
+            Set KeyboardOverlay Input
+            Caption "Long caption"
+            Type "echo done"
+            "#,
+        )
+        .unwrap();
+        let settings = Settings::from_tape(&tape).unwrap();
+        let labels = vec!["Type \"echo done\"".to_string()];
+        let avoid_width = keyboard_overlay_panel_width(&labels, settings.width)
+            .saturating_add(PRESENTATION_OVERLAY_GAP);
+        let layout = settings.caption_layout(avoid_width).unwrap();
+
+        assert_eq!(layout.text_x, 16);
+        assert_eq!(
+            layout.text_width,
+            settings
+                .width
+                .saturating_sub(32)
+                .saturating_sub(avoid_width)
+        );
+        assert_eq!(settings.presentation_overlay_right_x(), 304);
     }
 }

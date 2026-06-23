@@ -122,20 +122,21 @@ stable even when terminal programs do real work.
 
 The repository includes tapes that exercise the core behavior:
 
-| Tape                          | Demonstrates                                   |
-| ----------------------------- | ---------------------------------------------- |
-| `examples/quick-start.tape`   | installing, help, `new`, and nested `run`      |
-| `examples/basic.tape`         | typing, wait, theme, window bar, border radius |
-| `examples/hide-show.tape`     | hidden setup and hidden trailing cleanup       |
-| `examples/waits.tape`         | line, screen, regex, and default prompt waits  |
-| `examples/keys.tape`          | key commands, repeats, editing, and interrupt  |
-| `examples/clipboard-env.tape` | `Env`, `Copy`, and `Paste`                     |
-| `examples/outputs.tape`       | GIF, PNG, JSON, screenshot, state, frame dir   |
-| `examples/scrollback.tape`    | scrollback-inclusive state JSON                |
-| `examples/text-styles.tape`   | ANSI styles, truecolor, and styled state spans |
-| `examples/layout.tape`        | padding, margin, fill, window bar, radius      |
-| `examples/themes.tape`        | copied Ghostty themes and palette mapping      |
-| `examples/video.tape`         | GIF, MP4, and WebM from one capture            |
+| Tape                                      | Demonstrates                                   |
+| ----------------------------------------- | ---------------------------------------------- |
+| `examples/quick-start.tape`               | installing, help, `new`, and nested `run`      |
+| `examples/basic.tape`                     | typing, wait, theme, window bar, border radius |
+| `examples/hide-show.tape`                 | hidden setup and hidden trailing cleanup       |
+| `examples/waits.tape`                     | line, screen, regex, and default prompt waits  |
+| `examples/keys.tape`                      | key commands, repeats, editing, and interrupt  |
+| `examples/clipboard-env.tape`             | `Env`, `Copy`, and `Paste`                     |
+| `examples/outputs.tape`                   | GIF, PNG, JSON, screenshot, state, frame dir   |
+| `examples/scrollback.tape`                | scrollback-inclusive state JSON                |
+| `examples/text-styles.tape`               | ANSI styles, truecolor, and styled state spans |
+| `examples/layout.tape`                    | padding, margin, fill, window bar, radius      |
+| `examples/presentation-overlays.tape`     | captions plus keyboard overlay layout          |
+| `examples/themes.tape`                    | copied Ghostty themes and palette mapping      |
+| `examples/video.tape`                     | GIF, MP4, and WebM from one capture            |
 
 ### Quick Start
 
@@ -167,6 +168,12 @@ Tapes can control width, height, font size, padding, margin, border radius, wind
 color, typing speed, playback speed, and prompt text. The defaults are chosen to feel close to VHS:
 a readable terminal size, a visible frame, and a simple `>` prompt unless a tape asks for a real
 shell prompt.
+
+Captions and keyboard overlay chips are presentation-only annotations for visual outputs. When a
+tape uses them, Betamax reserves a bottom presentation row before deriving the terminal grid so
+labels do not cover terminal content. Captions align left, keyboard chips align right, and long
+captions truncate with `...` instead of wrapping into the chips. Caption glyphs are clipped to their
+reserved width as a final guard for font fallback and unusually wide characters.
 
 ## Terminal Testing
 
