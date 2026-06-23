@@ -983,6 +983,7 @@ mod tests {
         let tape = Tape::parse(
             r#"
             Set KeyboardOverlay Input
+            Type "j"
             Type "echo foo"
             Type "printf 'too implementation-shaped\n'"
             Ctrl+P
@@ -999,7 +1000,7 @@ mod tests {
                 .iter()
                 .filter_map(|command| settings.keyboard_overlay_label(command))
                 .collect::<Vec<_>>(),
-            vec!["Type \"echo foo\"", "Ctrl+P", "Paste"]
+            vec!["j", "\"echo foo\"", "Ctrl+P", "Paste"]
         );
     }
 
@@ -1024,7 +1025,7 @@ mod tests {
                 .iter()
                 .filter_map(|command| settings.keyboard_overlay_label(command))
                 .collect::<Vec<_>>(),
-            vec!["Type \"echo foo\"", "Type 44 chars", "Ctrl+P", "Paste",]
+            vec!["\"echo foo\"", "Type 44 chars", "Ctrl+P", "Paste",]
         );
     }
 
@@ -1050,7 +1051,7 @@ mod tests {
                 .iter()
                 .filter_map(|command| settings.keyboard_overlay_label(command))
                 .collect::<Vec<_>>(),
-            vec!["Type \"visible\"", "Type \"secret\"", "Enter", "Down"]
+            vec!["\"visible\"", "\"secret\"", "Enter", "Down"]
         );
     }
 
@@ -1073,7 +1074,7 @@ mod tests {
             [255, 0, 0, 255],
         );
 
-        let labels = vec!["Type \"abc\"".to_string()];
+        let labels = vec!["\"abc\"".to_string()];
         let decorated = settings
             .decorate_frame_with_overlays(&frame, None, &labels)
             .unwrap();
@@ -1211,7 +1212,7 @@ mod tests {
             settings.terminal_canvas_height(),
             [255, 0, 0, 255],
         );
-        let labels = vec!["Type \"abc\"".to_string()];
+        let labels = vec!["\"abc\"".to_string()];
         let decorated = settings
             .decorate_frame_with_overlays(&frame, Some("Step 1"), &labels)
             .unwrap();
