@@ -892,7 +892,7 @@ fn describe_text(text: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::settings::KeyboardOverlayMode;
+    use super::settings::{KeyboardOverlayLocation, KeyboardOverlayMode};
     use super::*;
     use crate::media::Frame;
     use crate::runner::capture::{frames_equal, CapturedFrame};
@@ -919,6 +919,10 @@ mod tests {
         assert_eq!(settings.style.window_bar_color, "#102040");
         assert_eq!(settings.style.border_radius, 0);
         assert_eq!(settings.keyboard_overlay.mode, KeyboardOverlayMode::Off);
+        assert_eq!(
+            settings.keyboard_overlay.location,
+            KeyboardOverlayLocation::CaptionRow
+        );
     }
 
     #[test]
@@ -1092,6 +1096,17 @@ mod tests {
         let error = Settings::from_tape(&tape).unwrap_err().to_string();
 
         assert!(error.contains("Set KeyboardOverlay expects Off, Keys, Input, or All"));
+    }
+
+    #[test]
+    fn keyboard_overlay_location_is_configurable() {
+        let tape = Tape::parse("Set KeyboardOverlayLocation BottomRight").unwrap();
+        let settings = Settings::from_tape(&tape).unwrap();
+
+        assert_eq!(
+            settings.keyboard_overlay.location,
+            KeyboardOverlayLocation::BottomRight
+        );
     }
 
     #[test]

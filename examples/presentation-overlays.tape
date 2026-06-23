@@ -14,6 +14,7 @@ Set BorderRadius 8
 Set TypingSpeed 35ms
 Set CursorBlink false
 Set KeyboardOverlay Input
+Set KeyboardOverlayLocation CaptionRow
 
 Caption "Caption and keyboard chips stay below the terminal"
 Type "printf 'hotbar: [F1 Help] [F2 Open] [F3 Save]\n'"

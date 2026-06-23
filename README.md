@@ -150,12 +150,11 @@ The checked-in examples are small smoke-test tapes that demonstrate core behavio
 
 ### Presentation Overlays
 
-Captions and keyboard overlay chips are visual annotations for review media. When a tape uses
-`Caption` or enables `KeyboardOverlay`, Betamax reserves a bottom presentation row before deriving
-the terminal grid so labels do not cover terminal content. Captions align to the left edge of the
-terminal frame, keyboard chips align to the right edge, and long captions truncate with `...`
-instead of wrapping into the chips. Caption glyphs are clipped to their reserved width as a final
-guard for font fallback and unusually wide characters.
+Captions and keyboard overlay chips are visual annotations for review media.
+`KeyboardOverlayLocation CaptionRow` reserves a bottom presentation row before deriving the terminal
+grid so labels do not cover terminal content. Corner locations such as `BottomRight` draw the chips
+inside the terminal canvas with a small inset from the terminal edge. Caption glyphs are clipped to
+their reserved width as a final guard for font fallback and unusually wide characters.
 
 ### Video
 
