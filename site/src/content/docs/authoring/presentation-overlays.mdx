@@ -1,0 +1,101 @@
+---
+title: Presentation Overlays
+description: Add captions and keyboard chips to visual terminal media.
+---
+
+Presentation overlays annotate generated media without changing the terminal session. They are for
+human review: explaining a step, revealing invisible input, or making a GIF understandable without
+turning those annotations into test state.
+
+## Captions
+
+[`Caption`](../../reference/tape-reference/#caption-text) sets single-line text drawn onto later
+visual frames. Captions render on GIF, PNG, MP4, WebM, frame directory, and `Screenshot` outputs.
+They do not appear in state JSON, affect waits, or write to the PTY.
+
+```text
+Caption "Step 1: prepare the review frame"
+Hide
+Type "my-app --demo"
+Enter
+Wait+Screen "Ready"
+Show
+Sleep 700ms
+
+Caption "Step 2: capture the ready state"
+Screenshot target/snapshots/ready.png
+State target/snapshots/ready.json
+
+Caption ""
+Sleep 300ms
+```
+
+`Caption` has no duration and does not capture a frame by itself. It changes the active caption for
+the next visual frame captured by a later `Sleep`, `Wait`, typed character, key press, `Show`, final
+output, or `Screenshot`. Add a short `Sleep` after a caption-only change when an animation should
+hold the new label.
+
+Use `Caption ""` before later frames that should not have a caption.
+
+## Keyboard Overlays
+
+`Set KeyboardOverlay Input` draws compact input chips on generated visual media. Labels appear when
+input is queued and linger briefly after the input is typed, so a review GIF can show the action
+near the terminal change it caused.
+
+```text
+Set KeyboardOverlay Input
+Set KeyboardOverlayLocation CaptionRow
+
+Caption "Keyboard chips identify invisible input"
+Type "echo foo"
+Enter
+Wait+Screen "foo"
+Sleep 900ms
+
+Ctrl+C
+Wait
+Sleep 500ms
+```
+
+Keyboard overlay modes are:
+
+- `Off`: no overlay.
+- `Keys`: explicit key commands only, such as `Ctrl+P`, `Down`, `Enter`, and `Escape`.
+- `Input`: key commands plus short typed input that reads like user intent.
+- `All`: every visible input event, including long `Type` commands summarized by character count.
+
+See the [settings reference](../../reference/tape-reference/#settings) for exact setting names and
+defaults.
+
+## Overlay Placement
+
+`KeyboardOverlayLocation CaptionRow` reserves a bottom presentation row before Betamax derives the
+terminal grid. Captions are left-aligned in that row and key chips are right-aligned, so overlays do
+not cover terminal content.
+
+Corner locations such as `BottomRight`, `BottomLeft`, `TopRight`, and `TopLeft` draw chips inside
+the terminal canvas with a small inset from the terminal edge. Corner overlays are useful when the
+terminal dimensions must stay unchanged, but they can cover terminal cells.
+
+## Layout Tradeoffs
+
+Captions and caption-row keyboard chips reserve presentation space before the PTY size is computed.
+If a tape proves modal placement, centering, wrapping, or split-pane behavior, verify the terminal
+grid still matches the layout being tested.
+
+Long captions stay single-line. When a caption shares space with right-aligned keyboard chips,
+Betamax truncates the caption with `...` instead of wrapping over the chips. Increase `Height`,
+reduce `FontSize`, or move keyboard chips to a corner location when the presentation row needs more
+room.
+
+## Examples
+
+- [`captions.tape`][captions-src] shows caption-only annotation.
+- [`keyboard-overlay.tape`][keyboard-overlay-src] shows typed input and key presses as chips.
+- [`presentation-overlays.tape`][presentation-overlays-src] combines captions with caption-row
+  keyboard chips.
+
+[captions-src]: https://github.com/joshka/betamax/blob/main/examples/captions.tape
+[keyboard-overlay-src]: https://github.com/joshka/betamax/blob/main/examples/keyboard-overlay.tape
+[presentation-overlays-src]: https://github.com/joshka/betamax/blob/main/examples/presentation-overlays.tape
