@@ -1,5 +1,6 @@
 [advisories]
-ignore = []
+# `ttf-parser` is a transitive dependency of `cosmic-text` with no safe upgrade available.
+ignore = ["RUSTSEC-2026-0192"]
 
 [licenses]
 allow = [
