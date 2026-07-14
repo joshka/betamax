@@ -56,7 +56,7 @@ impl PixelTarget {
 
     /// Fill the entire target with an opaque color.
     pub(super) fn clear(&mut self, color: RgbColor) {
-        for pixel in self.pixels.chunks_exact_mut(BYTES_PER_PIXEL) {
+        for pixel in self.pixels.as_chunks_mut::<BYTES_PER_PIXEL>().0 {
             pixel.copy_from_slice(&[color.r, color.g, color.b, OPAQUE_ALPHA]);
         }
     }

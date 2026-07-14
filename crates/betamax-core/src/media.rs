@@ -178,7 +178,7 @@ impl Frame {
             match self.format {
                 PixelFormat::Rgba8 => rgba.extend_from_slice(row),
                 PixelFormat::Bgra8 => {
-                    for pixel in row.chunks_exact(4) {
+                    for pixel in row.as_chunks::<4>().0 {
                         rgba.extend_from_slice(&[pixel[2], pixel[1], pixel[0], pixel[3]]);
                     }
                 }
