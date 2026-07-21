@@ -2,6 +2,21 @@
 
 <!-- markdownlint-disable no-duplicate-heading -->
 
+## [0.1.16](https://github.com/joshka/betamax/compare/betamax-v0.1.15...betamax-v0.1.16) - 2026-07-21
+
+### Other
+
+- Add corner keyboard overlay locations
+
+## [0.1.12](https://github.com/joshka/betamax/compare/betamax-core-v0.1.11...betamax-core-v0.1.12) - 2026-07-21
+
+### Other
+
+- Bump the rust group across 1 directory with 3 updates ([#107](https://github.com/joshka/betamax/pull/107))
+- Add corner keyboard overlay locations
+- Anti-alias rounded overlay edges ([#98](https://github.com/joshka/betamax/pull/98))
+- Polish keyboard overlay layout ([#96](https://github.com/joshka/betamax/pull/96))
+
 ## [0.1.15](https://github.com/joshka/betamax/compare/betamax-v0.1.14...betamax-v0.1.15) - 2026-06-23
 
 ### Other
