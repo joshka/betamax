@@ -16,6 +16,10 @@ run = "cargo +nightly fmt --all --check"
 [tasks.test]
 run = "cargo test --workspace --all-targets"
 
+[tasks.renderer-fidelity]
+description = "Run controlled renderer state and image assertions"
+run = "cargo test -p betamax-core --test renderer_fidelity --locked"
+
 [tasks.cargo-check]
 run = "cargo check --workspace --all-targets"
 
