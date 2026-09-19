@@ -34,3 +34,20 @@ jobs:
         with:
           script: |
             await require('./scripts/renderer-comment.cjs')({ github, context });
+
+  previews:
+    if: github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+    steps:
+      # Fresh trusted runner: no PR checkout, binary, cache or artifact contents.
+      # Gallery mode validates API metadata and publishes links with GITHUB_TOKEN only.
+      - name: Link PR-built CLI previews
+        uses: joshka/betamax-action/report@46a3673d7a5dd7696b862848cb7e9902d797094d # local binary support
+        with:
+          workflow: ci.yml
+          comment-key: cli
+          mode: artifacts
