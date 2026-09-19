@@ -171,10 +171,17 @@ rendering limitation: production captures may show a missing-glyph box instead o
 error. Install a suitable fallback for the scripts in your content. The fidelity suite treats
 missing coverage as an actionable setup error rather than accepting that box as a complete glyph.
 
+Single underline (SGR 4) and strikethrough (SGR 9) have pixel assertions covering ordinary glyphs,
+spaces, wide-character continuations, sprites, combined decorations, SGR reset, invisible text,
+and inverse colors. Lines use the resolved foreground color and approximate cell metrics; their
+thickness scales with font size. Set `BETAMAX_FIDELITY_OUTPUT` to inspect the `decorations-*.png`
+checkpoints alongside their state JSON. Run `examples/text-decorations.tape` for a GIF, screenshot,
+and state snapshot showing plain text and each decoration.
+
 Emoji presentation/ZWJ sequences, Nerd Font symbols outside sprite coverage, broader font fallback,
-ligatures, and
-text decorations, bar/hollow/underline cursors, resizing, graphics protocols, and actual app
-integration remain outside this first suite. Unsupported graphics behavior is not specified here.
+ligatures, other underline styles and explicit underline colors, bar/hollow/underline cursors,
+resizing, graphics protocols, and actual app integration remain outside this suite. Unsupported
+graphics behavior is not specified here.
 A future backend should pass the state/geometry and wide-glyph tests. The current
 continuation-space representation in state JSON is recorded as a baseline,
 not a requirement for every future terminal-state API.

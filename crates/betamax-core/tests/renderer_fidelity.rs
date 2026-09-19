@@ -36,6 +36,85 @@ const LAYOUT: &str = concat!(
 
 const UNICODE: &str = "\x1b[?25l\x1b[H界X\x1b[2;1He\u{301}X\x1b[3;1HéX\x1b[4;1HeX\x1b[5;3HX";
 
+/// Pixel assertions cover glyphs, spaces, wide continuations, sprites, and SGR reset together.
+#[test]
+fn text_decorations_cover_cells_and_reset() {
+    let mut terminal = session();
+    let mut render = |sgr: &str, name: &str| {
+        let vt =
+            format!("\x1b[?25l\x1b[0m\x1b[2J\x1b[H\x1b[38;2;210;170;130m\x1b[{sgr}mM 界─\x1b[0mX");
+        terminal.write_vt(vt.as_bytes());
+        checkpoint(&mut terminal, name).0
+    };
+    let plain = render("24;29", "decorations-plain");
+    for (sgr, name, lines) in [
+        ("4", "decorations-underline", vec![21]),
+        ("9", "decorations-strike", vec![12]),
+        ("4;9", "decorations-both", vec![12, 21]),
+    ] {
+        let decorated = render(sgr, name);
+        assert_ne!(plain.pixels, decorated.pixels, "{name} must be visible");
+        for y in 0..decorated.height {
+            for x in 0..decorated.width {
+                let actual = pixel(&decorated, x, y);
+                if (PADDING..PADDING + 5 * CELL_WIDTH).contains(&x)
+                    && lines.iter().any(|line| y == PADDING + line)
+                {
+                    assert_eq!(actual, [210, 170, 130, 255], "{name} at ({x}, {y})");
+                } else {
+                    assert_eq!(actual, pixel(&plain, x, y), "{name} at ({x}, {y})");
+                }
+            }
+        }
+    }
+    let hidden = render("8", "decorations-hidden");
+    let hidden_decorations = render("8;4;9", "decorations-hidden-styled");
+    assert_eq!(hidden.pixels, hidden_decorations.pixels);
+}
+
+#[test]
+fn text_decorations_follow_inverse_foreground() {
+    let mut terminal = session();
+    terminal.write_vt(b"\x1b[?25l\x1b[38;2;210;170;130;48;2;30;60;90;7;4;9m ");
+    let (frame, _) = checkpoint(&mut terminal, "decorations-inverse");
+    for x in PADDING..PADDING + CELL_WIDTH {
+        assert_eq!(pixel(&frame, x, PADDING + 12), [30, 60, 90, 255]);
+        assert_eq!(pixel(&frame, x, PADDING + 21), [30, 60, 90, 255]);
+    }
+}
+
+#[test]
+fn text_decoration_thickness_scales_and_clips_to_small_cells() {
+    for (font_size, line_height, height, underline, strike, thickness) in
+        [(42.0, 1.0, 42, 37, 21, 3), (42.0, 0.01, 1, 0, 0, 1)]
+    {
+        let text = TextSettings {
+            font_size,
+            line_height,
+            padding: 0,
+            ..TextSettings::default()
+        };
+        let width = text.cell_width();
+        let mut terminal = GhosttyFrameCapture
+            .open(CaptureRequest {
+                canvas: PixelSize::new(width, height + 2),
+                grid: TerminalGrid::new(1, 1),
+                text,
+                theme: TerminalTheme::default(),
+            })
+            .unwrap();
+        terminal.write_vt(b"\x1b[?25l\x1b[38;2;210;170;130;4;9m ");
+        let frame = terminal.capture_frame().unwrap();
+        for y in 0..height + 2 {
+            for x in 0..width {
+                let is_line = (underline..underline + thickness).contains(&y)
+                    || (strike..strike + thickness).contains(&y);
+                assert_eq!(pixel(&frame, x, y) == [210, 170, 130, 255], is_line);
+            }
+        }
+    }
+}
+
 #[test]
 fn cell_graphics_demo_image() {
     let mut terminal = GhosttyFrameCapture
