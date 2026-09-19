@@ -546,7 +546,7 @@ where
                     session.write_all(&bytes)?;
                     session.drain_for(
                         terminal,
-                        delay.unwrap_or(settings.frame_delay()),
+                        delay.unwrap_or(settings.capture_interval()),
                         settings,
                         capture,
                     )?;
@@ -570,7 +570,7 @@ where
             Command::Copy(text) => *clipboard = text.clone(),
             Command::Paste => {
                 session.write_all(clipboard.as_bytes())?;
-                session.drain_for(terminal, settings.frame_delay(), settings, capture)?;
+                session.drain_for(terminal, settings.capture_interval(), settings, capture)?;
             }
             Command::Caption(text) => {
                 // Caption changes are presentation state only. They intentionally do not drain,
@@ -1278,18 +1278,22 @@ mod tests {
 
     #[test]
     fn playback_speed_changes_output_delay_not_capture_cadence() {
-        let tape = Tape::parse(
-            r#"
-            Set Framerate 50
-            Set PlaybackSpeed 2
-            "#,
-        )
-        .unwrap();
-        let settings = Settings::from_tape(&tape).unwrap();
+        for speed in [0.5, 1.0, 2.0] {
+            let tape =
+                Tape::parse(&format!("Set Framerate 50\nSet PlaybackSpeed {speed}")).unwrap();
+            let settings = Settings::from_tape(&tape).unwrap();
 
-        assert_eq!(settings.capture_interval(), Duration::from_millis(20));
-        assert_eq!(settings.frame_delay(), Duration::from_millis(10));
-        assert_eq!(settings.output_framerate(), 100.0);
+            assert_eq!(settings.capture_interval(), Duration::from_millis(20));
+            assert_eq!(
+                settings.frame_delay(),
+                Duration::from_secs_f64(0.02 / speed)
+            );
+            assert_eq!(settings.output_framerate(), 50.0 * speed);
+            assert_eq!(
+                settings.playback_delay(Duration::from_millis(137)),
+                Duration::from_secs_f64(0.137 / speed)
+            );
+        }
     }
 
     #[test]
