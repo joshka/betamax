@@ -36,6 +36,23 @@ a partial gallery is not a passing result. Reporting runs after test failures to
 exist, the summary explains that
 no gallery is available. Generation/upload errors do not turn a failed test run into success.
 
+When PR CI finishes, the **Renderer fixtures** bot comment links directly to both galleries.
+Later runs update the same comment; missing galleries and failed runs are labeled explicitly.
+The links have the same sign-in and retention requirements as the run-summary links.
+
+The comment reporter runs separately after CI and loads its script from the trusted default-branch
+commit. It never executes PR code or downloads artifacts with its comment-writing token. Run its
+API-mocked tests locally with:
+
+```sh
+node --test scripts/renderer-comment.test.cjs
+```
+
+To verify the live integration after changing the reporter, merge the workflow/script change first,
+then open a PR and let CI finish. Check the gallery links in its bot comment, rerun the completed
+**Renderer gallery comment** workflow, and confirm that it updates the same comment instead of
+creating another. A workflow introduced only on a PR branch cannot receive `workflow_run` events.
+
 Build the same self-contained gallery locally with Python 3 (standard library only):
 
 ```sh
