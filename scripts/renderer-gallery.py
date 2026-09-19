@@ -61,6 +61,7 @@ def build_gallery(source, destination, platform, outcome, revision):
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Renderer fixtures — {escape(platform)}</title>
 <style>
+:root {{color-scheme: light dark;}}
 body {{font: 16px/1.5 system-ui, sans-serif; background: #f4f6fa; color: #182338;
        max-width: 1100px; margin: auto; padding: 24px;}}
 h1 {{margin-bottom: 4px;}} h2 {{font-size: 1.15rem;}}
@@ -71,6 +72,12 @@ img {{display: block; max-width: 100%; height: auto;}}
 summary {{cursor: pointer; font-weight: bold; margin-top: 16px;}}
 pre {{overflow: auto; max-height: 32rem; padding: 12px; background: #eef1f6; font-size: 13px;}}
 code {{overflow-wrap: anywhere;}}
+@media (prefers-color-scheme: dark) {{
+  body {{background: #101722; color: #e3e9f2;}}
+  section {{background: #182233; border-color: #39485f;}}
+  .warning {{background: #382c16; border-color: #dba84a;}}
+  pre {{background: #111a28;}}
+}}
 </style></head><body>
 <h1>Renderer fixtures — {escape(platform)}</h1>
 <p>Revision: <code>{escape(revision)}</code> · Test step: <strong>{escape(outcome)}</strong>
