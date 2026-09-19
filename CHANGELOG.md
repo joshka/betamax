@@ -1,69 +1,71 @@
 # Changelog
 
-<!-- markdownlint-disable no-duplicate-heading -->
+Betamax has one product changelog covering the CLI and core library. Historical entries use CLI
+versions and identify the core version shipped in the release lockfile.
+
+## [Unreleased]
+
+### Other
+
+- Use one shared version for the CLI and core library, starting with 0.1.21.
+- Consolidate release notes into one product changelog, including core improvements in CLI releases.
 
 ## [0.1.20](https://github.com/joshka/betamax/compare/betamax-v0.1.19...betamax-v0.1.20) - 2026-09-19
 
-### Other
+Includes [betamax-core 0.1.16](https://crates.io/crates/betamax-core/0.1.16).
 
-- updated the following local packages: betamax-core
+### Added
+
+- Bundle Aardvark Ink so the theme works on fresh machines and CI runners
+  ([#158](https://github.com/joshka/betamax/pull/158)).
 
 ## [0.1.19](https://github.com/joshka/betamax/compare/betamax-v0.1.18...betamax-v0.1.19) - 2026-09-19
 
-### Other
+Includes [betamax-core 0.1.15](https://crates.io/crates/betamax-core/0.1.15).
 
-- updated the following local packages: betamax-core
+### Fixed
+
+- Render faint terminal text ([#156](https://github.com/joshka/betamax/pull/156)).
+- Render underline and strikethrough ([#152](https://github.com/joshka/betamax/pull/152)).
+- Fix capture playback speed scaling ([#150](https://github.com/joshka/betamax/pull/150)).
 
 ## [0.1.18](https://github.com/joshka/betamax/compare/betamax-v0.1.17...betamax-v0.1.18) - 2026-09-19
 
+Includes [betamax-core 0.1.14](https://crates.io/crates/betamax-core/0.1.14).
+
 ### Other
 
 - Add lossless animated and static WebP output ([#145](https://github.com/joshka/betamax/pull/145))
-
-## [0.1.14](https://github.com/joshka/betamax/compare/betamax-core-v0.1.13...betamax-core-v0.1.14) - 2026-09-19
-
-### Other
-
 - Render terminal graphics with cached sprites ([#144](https://github.com/joshka/betamax/pull/144))
-- Add lossless animated and static WebP output ([#145](https://github.com/joshka/betamax/pull/145))
 
-## [0.1.17](https://github.com/joshka/betamax/compare/betamax-v0.1.16...betamax-v0.1.17) - 2026-09-19
+## [0.1.17](https://github.com/joshka/betamax/compare/e1e6c94f1a874e07595acf824ca0c5d53ca140e5...betamax-v0.1.17) - 2026-09-19
+
+Includes [betamax-core 0.1.13](https://crates.io/crates/betamax-core/0.1.13).
 
 ### Other
 
 - Use libghostty tracing logger ([#74](https://github.com/joshka/betamax/pull/74))
 - Clarify Zig build requirements and troubleshooting ([#134](https://github.com/joshka/betamax/pull/134))
-
-## [0.1.13](https://github.com/joshka/betamax/compare/betamax-core-v0.1.12...betamax-core-v0.1.13) - 2026-09-19
-
-### Other
-
 - Fix video playback timing ([#143](https://github.com/joshka/betamax/pull/143))
 - Fix wide-glyph clipping and CJK fixture coverage ([#139](https://github.com/joshka/betamax/pull/139))
 - Add controlled renderer fidelity fixtures ([#136](https://github.com/joshka/betamax/pull/136))
 
-## [0.1.16](https://github.com/joshka/betamax/compare/betamax-v0.1.15...betamax-v0.1.16) - 2026-09-14
+## [0.1.16](https://crates.io/crates/betamax/0.1.16) - 2026-09-19
+
+Includes [betamax-core 0.1.12](https://crates.io/crates/betamax-core/0.1.12).
+
+Published on crates.io on 2026-09-19; no GitHub tag or release was created.
 
 ### Other
 
 - Add corner keyboard overlay locations
-
-## [0.1.12](https://github.com/joshka/betamax/compare/betamax-core-v0.1.11...betamax-core-v0.1.12) - 2026-09-14
-
-### Other
-
 - Bump the rust group across 1 directory with 3 updates ([#107](https://github.com/joshka/betamax/pull/107))
-- Add corner keyboard overlay locations
 - Anti-alias rounded overlay edges ([#98](https://github.com/joshka/betamax/pull/98))
 - Polish keyboard overlay layout ([#96](https://github.com/joshka/betamax/pull/96))
 
 ## [0.1.15](https://github.com/joshka/betamax/compare/betamax-v0.1.14...betamax-v0.1.15) - 2026-06-23
 
-### Other
-
-- Place presentation overlays outside terminal ([#94](https://github.com/joshka/betamax/pull/94))
-
-## [0.1.11](https://github.com/joshka/betamax/compare/betamax-core-v0.1.10...betamax-core-v0.1.11) - 2026-06-23
+Includes [betamax-core 0.1.11](https://crates.io/crates/betamax-core/0.1.11).
 
 ### Other
 
@@ -71,11 +73,7 @@
 
 ## [0.1.14](https://github.com/joshka/betamax/compare/betamax-v0.1.13...betamax-v0.1.14) - 2026-06-22
 
-### Other
-
-- Add keyboard overlay rendering ([#89](https://github.com/joshka/betamax/pull/89))
-
-## [0.1.10](https://github.com/joshka/betamax/compare/betamax-core-v0.1.9...betamax-core-v0.1.10) - 2026-06-22
+Includes [betamax-core 0.1.10](https://crates.io/crates/betamax-core/0.1.10).
 
 ### Other
 
@@ -85,11 +83,7 @@
 
 ## [0.1.13](https://github.com/joshka/betamax/compare/betamax-v0.1.12...betamax-v0.1.13) - 2026-06-21
 
-### Other
-
-- Align frame sizing with VHS ([#82](https://github.com/joshka/betamax/pull/82))
-
-## [0.1.9](https://github.com/joshka/betamax/compare/betamax-core-v0.1.8...betamax-core-v0.1.9) - 2026-06-21
+Includes [betamax-core 0.1.9](https://crates.io/crates/betamax-core/0.1.9).
 
 ### Other
 
@@ -97,17 +91,15 @@
 
 ## [0.1.12](https://github.com/joshka/betamax/compare/betamax-v0.1.11...betamax-v0.1.12) - 2026-06-19
 
-### Other
+Includes [betamax-core 0.1.8](https://crates.io/crates/betamax-core/0.1.8).
 
-- updated the following local packages: betamax-core
+### Added
+
+- Embed bundled Ghostty themes ([#80](https://github.com/joshka/betamax/pull/80)).
 
 ## [0.1.11](https://github.com/joshka/betamax/compare/betamax-v0.1.10...betamax-v0.1.11) - 2026-06-16
 
-### Other
-
-- Add media encoding progress ([#78](https://github.com/joshka/betamax/pull/78))
-
-## [0.1.7](https://github.com/joshka/betamax/compare/betamax-core-v0.1.6...betamax-core-v0.1.7) - 2026-06-16
+Includes [betamax-core 0.1.7](https://crates.io/crates/betamax-core/0.1.7).
 
 ### Other
 
@@ -115,11 +107,7 @@
 
 ## [0.1.10](https://github.com/joshka/betamax/compare/betamax-v0.1.9...betamax-v0.1.10) - 2026-06-16
 
-### Other
-
-- Trace Ghostty capture boundaries ([#72](https://github.com/joshka/betamax/pull/72))
-
-## [0.1.6](https://github.com/joshka/betamax/compare/betamax-core-v0.1.5...betamax-core-v0.1.6) - 2026-06-16
+Includes [betamax-core 0.1.6](https://crates.io/crates/betamax-core/0.1.6).
 
 ### Other
 
@@ -127,31 +115,25 @@
 
 ## [0.1.9](https://github.com/joshka/betamax/compare/betamax-v0.1.8...betamax-v0.1.9) - 2026-06-16
 
+Includes [betamax-core 0.1.5](https://crates.io/crates/betamax-core/0.1.5).
+
 ### Other
 
 - Use static libghostty-vt builds ([#66](https://github.com/joshka/betamax/pull/66))
 - Add homepage quick-start demo ([#60](https://github.com/joshka/betamax/pull/60))
 
-## [0.1.5](https://github.com/joshka/betamax/compare/betamax-core-v0.1.4...betamax-core-v0.1.5) - 2026-06-16
-
-### Other
-
-- Use static libghostty-vt builds ([#66](https://github.com/joshka/betamax/pull/66))
-
 ## [0.1.8](https://github.com/joshka/betamax/compare/betamax-v0.1.7...betamax-v0.1.8) - 2026-06-15
+
+Includes [betamax-core 0.1.4](https://crates.io/crates/betamax-core/0.1.4).
 
 ### Other
 
 - Document Homebrew installation ([#58](https://github.com/joshka/betamax/pull/58))
 - Add quick-start Betamax tape ([#56](https://github.com/joshka/betamax/pull/56))
 
-## [0.1.4](https://github.com/joshka/betamax/compare/betamax-core-v0.1.3...betamax-core-v0.1.4) - 2026-06-15
-
-### Other
-
-- Add quick-start Betamax tape ([#56](https://github.com/joshka/betamax/pull/56))
-
 ## [0.1.7](https://github.com/joshka/betamax/compare/betamax-v0.1.6...betamax-v0.1.7) - 2026-06-15
+
+Includes [betamax-core 0.1.3](https://crates.io/crates/betamax-core/0.1.3).
 
 ### Fixed
 
@@ -160,18 +142,19 @@
 
 ## [0.1.6](https://github.com/joshka/betamax/compare/betamax-v0.1.5...betamax-v0.1.6) - 2026-06-15
 
+Includes [betamax-core 0.1.3](https://crates.io/crates/betamax-core/0.1.3).
+
 ### Other
 
 - Add binary release install path ([#46](https://github.com/joshka/betamax/pull/46))
 
 ## [0.1.5](https://github.com/joshka/betamax/compare/betamax-v0.1.4...betamax-v0.1.5) - 2026-06-12
 
+Includes [betamax-core 0.1.3](https://crates.io/crates/betamax-core/0.1.3).
+
 ### Other
 
 - release ([#14](https://github.com/joshka/betamax/pull/14))
-- updated the following local packages: betamax-core
-
-## [0.1.3](https://github.com/joshka/betamax/compare/betamax-core-v0.1.2...betamax-core-v0.1.3) - 2026-06-12
 
 ### Added
 
@@ -179,17 +162,15 @@
 
 ## [0.1.4](https://github.com/joshka/betamax/compare/betamax-v0.1.3...betamax-v0.1.4) - 2026-05-07
 
-### Other
+Includes [betamax-core 0.1.2](https://crates.io/crates/betamax-core/0.1.2).
 
-- updated the following local packages: betamax-core
+### Fixed
+
+- Preserve elapsed capture time and coalesce identical frames so static GIF holds retain their duration.
 
 ## [0.1.3](https://github.com/joshka/betamax/compare/betamax-v0.1.2...betamax-v0.1.3) - 2026-05-07
 
-### Other
-
-- Deepen documentation site
-
-## [0.1.1](https://github.com/joshka/betamax/compare/betamax-core-v0.1.0...betamax-core-v0.1.1) - 2026-05-07
+Includes [betamax-core 0.1.1](https://crates.io/crates/betamax-core/0.1.1).
 
 ### Other
 
@@ -197,12 +178,16 @@
 
 ## [0.1.2](https://github.com/joshka/betamax/compare/betamax-v0.1.1...betamax-v0.1.2) - 2026-05-07
 
+Includes [betamax-core 0.1.0](https://crates.io/crates/betamax-core/0.1.0).
+
 ### Other
 
 - Fix CLI documentation link
 - Expand CLI crate README
 
 ## [0.1.1](https://github.com/joshka/betamax/compare/betamax-v0.1.0...betamax-v0.1.1) - 2026-05-07
+
+Includes [betamax-core 0.1.0](https://crates.io/crates/betamax-core/0.1.0).
 
 ### Other
 
