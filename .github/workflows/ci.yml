@@ -176,7 +176,7 @@ jobs:
             echo
             echo "Test step: **${TEST_OUTCOME:-not run}**. Failed runs may contain partial checkpoints."
             echo
-            echo "Known limitation: wide CJK glyphs may be clipped or missing; the full-glyph acceptance test remains ignored."
+            echo "Wide-glyph acceptance checks include CJK fallback coverage, both occupied cells, erasure/replacement, adjacent styles, and cursor overlays."
             if [ -n "$RAW_URL" ]; then
               echo
               echo "[Download raw PNG/JSON diagnostics (ZIP)]($RAW_URL)"

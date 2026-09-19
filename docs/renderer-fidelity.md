@@ -30,9 +30,10 @@ BETAMAX_FIDELITY_OUTPUT="$PWD/target/renderer-fidelity" mise run renderer-fideli
 
 In a GitHub Actions run summary, select **View Linux fixtures** or **View macOS fixtures** for a
 single-file HTML gallery with embedded PNGs and expandable state JSON. These unzipped artifacts
-require GitHub sign-in and expire with repository retention. The gallery labels the known CJK
-clipping/missing-font limitation and shows the test-step outcome; a partial gallery is not a passing
-result. Reporting runs after test failures too. If no checkpoints exist, the summary explains that
+require GitHub sign-in and expire with repository retention. The gallery includes wide-glyph,
+erasure/replacement, adjacent-style, and cursor checkpoints alongside the test-step outcome;
+a partial gallery is not a passing result. Reporting runs after test failures too. If no checkpoints
+exist, the summary explains that
 no gallery is available. Generation/upload errors do not turn a failed test run into success.
 
 Build the same self-contained gallery locally with Python 3 (standard library only):

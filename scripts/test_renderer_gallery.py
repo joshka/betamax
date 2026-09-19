@@ -57,7 +57,8 @@ class GalleryTests(unittest.TestCase):
             self.assertIn("PNG checkpoint unavailable.", document)
             self.assertIn("Missing checkpoints:", document)
             self.assertIn("<strong>failure</strong>", document)
-            self.assertIn("Known limitation: wide-glyph rendering.", document)
+            self.assertIn("Wide-glyph acceptance checks run in normal CI", document)
+            self.assertIn("wide-glyph, wide-styled, wide-cursor", document)
 
 
 if __name__ == "__main__":
