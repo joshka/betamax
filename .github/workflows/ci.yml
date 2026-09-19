@@ -57,6 +57,9 @@ jobs:
           prefix-key: v1-rust-no-target
           cache-targets: false
 
+      - name: Test renderer PR comments
+        run: node --test scripts/renderer-comment.test.cjs
+
       - name: Check formatting
         run: mise run fmt-check
 
