@@ -269,6 +269,19 @@ GitHub workflow can upload that exact file.
 
 ## Releases
 
+Starting with 0.1.21, `betamax` and `betamax-core` inherit one version from
+`workspace.package.version`. Release-plz updates that shared version for either crate's changes,
+so both crates are published together, including releases that only change the CLI.
+
+The CLI owns the root `CHANGELOG.md` and includes core commits through `changelog_include`.
+Core does not write a second changelog; its GitHub release links to the matching CLI release notes.
+Keep `version.workspace = true` in both crate manifests. A `version_group` is unnecessary because
+Cargo already enforces the shared version. This follows release-plz's
+[single-changelog guidance](https://github.com/release-plz/release-plz/blob/main/website/docs/extra/single-changelog.md).
+
+Earlier versions remain unchanged. Their product changelog entries identify the core version from
+the released CLI lockfile; core notes appear in the first CLI release that shipped that version.
+
 Releases are managed by [release-plz][release-plz] in
 [`.github/workflows/release-plz.yml`](../.github/workflows/release-plz.yml). The release job uses
 crates.io [Trusted Publishing][trusted-publishing], so it does not read `CARGO_REGISTRY_TOKEN` and

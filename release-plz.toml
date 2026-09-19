@@ -1,8 +1,23 @@
 [workspace]
-changelog_path = "./CHANGELOG.md"
+# The CLI owns the product changelog; core changes are included below.
+changelog_update = false
 release_always = false
 semver_check = false
 
 git_release_body = """
 {{ changelog | replace(from=" by @", to=" by ") }}
+"""
+
+[[package]]
+name = "betamax"
+changelog_update = true
+changelog_path = "./CHANGELOG.md"
+changelog_include = ["betamax-core"]
+
+[[package]]
+name = "betamax-core"
+git_release_body = """
+Core library for Betamax {{ version }}.
+
+See the [Betamax {{ version }} release notes](https://github.com/joshka/betamax/releases/tag/betamax-v{{ version }}) for the combined CLI and library changes.
 """
