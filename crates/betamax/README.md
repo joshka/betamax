@@ -47,10 +47,16 @@ mise install
 mise run install-local
 ```
 
-Other toolchain managers can work too, including [Nix][nix] or a manually installed [Zig][zig]
-0.15.2 on `PATH`. mise is the documented path because it works for this repository today. The
-specific Zig version is an upstream Ghostty build requirement until Ghostty supports newer Zig
-releases such as 0.16.
+> [!NOTE]
+> Source builds require **Zig 0.15.2**. Upstream Ghostty supports Zig 0.16, but the published
+> `libghostty-vt-sys` dependency still pins older Ghostty source. Betamax is waiting for a
+> `libghostty-rs` release containing the update. Use the mise commands above to select the
+> supported toolchain.
+
+Other toolchain managers, including [Nix][nix], or [Zig][zig] 0.15.2 on `PATH` also work.
+
+See [build troubleshooting](https://www.joshka.net/betamax/reference/development/#build-troubleshooting)
+if Cargo finds the wrong Zig version.
 
 MP4 and WebM output require [ffmpeg][ffmpeg] on `PATH`; GIF, PNG, screenshots, and state JSON are
 written in process.

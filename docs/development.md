@@ -34,9 +34,58 @@ mise run build-release -- aarch64-apple-darwin
 
 mise is not the only possible way to provide that Zig version. [Nix][nix], a manually managed
 [Zig][zig] 0.15.2, or another reproducible toolchain wrapper can also work if Cargo finds Zig
-0.15.2 when `libghostty-vt-sys` builds. That version is an upstream Ghostty build requirement until
-Ghostty supports newer Zig releases such as 0.16. mise is the documented path because it works for
-this checkout and CI.
+0.15.2 when `libghostty-vt-sys` builds. Upstream Ghostty now supports Zig 0.16, but the published
+Rust bindings still pin the older source. Betamax must wait for a `libghostty-rs` release containing
+the update before changing its Zig pin.
+
+## Build Troubleshooting
+
+### Cargo Finds Zig 0.16
+
+An error such as `Your Zig version v0.16.0 does not meet the required build version of v0.15.2`
+means Cargo found an incompatible compiler. `mise install` installs tools; `mise run` and
+`mise exec` select them for a command. Cargo's `--locked` option pins Rust dependencies, not Zig.
+
+In a checkout, use:
+
+```sh
+mise install
+mise exec -- sh -c 'command -v zig; zig version'
+mise run cargo-check
+mise run install-local
+```
+
+The version check should print `0.15.2`. For a custom command, use
+`mise exec -- cargo run -- run examples/basic.tape` instead of invoking Cargo outside mise.
+If a terminal or IDE still selects system Zig, check its inherited `PATH` and mise activation;
+opening a fresh shell can help isolate stale activation state.
+
+For a crates.io source install without a checkout, select Zig explicitly:
+
+```sh
+mise install zig@0.15.2
+export PATH="$(mise where zig@0.15.2)/bin:$PATH"
+zig version # should print 0.15.2
+cargo install betamax --locked
+```
+
+### macOS Undefined System Symbols
+
+Errors naming `__availability_version_check`, `_abort`, or `_bzero` while linking Zig's build
+runner can indicate a Zig 0.15.2/macOS SDK incompatibility. This can occur before Ghostty or
+Betamax code compiles, even with the correct Zig version.
+
+Inspect the selected developer tools and SDK:
+
+```sh
+xcode-select -p
+xcrun --show-sdk-path
+```
+
+Use a developer-tool installation with an SDK compatible with Zig 0.15.2, or use Betamax's
+prebuilt binaries. If you have a compatible installation, `DEVELOPER_DIR` can select it for one
+command without changing the machine-wide Xcode selection. Simply changing Zig to 0.16 will hit
+the published Ghostty dependency's version requirement instead.
 
 ## Formatting
 

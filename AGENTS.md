@@ -20,8 +20,9 @@ mise install
 ```
 
 Use [mise](https://mise.jdx.dev/) tasks for repository commands. This is not only convenience:
-Betamax builds the vendored `libghostty-vt-sys` native dependency, and the current Ghostty build
-requires Zig 0.15.2. The repository pins that Zig version in `.mise.toml`; a shell that finds newer
+Betamax builds the published `libghostty-vt-sys` native dependency, whose pinned Ghostty revision
+requires Zig 0.15.2. Upstream Ghostty supports Zig 0.16; adoption awaits a `libghostty-rs` release.
+The repository pins Zig 0.15.2 in `.mise.toml`; a shell that finds newer
 Zig releases such as 0.16 can fail during native dependency builds. Other reproducible toolchain
 approaches such as [Nix](https://nixos.org/) may work, but mise is the documented path in this
 checkout.
@@ -36,7 +37,7 @@ mise run smoke          # render examples/basic.tape
 mise run release-check  # full release-oriented validation
 ```
 
-Run the CLI locally with `cargo run -- run examples/basic.tape`.
+Run the CLI locally with `mise run smoke`.
 
 ## Coding Style & Naming Conventions
 
