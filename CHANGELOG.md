@@ -2,6 +2,21 @@
 
 <!-- markdownlint-disable no-duplicate-heading -->
 
+## [0.1.17](https://github.com/joshka/betamax/compare/betamax-v0.1.16...betamax-v0.1.17) - 2026-09-19
+
+### Other
+
+- Use libghostty tracing logger ([#74](https://github.com/joshka/betamax/pull/74))
+- Clarify Zig build requirements and troubleshooting ([#134](https://github.com/joshka/betamax/pull/134))
+
+## [0.1.13](https://github.com/joshka/betamax/compare/betamax-core-v0.1.12...betamax-core-v0.1.13) - 2026-09-19
+
+### Other
+
+- Fix video playback timing ([#143](https://github.com/joshka/betamax/pull/143))
+- Fix wide-glyph clipping and CJK fixture coverage ([#139](https://github.com/joshka/betamax/pull/139))
+- Add controlled renderer fidelity fixtures ([#136](https://github.com/joshka/betamax/pull/136))
+
 ## [0.1.16](https://github.com/joshka/betamax/compare/betamax-v0.1.15...betamax-v0.1.16) - 2026-09-14
 
 ### Other
