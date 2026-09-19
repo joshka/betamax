@@ -1,13 +1,11 @@
 # Betamax
 
-Betamax is a Rust-first terminal capture CLI in the spirit of
-[VHS](https://github.com/charmbracelet/vhs). It runs tape files in a real PTY, feeds terminal
-output through `libghostty-vt`, rasterizes frames in process with `cosmic-text` and `swash`, and
-writes GIFs, screenshots, videos, or structured terminal state.
+Betamax records terminal sessions as GIFs, screenshots, videos, and JSON snapshots for tests.
+Write a [VHS](https://github.com/charmbracelet/vhs)-style tape file to run commands, type text,
+and wait for output.
 
-The goal is VHS-style authoring without a browser, server, xterm.js, or shelling out to a terminal
-web stack. Betamax is useful for project demos, CLI documentation, release notes, and snapshot-style
-tests for terminal applications.
+Betamax uses `libghostty-vt` to parse terminal output and renders frames in Rust with `cosmic-text`
+and `swash`. It does not need a browser or terminal server.
 
 ## Install
 
@@ -70,7 +68,7 @@ sudo apt-get update
 sudo apt-get install ffmpeg
 ```
 
-## A Tape
+## A tape
 
 Tape files describe the terminal session to run and the artifacts to write:
 
@@ -113,7 +111,7 @@ betamax run demo.tape
 commands can block on time, a line, the whole screen, or a regular expression, so tapes can be
 stable even when terminal programs do real work.
 
-## What It Can Write
+## What it can write
 
 | Output               | Use case                                                   |
 | -------------------- | ---------------------------------------------------------- |
@@ -146,15 +144,15 @@ The repository includes tapes that exercise the core behavior:
 | `examples/webp.tape`                      | Lossless WebP animation and screenshots        |
 | `examples/video.tape`                     | GIF, MP4, and WebM from one capture            |
 
-### Quick Start
+### Quick start
 
-![Quick Start Betamax GIF][quick-start-gif]
+![Quick start Betamax GIF][quick-start-gif]
 
 ### Basic
 
 ![Basic Betamax GIF][basic-gif]
 
-### Hide And Show
+### Hide and show
 
 ![Hide and Show Betamax GIF][hide-show-gif]
 
@@ -162,7 +160,7 @@ The repository includes tapes that exercise the core behavior:
 
 ![Ghostty theme Betamax GIF][themes-gif]
 
-## Themes And Styling
+## Themes and styling
 
 Betamax ships copied Ghostty themes and can also read user Ghostty theme directories. List theme
 names with:
@@ -183,11 +181,10 @@ grid so labels do not cover terminal content. Corner locations such as `BottomRi
 inside the terminal canvas with a small inset from the terminal edge. Caption glyphs are clipped to
 their reserved width as a final guard for font fallback and unusually wide characters.
 
-## Terminal Testing
+## Terminal testing
 
-Betamax can be used as a terminal test harness, not only as a GIF generator. A tape can run an
-interactive program, wait until expected text appears, capture screenshots at important states, and
-write structured state JSON that snapshot tests can compare with tools such as `insta`.
+Use a tape to run an interactive program, wait for expected text, and capture screenshots or
+state JSON at checkpoints. Compare the JSON with snapshot-testing tools such as `insta`.
 
 State JSON includes:
 
@@ -196,12 +193,9 @@ State JSON includes:
 - a compact style table
 - styled text spans that avoid cell-by-cell verbosity
 
-That makes it possible to test terminal UI behavior as text and style data, while still keeping PNG
-or GIF output available for visual review.
+## Differences from VHS
 
-## Differences From VHS
-
-Betamax intentionally keeps a smaller architecture than VHS:
+Betamax differs from VHS in these areas:
 
 | Area              | Betamax status                                       |
 | ----------------- | ---------------------------------------------------- |
@@ -215,15 +209,15 @@ Betamax intentionally keeps a smaller architecture than VHS:
 | `record`/`serve`  | Intentionally not implemented                        |
 | `publish`         | Intentionally not implemented                        |
 
-See [Differences From VHS][vhs-differences] for the full comparison.
+See [Differences from VHS][vhs-differences] for the full comparison.
 
 ## Documentation
 
 - [Documentation Site][docs-site]
-- [Tape Reference][tape-reference]
-- [Terminal Testing][terminal-testing]
+- [Tape reference][tape-reference]
+- [Terminal testing][terminal-testing]
 - [State JSON][state-json]
-- [Differences From VHS][vhs-differences]
+- [Differences from VHS][vhs-differences]
 - [Repository README][repo-readme]
 
 [basic-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/basic.gif

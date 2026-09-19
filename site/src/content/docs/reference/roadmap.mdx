@@ -1,31 +1,24 @@
 ---
 title: Roadmap
-description: Follow-up work that is not part of the VHS differences list.
+description: Planned work on rendering, key encoding, library outputs, and benchmarks.
 ---
 
-Betamax is useful today for GIFs, screenshots, video files, and terminal state snapshots. The main
-follow-up work is about fidelity, API shape, and long-term renderer direction.
+Planned work, in suggested priority order:
 
-## Near-Term Areas
+1. Extend renderer tests for wide glyphs, combining marks, emoji, and fallback fonts, then fix
+   differences from expected terminal output.
+1. Pass live terminal mode state to `libghostty-vt::key::Encoder`. Test applications that switch
+   cursor-key or keypad modes.
+1. Decide whether library callers should receive images, frames, and state snapshots without
+   writing files. `Runner::run_artifacts` already returns final terminal state.
+1. Consider injectable process, clock, and filesystem interfaces if direct library use grows.
+   These would let tests exercise timing and failures without real shells or media files.
+1. Add benchmarks for rendering, state compaction, frame decoration, and GIF encoding once their
+   behavior settles.
+1. Keep MP4/WebM encoding in optional [ffmpeg](../../authoring/outputs/#video-encoding) unless users
+   need native encoding. Native support would add codec dependencies and platform tests.
+1. Watch for a supported libghostty frame-capture API. The Rust bindings Betamax uses do not
+   currently expose one.
 
-1. Improve renderer fidelity around wide glyphs, combining marks, emoji, and fallback fonts.
-   The current renderer is good enough for ordinary CLI output, but terminal UI tests will become
-   more valuable as glyph edge cases get closer to real terminal behavior.
-1. Feed live terminal mode state into
-   [`libghostty-vt::key::Encoder`](../../reference/vhs-differences/).
-   Key encoding works for common keys today, but richer mode-aware encoding would reduce fallback
-   logic for applications that switch keypad or cursor modes.
-1. Decide whether the library API should expose structured artifacts without writing files.
-   The CLI naturally writes files. Library users may want final frames, state, and media bytes
-   returned directly for tests or custom pipelines.
-1. Introduce mockable runtime boundaries if library-first testing becomes a core use case.
-   The current public traits are enough for focused tests. A larger API should make PTY, capture,
-   and output writing explicit without making normal CLI code harder to read.
-1. Add targeted benchmarks after renderer and state formats settle.
-   Performance tests are useful once the format and renderer behavior stop moving quickly.
-1. Keep MP4/WebM on optional [ffmpeg](../../authoring/outputs/#video-encoding) unless native
-   encoding becomes worth the packaging cost.
-   Native video encoding would remove a tool dependency but add platform and codec complexity.
-1. Track upstream [libghostty](../../reference/vhs-differences/) APIs for renderer frame capture.
-   If Ghostty exposes an off-screen renderer path, Betamax should prefer that over maintaining a
-   parallel Rust rasterizer long term.
+See the [repository roadmap](https://github.com/joshka/betamax/blob/main/docs/roadmap.md) for details
+and [Differences from VHS](../vhs-differences/) for compatibility and unsupported features.

@@ -14,13 +14,13 @@ mise run render-examples
 Generated files are written under `examples/output` and copied to `target/betamax-examples` for
 local inspection. README GIF previews are hosted as GitHub Release assets; curated site previews may
 also live under `site/public/assets` with Git LFS. See
-[Generated Media Storage](../authoring/generated-media/) for the full storage guidance.
+[Generated media storage](../authoring/generated-media/) for the full storage guidance.
 
-## Example Index
+## Example index
 
 | Tape                                                      | Demonstrates                                    | Useful docs                                                            |
 | --------------------------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------- |
-| [`quick-start.tape`][quick-start-src]                     | installing, help, `new`, and nested `run`       | [Quick Start](../quick-start/)                                         |
+| [`quick-start.tape`][quick-start-src]                     | installing, help, `new`, and nested `run`       | [Quick start](../quick-start/)                                         |
 | [`basic.tape`][basic-src]                                 | typing, waits, theme, window bar, border radius | [Tape files](../authoring/tape-files/), [themes](../authoring/themes/) |
 | [`hide-show.tape`][hide-show-src]                         | hidden setup and hidden trailing cleanup        | [Hidden work](../authoring/tape-files/#hidden-work)                    |
 | [`waits.tape`][waits-src]                                 | line, screen, regex, and default prompt waits   | [Wait commands](../reference/tape-reference/#waitduration-regextext)   |
@@ -41,9 +41,9 @@ also live under `site/public/assets` with Git LFS. See
 
 These previews come from the example tapes above.
 
-### Quick Start
+### Quick start
 
-![Quick Start Betamax GIF](https://github.com/joshka/betamax/releases/download/readme-assets/quick-start.gif)
+![Quick start Betamax GIF](https://github.com/joshka/betamax/releases/download/readme-assets/quick-start.gif)
 
 `quick-start.tape` shows the full first-run path: install check, help output, creating a starter
 tape, inspecting it, running it, and listing the generated GIF.
@@ -55,12 +55,12 @@ tape, inspecting it, running it, and listing the generated GIF.
 `basic.tape` is the smallest useful demo: it sets a portable shell, chooses `Aardvark Blue`, types
 one command, waits for the result, and hides shell cleanup.
 
-### Hide And Show
+### Hide and show
 
 ![Hide and Show Betamax GIF](https://github.com/joshka/betamax/releases/download/readme-assets/hide-show.gif)
 
-`hide-show.tape` demonstrates the most important authoring trick. Hidden setup still runs and
-updates terminal state, but the animation starts only when `Show` reveals the prepared screen.
+`hide-show.tape` runs setup without recording it. Setup updates terminal state, and `Show` starts
+the animation with the prepared screen.
 
 ### Captions
 
@@ -70,12 +70,12 @@ updates terminal state, but the animation starts only when `Show` reveals the pr
 presentation metadata: waits and state outputs keep matching the terminal itself. Captions render in
 a reserved presentation row below the terminal canvas.
 
-### Keyboard Overlay
+### Keyboard overlay
 
 ![Keyboard overlay Betamax GIF](/betamax/assets/betamax-keyboard-overlay.gif)
 
 `keyboard-overlay.tape` shows typed commands and key presses as compact labels over generated media.
-See [Presentation Overlays](../authoring/presentation-overlays/) for overlay modes and placement.
+See [Presentation overlays](../authoring/presentation-overlays/) for overlay modes and placement.
 Labels appear when input is queued and linger briefly after typing, which keeps review GIFs readable
 without turning the overlay into a permanent command log.
 
@@ -98,7 +98,7 @@ Use [`betamax themes`](../authoring/themes/) to list the names available to `Set
 `video.tape` writes GIF, MP4, and WebM from one capture. The GIF is encoded in process; MP4 and
 WebM are handed to [ffmpeg](../authoring/outputs/#video-encoding).
 
-## Example Patterns
+## Example patterns
 
 Use `examples/outputs.tape` when checking artifact behavior. It writes a GIF, a PNG, final state
 JSON, a PNG frame directory, a checkpoint screenshot, and checkpoint state JSON.

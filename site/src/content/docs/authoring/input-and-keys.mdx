@@ -1,12 +1,12 @@
 ---
-title: Input And Keys
+title: Input and keys
 description: Type printable text, press terminal control keys, and show input in review media.
 ---
 
 Betamax tapes drive a real PTY with printable text and terminal key sequences. Use `Type` for text
 the user would enter, and use key commands for navigation, editing, shortcuts, and interrupts.
 
-## Printable Text
+## Printable text
 
 [`Type`](../../reference/tape-reference/#typeduration-text) sends text into the terminal one
 Unicode scalar at a time. The default delay comes from `Set TypingSpeed`, and a command can override
@@ -26,7 +26,7 @@ Enter
 Quote text that contains spaces, shell syntax, newlines, or backslashes. `Type` is for printable
 text; use key commands when the input should be a terminal control key.
 
-## Key Commands
+## Key commands
 
 Key commands send encoded key sequences through the terminal. They can include modifiers, an
 optional duration, and an optional repeat count.
@@ -49,7 +49,7 @@ Use keys for cursor movement, readline editing, interrupting commands, menu navi
 shortcuts. The reference lists the supported named keys and modifier syntax in
 [Key Commands](../../reference/tape-reference/#key-commands).
 
-## Editing And Interrupts
+## Editing and interrupts
 
 The `examples/keys.tape` example is a compact smoke test for editing and terminal control keys. It
 types text, moves the cursor, deletes characters, submits the edited line, interrupts a command
@@ -69,10 +69,10 @@ Ctrl+C
 Wait
 ```
 
-Prefer a semantic `Wait`, `Wait+Line`, or `Wait+Screen` after input that changes terminal state.
-That keeps tapes tied to observed behavior instead of fixed delays.
+After input that changes terminal state, use `Wait`, `Wait+Line`, or `Wait+Screen` to check the
+expected text before sending more input.
 
-## On-Screen Keys
+## On-screen keys
 
 Use [`KeyboardOverlay`](../presentation-overlays/#keyboard-overlays) when generated media should
 show the input that caused a terminal change. The overlay is useful for review GIFs and screenshots

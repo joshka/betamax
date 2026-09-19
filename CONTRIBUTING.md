@@ -1,10 +1,9 @@
 # Contributing
 
-Thanks for working on Betamax. This project is still before `0.1.0`, so contributions should favor
-small, reviewable changes that make the CLI more reliable, easier to maintain, or closer to the
-documented tape behavior.
+Keep contributions small enough to review on their own. Include a reproducing tape or test for
+behavior changes, and update the reference when commands or settings change.
 
-## Project Shape
+## Project shape
 
 Betamax is a Rust workspace with two crates:
 
@@ -18,7 +17,7 @@ The core crate should avoid CLI-only dependencies such as `clap`. Put argument p
 logging setup, and command dispatch in the CLI crate; put tape parsing, running, rendering, and
 artifact generation in the core crate.
 
-## Development Setup
+## Development setup
 
 Install the repository tools with [mise][mise]:
 
@@ -36,13 +35,12 @@ commands through `mise run ...` so Cargo sees the pinned Zig version. See
 For SDK setup on Tahoe, see [Building on macOS Tahoe](docs/development.md#building-on-macos-tahoe).
 
 Other toolchain managers can work too, including [Nix][nix] or a manually installed Zig 0.15.2 on
-`PATH`. mise is the documented path because it works for this repository today. PRs that add tested
-setup docs for other approaches are welcome.
+`PATH`. If you use another approach, contributions with tested setup instructions are welcome.
 
 Rust itself is managed with [rustup][rustup].
 
-The workspace `rust-version` is a compatibility floor, not a separately tested MSRV lane. It
-should move only when Betamax code or dependency requirements need a newer compiler.
+The workspace `rust-version` declares the minimum supported compiler, but CI does not test that
+version separately. Raise it only when Betamax code or dependencies require a newer compiler.
 
 Rust formatting uses nightly rustfmt because `rustfmt.toml` enables unstable formatting options:
 
@@ -56,7 +54,7 @@ List available tasks with:
 mise tasks ls
 ```
 
-## Before Opening A Pull Request
+## Before opening a pull request
 
 Run the same broad check used by CI:
 
@@ -74,7 +72,7 @@ mise run release-check
 `mise run release-check` also checks dependency policy, direct dependency freshness, direct minimal
 versions, packaging, install smoke testing, and rendering the basic smoke tape.
 
-## Useful Checks
+## Useful checks
 
 Use narrower commands while iterating:
 
@@ -105,7 +103,7 @@ If those checks require missing Cargo subcommands, install them with Cargo:
 cargo install cargo-deny cargo-outdated cargo-minimal-versions cargo-hack --locked
 ```
 
-## Tape Behavior
+## Tape behavior
 
 Tape compatibility is documented in [docs/tape-reference.md](docs/tape-reference.md). When changing
 parser or runner behavior, update that reference next to the code change so users can answer these
@@ -120,7 +118,7 @@ questions from one place:
 VHS differences belong in [docs/vhs-differences.md](docs/vhs-differences.md). Roadmap and future
 fidelity work belongs in [docs/roadmap.md](docs/roadmap.md), not in the VHS differences list.
 
-## Documentation Style
+## Documentation style
 
 Markdown is linted with `markdownlint-cli2` through `mise run lint-md`.
 
@@ -130,11 +128,10 @@ Markdown is linted with `markdownlint-cli2` through `mise run lint-md`.
 - Keep Markdown tables aligned.
 - Do not check generated GIF, PNG, MP4, or WebM output into the repository.
 
-Rust documentation should explain non-obvious behavior, return values, edge cases, and rationale.
-The goal is useful long-term maintenance context, including for private items where the behavior is
-not obvious from the name alone.
+Rust documentation should explain return values, edge cases, and decisions that the code does not
+make clear. Document private items when their names and implementation leave those questions open.
 
-## Examples And README Assets
+## Examples and README assets
 
 Checked-in tapes under `examples/` are small smoke tests and documentation examples. Render them
 locally with:
@@ -155,7 +152,7 @@ mise run upload-readme-assets
 
 That command requires the [GitHub CLI][github-cli] and permission to upload release assets.
 
-## Pull Requests
+## Pull requests
 
 Keep unrelated fixes in separate pull requests. Prefer clear, imperative commit or pull-request
 titles such as `Document contributor workflow` or `Fix state JSON style spans`.
@@ -170,7 +167,7 @@ Questions, early ideas, and examples of Betamax in real projects should go to
 for screenshots, rendered tapes, repo links, and short notes about how Betamax helps another
 project.
 
-## Release Notes
+## Release notes
 
 User-visible changes should update [CHANGELOG.md](CHANGELOG.md). Keep entries short and focused on
 behavior: new commands, changed defaults, supported output formats, public API changes, important

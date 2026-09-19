@@ -3,14 +3,12 @@ title: State JSON
 description: Compact terminal snapshots for viewport, scrollback, text, and styles.
 ---
 
-State JSON captures terminal state as text-oriented data instead of raw pixels. It is designed for
-snapshot tests, debugging, and future library use where callers want terminal assertions without
-having to inspect images.
+State JSON records terminal text, styles, and cursor position for snapshot tests and debugging.
 
 Write final state with `Output <path>.json` or checkpoint state with `State <path>.json`. See
 [Outputs](../../authoring/outputs/) for when each one is written.
 
-## Top-Level Shape
+## Top-level shape
 
 ```json
 {
@@ -45,7 +43,7 @@ Important fields:
 - `viewport_text` and `scrollback_text` are the easiest fields to assert in tests.
 - `viewport` and `scrollback` contain compact styled spans for the same trimmed rows.
 
-## Text Fields
+## Text fields
 
 `viewport_text` contains visible viewport text after trailing blank rows are trimmed.
 `scrollback_text` contains rows above the viewport, also trimmed. Non-empty text fields include a
@@ -60,7 +58,7 @@ assert!(state["viewport_text"].as_str().unwrap().contains("Saved profile"));
 
 Use styled spans only when color or attributes are part of the behavior being tested.
 
-## Styles And Spans
+## Styles and spans
 
 Rows are arrays of spans:
 
@@ -91,7 +89,7 @@ Style objects may include:
 
 Boolean fields are omitted when false. `underline` is omitted when it is `none`.
 
-## Why This Encoding
+## Why this encoding
 
 The chosen encoding keeps no-style text short while still preserving styles:
 
@@ -109,6 +107,3 @@ hard to read in diffs:
   `["foo", 1]`.
 - YAML, TOML, and JSONC each add parsing tradeoffs. Betamax writes strict JSON so tests can consume
   snapshots with standard parsers.
-
-The format is still early, but the design goal is stable: keep normal terminal output readable and
-diffable while preserving enough style data for meaningful terminal UI tests.

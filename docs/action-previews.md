@@ -16,7 +16,7 @@ holds at normal speed in GIF, PNG, MP4 and WebM. `scripts/check-action-playback.
 that successful tape result and all four formats, then checks decoded dimensions (480×240), codecs,
 video pixel format and duration. Decoded samples bracket the red-to-blue transition and the final
 blue hold. The final PNG must be blue. GIF/MP4/WebM duration must be 2.9–3.4 seconds, allowing frame
-and encoder rounding around three seconds. Sleeps provide visible holds after semantic waits.
+and encoder rounding around three seconds. Sleeps hold each frame after its ready marker appears.
 
 Open **Terminal previews → Open gallery** in the job summary for the action's media gallery, or
 **Betamax field guide** for descriptions, expected results and checkpoint comparisons. Individual

@@ -1,5 +1,5 @@
 ---
-title: Tape Files
+title: Tape files
 description: How Betamax parses, validates, and executes terminal capture scripts.
 ---
 
@@ -15,7 +15,7 @@ actions, waits, checkpoints, and metadata in the order Betamax should execute th
 <section class="bm-manual-row bm-manual-row-top" aria-labelledby="file-structure">
 <div class="bm-manual-copy">
 
-## File Structure
+## File structure
 
 Most tapes divide into three parts:
 
@@ -87,7 +87,7 @@ Wait+Screen "done"
   <ul>
     <li>Quote values with spaces.</li>
     <li>Use regex waits for changing output.</li>
-    <li>Keep generated tapes compact only when review does not matter.</li>
+    <li>Put one command on each line to make tapes easier to read.</li>
   </ul>
 </aside>
 </section>
@@ -124,15 +124,13 @@ Wait+Screen "test result:"
 <section class="bm-manual-row bm-manual-row-top" aria-labelledby="validation-and-review-media">
 <div class="bm-manual-copy">
 
-## Validation And Review Media
+## Validation and review media
 
-Most tapes have one primary job. Validation tapes exercise a user journey, wait for semantic
-screen state, and write focused `State` or `Screenshot` checkpoints for assertions. Example and
-review-media tapes make a stable state readable for humans in a GIF, video, or PR artifact.
+For tests, run the actions you want to check and save `State` or `Screenshot` checkpoints after
+waiting for the expected output. For demos, add pauses so viewers can read the result.
 
-Waits are assertions and synchronization points. Use `Wait`, `Wait+Line`, or `Wait+Screen` to name
-the state that must exist before the tape continues. Sleeps are presentation pacing after that
-state is true, unless the application has no semantic text or prompt that Betamax can wait for.
+Use `Wait`, `Wait+Line`, or `Wait+Screen` to check text before the tape continues. Use `Sleep` for
+reading time, or when the application provides no text or prompt to wait for.
 
 </div>
 
@@ -163,14 +161,14 @@ Sleep 500ms
 <section class="bm-manual-row bm-manual-row-split" aria-labelledby="presentation-and-layout-proof">
 <div class="bm-manual-copy">
 
-## Presentation And Layout Proof
+## Presentation and layout proof
 
 Larger `FontSize`, `Margin`, window bars, and border radius are presentation choices. They make a
 demo easier to read, but they also change the terminal grid and available layout space.
 
-When a tape proves modal placement, centering, wrapping, or split-pane behavior, start with the
-default `FontSize` and `Margin`. Increase `Width` and `Height` when the proof needs a wider canvas.
-Use a separate review-media tape when the same journey also needs zoomed presentation.
+When testing modal placement, centering, wrapping, or split panes, start with the default
+`FontSize` and `Margin`. Increase `Width` and `Height` if the application needs more space.
+Use a separate tape for a demo that needs larger text.
 
 </div>
 
@@ -189,7 +187,7 @@ Screenshot target/layout/proof.png
 <section class="bm-manual-row bm-manual-row-split" aria-labelledby="hidden-work">
 <div class="bm-manual-copy">
 
-## Hidden Work
+## Hidden work
 
 [`Hide`](../../reference/tape-reference/#hide) and [`Show`](../../reference/tape-reference/#show)
 are visibility controls, not execution controls. Hidden commands still run in the PTY, update
@@ -221,7 +219,7 @@ Show
 <section class="bm-manual-row bm-manual-row-split" aria-labelledby="outputs-during-a-tape">
 <div class="bm-manual-copy">
 
-## Outputs During A Tape
+## Outputs during a tape
 
 [`Output`](../../reference/tape-reference/#output-path) describes final artifacts written after
 execution. [`Screenshot`](../../reference/tape-reference/#screenshot-pathpng) and
@@ -252,7 +250,7 @@ State target/snapshots/profile.state.json
 <section class="bm-manual-row bm-manual-row-split" aria-labelledby="shell-defaults">
 <div class="bm-manual-copy">
 
-## Shell Defaults
+## Shell defaults
 
 For common shells such as `bash`, `zsh`, and `fish`, Betamax starts a clean recording-oriented
 environment where possible. The default prompt behavior aims for VHS-like output: a simple `>`
@@ -273,7 +271,7 @@ Set Shell "fish --private"
 <aside class="bm-manual-note">
   <p class="bm-note-label">Compatibility</p>
   <p>
-    See <a href="../../reference/vhs-differences/">Differences From VHS</a> for the compatibility
+    See <a href="../../reference/vhs-differences/">Differences from VHS</a> for the compatibility
     boundary.
   </p>
 </aside>

@@ -1,10 +1,10 @@
 ---
-title: Terminal Testing
+title: Terminal testing
 description: Use Betamax tapes as snapshot-style tests for terminal programs.
 ---
 
-Betamax can run interactive terminal programs, wait for expected output, and write structured state
-for assertions. This makes it useful as a terminal test harness in addition to a GIF generator.
+Test an interactive terminal program by running it in a tape, waiting for expected output, and
+saving state JSON for assertions.
 
 ```text
 Output target/snapshots/app.gif
@@ -19,7 +19,7 @@ Screenshot target/snapshots/ready.png
 The tape fails if expected text does not appear before the configured timeout. The PNG helps with
 visual review, while [State JSON](../state-json/) can be compared in snapshot tests.
 
-## What To Assert
+## What to assert
 
 Prefer asserting text and important style spans instead of every pixel. Pixel assertions are useful
 for renderer work, but they are often brittle for application behavior tests.
@@ -33,7 +33,7 @@ Good assertions include:
 - whether a prompt, status line, or selected row appears
 - whether hidden setup avoided extra visible frames
 
-## Stable Tapes
+## Stable tapes
 
 Use waits as synchronization points:
 
@@ -60,11 +60,10 @@ Env BETAMAX_TEST 1
 
 Use `Set CursorBlink false` when animation frame differences do not matter to the test.
 
-## Wait Before Sleep
+## Wait before sleep
 
-Validation tapes should synchronize on behavior before they add presentation pacing. Put a semantic
-`Wait`, `Wait+Line`, or `Wait+Screen` after every meaningful app transition, then add `Sleep` only
-when the generated media needs a human-readable pause.
+After an action, use `Wait`, `Wait+Line`, or `Wait+Screen` to check the expected text before
+continuing. Add `Sleep` if viewers need time to read the recording.
 
 ```text
 Type "my-tui --scripted"
@@ -78,20 +77,19 @@ Keep validation sleeps short and rare. If a sleep is compensating for behavior t
 matched with visible text, a prompt, or a status line, keep it as small as the program allows and
 leave a tape comment explaining what external effect it covers.
 
-## Snapshot Workflow
+## Snapshot workflow
 
-A common Rust test shape is:
+To check a snapshot from a Rust test:
 
 1. Run `betamax run tests/fixtures/profile.tape`.
 1. Read `target/snapshots/profile.json`.
 1. Deserialize it with `serde_json`.
 1. Assert targeted fields directly, or snapshot the whole file with `insta`.
 
-The CLI is enough for this workflow today. The `betamax-core` crate already exposes tape parsing,
-running, artifacts, and terminal state types, so a more ergonomic library-first test API can grow on
-top of the same primitives.
+For tests that call Betamax directly from Rust, `betamax-core` exposes tape parsing, the runner,
+and terminal state types.
 
-## Choosing Artifacts For Tests
+## Choosing artifacts for tests
 
 State JSON should be the primary assertion artifact. Screenshots are best as debugging attachments
 when a snapshot changes. GIFs are useful when reviewing interaction timing, but they should usually

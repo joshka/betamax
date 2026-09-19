@@ -1,14 +1,14 @@
 # Betamax
 
-Betamax is a Rust-first terminal capture tool in the spirit of
-[VHS](https://github.com/charmbracelet/vhs). It reads tape files, runs commands in a PTY, feeds
-terminal output through `libghostty-vt`, rasterizes frames in process with `cosmic-text` and
-`swash`, and writes screenshots or animations.
+Betamax records terminal sessions as GIFs, screenshots, videos, and JSON snapshots for tests.
+Write a [VHS](https://github.com/charmbracelet/vhs)-style tape file to run commands, type text,
+and wait for output.
 
-The goal is VHS-style output without the browser/server/xterm.js stack. The current implementation
-intentionally does not include `serve`, `record`, `source`, or `publish`.
+Betamax uses `libghostty-vt` to parse terminal output and renders frames in Rust with `cosmic-text`
+and `swash`. It does not need a browser or terminal server. VHS's `serve`, `record`, `Source`, and
+`publish` features are not implemented.
 
-## Quick Start
+## Quick start
 
 Betamax currently supports macOS and Linux. Windows is not supported because the upstream
 `libghostty-vt-sys` native build does not support Windows.
@@ -85,7 +85,7 @@ The script writes files under `examples/output` and copies them to `target/betam
 local inspection. The GIF previews below are hosted as GitHub Release assets so they can render on
 GitHub and crates.io without storing generated media in the source tree.
 
-## Tape Example
+## Tape example
 
 ```text
 Output examples/output/basic.gif
@@ -113,9 +113,8 @@ Type "exit"
 Enter
 ```
 
-`Hide` and `Show` are useful for VHS-style tapes that hide setup or compile work and only reveal the
-interesting terminal state. See the [Tape Reference][tape-reference] for the full command
-and settings behavior.
+Use `Hide` and `Show` to keep setup and compilation out of the recording.
+See the [Tape reference][tape-reference] for commands and settings.
 
 ## Examples
 
@@ -140,15 +139,15 @@ The checked-in examples are small smoke-test tapes that demonstrate core behavio
 | `examples/webp.tape`                      | Lossless WebP animation and screenshots        | `webp.*`                  |
 | `examples/video.tape`                     | GIF, MP4, and WebM from one capture            | `video.*`                 |
 
-### Quick Start
+### Quick start
 
-![Quick Start Betamax GIF][quick-start-gif]
+![Quick start Betamax GIF][quick-start-gif]
 
 ### Basic
 
 ![Basic Betamax GIF][basic-gif]
 
-### Hide And Show
+### Hide and show
 
 ![Hide and Show Betamax GIF][hide-show-gif]
 
@@ -156,7 +155,7 @@ The checked-in examples are small smoke-test tapes that demonstrate core behavio
 
 ![Ghostty theme Betamax GIF][themes-gif]
 
-### Presentation Overlays
+### Presentation overlays
 
 Captions and keyboard overlay chips are visual annotations for review media.
 `KeyboardOverlayLocation CaptionRow` reserves a bottom presentation row before deriving the terminal
@@ -181,11 +180,10 @@ mise exec -- cargo run -- themes --json
 Theme lookup searches user Ghostty theme directories first, then the copied themes in
 `crates/betamax-core/resources/ghostty/themes`.
 
-## Differences From VHS
+## Differences from VHS
 
-Betamax aims for the common VHS authoring flow, but the architecture is intentionally smaller and
-Ghostty-first. See [Differences From VHS][vhs-differences] for the full comparison and
-remaining parity notes.
+Betamax supports many VHS tape commands. It uses Ghostty's terminal parser and a Rust renderer.
+See [Differences from VHS][vhs-differences] for compatibility details and unsupported features.
 
 | Area              | Betamax status                                       |
 | ----------------- | ---------------------------------------------------- |
@@ -199,16 +197,15 @@ remaining parity notes.
 | `record`/`serve`  | Intentionally not implemented                        |
 | `publish`         | Intentionally not implemented                        |
 
-The main tradeoff today is video output: MP4 and WebM use `ffmpeg` as a focused encoder bridge.
-Terminal execution and rasterization stay in process; video container encoding does not.
+MP4 and WebM output require `ffmpeg`. Betamax handles terminal parsing and rendering in process.
 
-## Terminal Testing
+## Terminal testing
 
 Betamax can also be used as a terminal testing harness. A tape can run an interactive terminal
 program, wait for text on the screen, capture PNG screenshots at checkpoints, write structured
 terminal state, and fail when expected terminal output does not appear before a timeout.
 
-See [Terminal Testing][terminal-testing] and [State JSON][state-json] for the test
+See [Terminal testing][terminal-testing] and [State JSON][state-json] for the test
 workflow and state snapshot format.
 
 ## Community
@@ -221,10 +218,10 @@ short note in [Show and tell][show-and-tell].
 ## Documentation
 
 - [Documentation Site][docs-site]
-- [Tape Reference][tape-reference]
-- [Terminal Testing][terminal-testing]
+- [Tape reference][tape-reference]
+- [Terminal testing][terminal-testing]
 - [State JSON][state-json]
-- [Differences From VHS][vhs-differences]
+- [Differences from VHS][vhs-differences]
 - [Contributing](CONTRIBUTING.md)
 - [Development](docs/development.md)
 - [Security Policy](SECURITY.md)

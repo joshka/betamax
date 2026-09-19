@@ -1,107 +1,76 @@
 ---
 title: Overview
-description: Betamax's capture model, output types, and main documentation paths.
+description: Record terminal sessions for documentation and tests.
 ---
 
-Betamax turns [tape files][tape-files] into terminal artifacts for documentation and tests. A tape
-describes one terminal session: outputs, requirements, shell settings, typed text, key presses,
-waits, screenshots, and state snapshots.
+Betamax records terminal sessions as GIFs, screenshots, videos, and JSON snapshots. A
+[tape file][tape-files] specifies the commands to run, text to type, output to wait for, and files
+to save. Start with [Quick start][quick-start] to install Betamax and render your first tape.
 
-The runtime starts a real PTY, feeds terminal bytes into [`libghostty-vt`][vhs-differences],
-renders frames in process with [cosmic-text][cosmic-text] and [swash][swash], and writes the
-requested artifacts. GIF, PNG, screenshot, state JSON, and frame outputs stay inside the Rust
-process. MP4 and WebM output uses [ffmpeg][video-encoding] as the video encoder.
+Betamax runs commands in a PTY, parses their output with [`libghostty-vt`][vhs-differences], and
+renders frames with [cosmic-text][cosmic-text] and [swash][swash]. It writes images and state JSON
+in the Rust process. MP4 and WebM encoding uses [ffmpeg][video-encoding].
 
-Betamax follows the common [VHS][vhs-differences] tape-authoring shape, but it keeps a smaller
-Ghostty-first architecture. It does not start a browser, terminal server, `xterm.js`, or `ttyd`;
-does not implement VHS's `serve`, `record`, or `publish` workflows; and parses `Source` without
-executing it.
+Many commands will be familiar to [VHS][vhs-differences] users. Betamax does not need a browser or
+terminal server. VHS's `serve`, `record`, and `publish` features are not implemented.
+Betamax parses `Source` but returns an error if a tape tries to execute it.
 
-## Output Types
+## Output types
 
-The same tape model can produce documentation media, review artifacts, and terminal-testing
-snapshots:
+A tape can save several formats from the same session:
 
-| Output                         | Use case                                                              |
-| ------------------------------ | --------------------------------------------------------------------- |
-| GIF                            | README demos, release notes, and docs pages                           |
-| PNG                            | Final-frame previews and static screenshots                           |
-| MP4 and WebM                   | Video embeds when GIF size or playback quality matters                |
-| Screenshot checkpoints         | Intermediate frames at meaningful moments in a tape                   |
-| [State JSON][state-json]       | Terminal-testing snapshots with viewport, scrollback, and style spans |
-| Frame directories              | Debugging and custom post-processing                                  |
+| Output                    | Use case                                                        |
+| ------------------------- | --------------------------------------------------------------- |
+| GIF                       | Animated demos in READMEs, release notes, and docs              |
+| PNG                       | A screenshot of the final frame                                 |
+| MP4 and WebM              | Video embeds                                                    |
+| Screenshot checkpoints    | Images captured at specific points in a tape                    |
+| [State JSON][state-json]  | Assertions on terminal text, scrollback, cursor, and styles     |
+| Frame directories         | Debugging and custom processing of individual frames            |
 
-Final [`Output`][output-command] artifacts are written after the tape finishes.
-[`Screenshot`][screenshot-command] and [`State`][state-command] commands write checkpoint artifacts
-at their position in the tape.
+Betamax writes [`Output`][output-command] files after the tape finishes.
+[`Screenshot`][screenshot-command] and [`State`][state-command] save checkpoints when the tape
+reaches those commands.
 
-Captions and keyboard overlays are presentation-only media annotations. [Presentation
-Overlays][presentation-overlays] covers captions, on-screen key chips, and placement tradeoffs for
-visual outputs, so review labels can explain a workflow without changing state JSON.
+[Captions and keyboard overlays][presentation-overlays] add explanations and key labels to visual
+outputs. They do not change state JSON.
 
-## Tape Model
+## Tape model
 
-Most tapes have the same shape:
+1. Declare final outputs with [`Output`][output-command].
+1. Check required programs with [`Require`][require-command].
+1. Configure the shell, environment, dimensions, theme, and timing with [`Set`][set-command] and
+   [`Env`][env-command].
+1. Type text, press keys, and wait for output. Add screenshots or state checkpoints where needed.
 
-1. [`Output`][output-command] commands declare final artifacts.
-1. [`Require`][require-command] commands check external programs before terminal work starts.
-1. [`Set`][set-command] and [`Env`][env-command] commands configure the shell, environment,
-   dimensions, theme, timing, and frame styling.
-1. Runtime commands type text, press keys, paste content, wait for terminal state, hide or reveal
-   frame capture, and write checkpoint artifacts.
+[Wait commands][wait-commands] check terminal text before continuing. `Wait` and `Wait+Line` match
+the current cursor line; `Wait+Screen` matches the visible viewport. Use waits when the next action
+depends on output from the previous one.
 
-[Wait commands][wait-commands] match the terminal state reported by `libghostty-vt`. `Wait` and
-`Wait+Line` match the current cursor line; `Wait+Screen` matches visible viewport text. That makes a
-tape depend on terminal output instead of a fixed sleep whenever the next frame has an observable
-condition.
+## Writing tapes
 
-## Documentation Captures
+[Tape files][tape-files] explains syntax, waits, hidden setup, and shell defaults.
+[Input and keys][input-and-keys] covers typing, navigation, shortcuts, and interrupts.
+[Examples][examples] has tapes you can copy and adapt.
 
-[Quick Start][quick-start] covers installation and the first rendered tape. [Tape Files][tape-files]
-explains tape structure, tokenization, waits, hidden work, outputs, and shell defaults. [Input And
-Keys][input-and-keys] covers printable text, navigation keys, shortcuts, interrupts, and on-screen
-key overlays. [Examples][examples] maps each checked-in tape to the behavior it demonstrates.
+For exact syntax and defaults, see the [tape reference][tape-reference].
+[Outputs][outputs] explains file formats and checkpoints. [Themes and styling][themes] covers
+colors, fonts, dimensions, and window decoration. [Generated media storage][generated-media]
+explains where to store and host the resulting files.
 
-[Generated Media Storage][generated-media] covers where rendered files belong when a repository
-needs stable README media, review artifacts, CI outputs, or web-hosted documentation assets.
+## Testing terminal applications
 
-## Output And Styling Reference
-
-[Outputs][outputs] documents output commands, checkpoint behavior, frame directories, and the
-`ffmpeg` boundary for video files. [Themes And Styling][themes] covers copied Ghostty themes, theme
-lookup, terminal dimensions, font size, padding, margin, fill, window bars, border radius,
-framerate, and playback speed.
-
-The [Tape Reference][tape-reference] is the exact command surface: supported outputs, settings,
-defaults, runtime commands, ignored VHS commands, and CLI subcommands.
-
-## Terminal Testing
-
-Betamax can act as a terminal-testing harness for CLIs and TUIs. A test tape can run an interactive
-program, wait for expected text, capture screenshots at checkpoints, and write state JSON for
-snapshot assertions.
-
-[Terminal Testing][terminal-testing] explains the workflow. [State JSON][state-json] documents the
-snapshot format: viewport rows, optional scrollback, cursor position, terminal dimensions, default
-style, and non-default style spans.
+A test tape can run an interactive program, wait for expected text, and save state JSON for snapshot
+assertions. Screenshots help you inspect failures. See [Terminal testing][terminal-testing] for
+setup and [State JSON][state-json] for the snapshot format.
 
 ## Compatibility
 
-Betamax currently supports macOS and Linux. Windows is not supported because the upstream
+Betamax supports macOS and Linux. Windows is not supported because the upstream
 `libghostty-vt-sys` native build does not support Windows.
 
 Video output requires [ffmpeg][video-encoding] on `PATH`. Other output formats do not require an
 external encoder.
-
-## Next Pages
-
-- [Quick Start][quick-start] installs Betamax and renders a first tape.
-- [Input And Keys][input-and-keys] explains typing, key commands, and visible input chips.
-- [Presentation Overlays][presentation-overlays] explains captions and on-screen key labels.
-- [Examples][examples] shows each checked-in tape and the behavior it demonstrates.
-- [Tape Reference][tape-reference] documents every command, setting, default, and CLI option.
-- [Differences From VHS][vhs-differences] explains compatibility boundaries for users familiar
-  with VHS.
 
 [cosmic-text]: https://github.com/pop-os/cosmic-text
 [examples]: ../examples/
