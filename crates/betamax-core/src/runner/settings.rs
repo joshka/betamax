@@ -473,7 +473,12 @@ impl Settings {
     /// executing commands; command execution timing is controlled by `capture_interval`,
     /// `typing_delay`, explicit sleeps, and wait timeouts.
     pub(super) fn frame_delay(&self) -> Duration {
-        Duration::from_secs_f64(1.0 / self.output_framerate())
+        self.playback_delay(self.capture_interval())
+    }
+
+    /// Convert elapsed capture time to an output hold without changing PTY execution timing.
+    pub(super) fn playback_delay(&self, elapsed: Duration) -> Duration {
+        elapsed.div_f64(self.playback_speed)
     }
 
     /// Real capture cadence used while draining the PTY.

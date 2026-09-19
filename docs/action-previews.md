@@ -37,20 +37,31 @@ Individual media and action diagnostics are also run artifacts. GitHub sign-in i
 artifacts expire after 14 days. Linux/macOS tests, macOS CLI smoke testing and the specialized
 [renderer fidelity PNG/JSON galleries](renderer-fidelity.md) remain in place.
 
-## Known playback-speed issue
+## Playback-speed regression coverage
 
-During setup, the same fixture with `PlaybackSpeed 2` produced GIF at 3.06 seconds and MP4/WebM
-at 3.05 seconds using Betamax 0.1.17, instead of approximately 1.5 seconds. PTY capture currently
-records elapsed frame delays without applying the speed multiplier. The normal-speed check does
-not cover that separate CLI bug, and this action integration does not change renderer behavior.
+[Issue 149](https://github.com/joshka/betamax/issues/149) identified unscaled elapsed capture
+holds: `PlaybackSpeed 2` produced roughly three seconds of GIF, MP4, WebM, and WebP output for
+this fixture instead of approximately 1.5 seconds. PTY capture now divides elapsed holds by
+playback speed while keeping command execution and capture cadence unchanged.
 
-Reproduce it with the locally built CLI:
+The focused runner regression decodes GIF and WebP at speeds 0.5, 1, and 2, checking the color
+transition and total duration across both `Sleep` and visible `Wait` capture. Run it with:
+
+```sh
+mise exec -- cargo test -p betamax-core --test playback_speed
+```
+
+`mise run video-test` also checks decoded MP4/WebM transitions and the final hold at those speeds.
+The action fixture stays at normal speed; these focused tests provide the non-default coverage.
+To inspect speed 2 manually with the locally built CLI:
 
 ```sh
 sed 's/Set PlaybackSpeed 1/Set PlaybackSpeed 2/' examples/ci-playback.tape \
   | target/debug/betamax run --quiet --output target/playback-speed-2.mp4 -
 ffprobe -v error -show_entries format=duration -of default=nw=1 target/playback-speed-2.mp4
 ```
+
+Expect approximately 1.55 seconds, including one frame for each `Show` command.
 
 ## Trust boundary
 

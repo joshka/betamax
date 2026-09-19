@@ -203,7 +203,8 @@ impl PtySession {
             self.drain_into(terminal, wait)?;
             if capture.visible {
                 let captured_at = Instant::now();
-                let frame_delay = captured_at.saturating_duration_since(last_capture_at);
+                let elapsed = captured_at.saturating_duration_since(last_capture_at);
+                let frame_delay = settings.playback_delay(elapsed);
                 append_visible_frame(
                     capture,
                     capture_frame(terminal, settings, capture.frames.len())?,
@@ -236,7 +237,8 @@ impl PtySession {
             self.drain_into(terminal, capture_interval)?;
             if capture.visible {
                 let captured_at = Instant::now();
-                let frame_delay = captured_at.saturating_duration_since(last_capture_at);
+                let elapsed = captured_at.saturating_duration_since(last_capture_at);
+                let frame_delay = settings.playback_delay(elapsed);
                 append_visible_frame(
                     capture,
                     capture_frame(terminal, settings, capture.frames.len())?,
