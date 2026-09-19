@@ -11,12 +11,12 @@ template: splash
       <img src="/betamax/assets/betamax-logo-lockup.png" alt="Betamax" loading="eager" />
     </h1>
     <div class="betamax-tagline">
-      <a href="./reference/vhs-differences/">VHS-style</a> GIFs, screenshots, videos, and terminal
-      snapshots without a browser, terminal server, <a href="https://xtermjs.org/">xterm.js</a>,
-      or <a href="https://github.com/tsl0922/ttyd">ttyd</a> process.
+      Record terminal demos and test interactive programs with
+      <a href="./authoring/tape-files/">tape files</a>. Save GIFs, screenshots, videos, and
+      terminal snapshots.
     </div>
     <div class="betamax-actions">
-      <a class="betamax-button betamax-button-primary" href="./quick-start/">Quick Start →</a>
+      <a class="betamax-button betamax-button-primary" href="./quick-start/">Quick start →</a>
       <a class="betamax-button" href="https://github.com/joshka/betamax">GitHub</a>
       <a class="betamax-button" href="https://crates.io/crates/betamax">crates.io</a>
     </div>
@@ -45,14 +45,14 @@ template: splash
   />
 </a>
 
-Betamax reads <a href="./authoring/tape-files/">tape files</a>, runs commands in a real PTY, feeds
-terminal output through <a href="./reference/vhs-differences/">libghostty-vt</a>, rasterizes frames
-in process with <a href="https://github.com/pop-os/cosmic-text">cosmic-text</a> and
-<a href="https://github.com/dfrg/swash">swash</a>, and writes artifacts for documentation or tests.
+Write the commands to run, the text to type, and the output to wait for in a
+<a href="./authoring/tape-files/">tape file</a>. Betamax runs the session and saves the recording.
+It uses <a href="./reference/vhs-differences/">libghostty-vt</a> to parse terminal output and renders
+frames in Rust.
 
 <div class="feature-grid">
   <section>
-    <h2>GIFs & Screenshots</h2>
+    <h2>GIFs & screenshots</h2>
     <div class="bm-stripes" aria-hidden="true"></div>
     <p>
       Generate README demos, release-note animations, final-frame PNGs, and checkpoint screenshots.
@@ -63,7 +63,7 @@ in process with <a href="https://github.com/pop-os/cosmic-text">cosmic-text</a> 
     </footer>
   </section>
   <section>
-    <h2>Terminal Testing</h2>
+    <h2>Terminal testing</h2>
     <div class="bm-stripes" aria-hidden="true"></div>
     <p>
       <a href="./testing/terminal-testing/">Wait for text</a>, capture terminal state, and compare
@@ -80,11 +80,11 @@ in process with <a href="https://github.com/pop-os/cosmic-text">cosmic-text</a> 
     </footer>
   </section>
   <section>
-    <h2>Ghostty-Based Parsing</h2>
+    <h2>Ghostty-based parsing</h2>
     <div class="bm-stripes" aria-hidden="true"></div>
     <p>
-      Terminal output is interpreted by <a href="./reference/vhs-differences/">libghostty-vt</a>,
-      with copied <a href="./authoring/themes/">Ghostty themes</a> by name.
+      <a href="./reference/vhs-differences/">libghostty-vt</a> interprets terminal output.
+      Choose colors from the bundled <a href="./authoring/themes/">Ghostty themes</a>.
     </p>
     <footer>
       <span>Parser</span>
@@ -99,45 +99,45 @@ in process with <a href="https://github.com/pop-os/cosmic-text">cosmic-text</a> 
     </footer>
   </section>
   <section>
-    <h2>Small & Focused</h2>
+    <h2>Rendering in Rust</h2>
     <div class="bm-stripes" aria-hidden="true"></div>
     <p>
-      No xterm.js, no browser, no terminal server, no ttyd process. MP4 and WebM use
-      <a href="./authoring/outputs/#video-encoding">ffmpeg</a> only for video encoding.
+      GIFs and screenshots render in process. MP4 and WebM use
+      <a href="./authoring/outputs/#video-encoding">ffmpeg</a> for video encoding.
     </p>
     <footer><span>Arch</span><span class="bm-chipset"><kbd class="hot">Min</kbd></span></footer>
   </section>
 </div>
 
-## Where To Go Next
+## Where to go next
 
 <nav class="next-panel" aria-label="Where to go next">
   <a href="./overview/">
     <span>Overview</span>
-    <p>Understand the capture model, output types, and main docs paths.</p>
+    <p>Learn how tapes run and which files they produce.</p>
   </a>
   <a href="./quick-start/">
-    <span>Quick Start</span>
-    <p>Get Betamax running in minutes.</p>
+    <span>Quick start</span>
+    <p>Install Betamax and render your first tape.</p>
   </a>
   <a href="./examples/">
     <span>Examples</span>
-    <p>See every checkable tape in the documentation.</p>
+    <p>Find example tapes to copy and adapt.</p>
   </a>
   <a href="./reference/tape-reference/">
-    <span>Tape File Reference</span>
+    <span>Tape file reference</span>
     <p>Read the command, setting, default, and CLI reference.</p>
   </a>
   <a href="./authoring/outputs/">
-    <span>Output Reference</span>
+    <span>Output reference</span>
     <p>Understand GIF, PNG, video, screenshot, frame, and state artifacts.</p>
   </a>
   <a href="./authoring/themes/">
-    <span>Theme Reference</span>
+    <span>Theme reference</span>
     <p>Style terminal captures with themes, windows, padding, margins, and fills.</p>
   </a>
   <a href="./testing/terminal-testing/">
-    <span>Terminal Testing and State JSON</span>
+    <span>Terminal testing and State JSON</span>
     <p>Use state JSON snapshots for terminal test assertions.</p>
   </a>
 </nav>

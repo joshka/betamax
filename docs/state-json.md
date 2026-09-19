@@ -32,7 +32,7 @@ styled output is available when needed, and repeated per-cell default data is no
 `scrollback_text` contains rows above the viewport, also with trailing blank rows trimmed. The
 `viewport` and `scrollback` fields contain the same rows as compact styled spans.
 
-## Span Rules
+## Span rules
 
 Rows are arrays of spans:
 
@@ -48,7 +48,7 @@ The `default_style` object records the theme-derived foreground and background u
 spans. Non-default style objects omit fields that match `default_style`; for example a prompt
 colored with the default background only records its foreground color.
 
-## Style Fields
+## Style fields
 
 Style objects may include:
 
@@ -66,7 +66,7 @@ Style objects may include:
 
 Boolean fields are omitted when false. `underline` is omitted when it is `none`.
 
-## Format Tradeoffs
+## Format tradeoffs
 
 Betamax keeps strict JSON as the canonical state format. It is deterministic, parseable with
 standard libraries, and works well with snapshot tools such as `insta`.
@@ -77,6 +77,5 @@ quoting or escaping. That makes generated snapshots less predictable.
 TOML is a poor fit for captured terminal state because nested mixed arrays of strings and styled
 spans become awkward quickly. TOML is better for configuration than for structured terminal output.
 
-JSONC is useful for human-authored fixtures, but it requires a non-standard parser. Betamax can add
-a JSONC debug export later, but generated `.json` files stay strict so tests can consume them
-without extra parser choices.
+JSONC allows comments in hand-written fixtures, but requires a non-standard parser. Betamax writes
+strict `.json` files so tests can read them with standard JSON libraries.

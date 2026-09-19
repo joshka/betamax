@@ -1,8 +1,7 @@
-# Differences From VHS
+# Differences from VHS
 
-This document lists meaningful differences between Betamax and
-[VHS](https://github.com/charmbracelet/vhs). It intentionally omits features that work the same in
-both tools; see the [Tape Reference](tape-reference.md) for Betamax's full supported tape surface.
+This page compares Betamax with [VHS](https://github.com/charmbracelet/vhs).
+See the [Tape reference](tape-reference.md) for all supported commands and settings.
 
 Sources checked:
 
@@ -32,11 +31,9 @@ through a browser/ffmpeg-oriented pipeline. Betamax runs a PTY directly, feeds t
 `libghostty-vt`, rasterizes terminal frames with `cosmic-text` and `swash`, and writes GIF/PNG
 outputs in Rust.
 
-MP4 and WebM are still encoded through `ffmpeg`. The difference is that terminal execution and
-rasterization stay in process; video container encoding is the only remaining external encoder
-bridge.
+Betamax uses `ffmpeg` to encode MP4 and WebM. Terminal parsing and rendering run in process.
 
-## Testing State
+## Testing state
 
 Betamax adds structured terminal-state output:
 
@@ -46,8 +43,7 @@ Betamax adds structured terminal-state output:
   deduplicated non-default styles, and compact styled spans.
 - `Runner::run_artifacts` returns final terminal state for Rust callers.
 
-This is not a direct VHS parity feature. It is aimed at CLI/TUI snapshot tests where text,
-scrollback, cursor state, and styles are useful assertions.
+Use these snapshots to assert text, scrollback, cursor state, and styles in CLI/TUI tests.
 
 ## Themes
 
@@ -59,9 +55,9 @@ The visible result should be close for common named themes and base16-style JSON
 theme metadata is not identical. Selection colors, cursor text colors, and other theme fields are
 not fully represented in Betamax's current renderer.
 
-## Intentional Omissions
+## Intentional omissions
 
-Betamax intentionally omits these VHS features for the first cut:
+These VHS features are not implemented:
 
 - `Source <path>.tape`
 - `record`
@@ -71,10 +67,9 @@ Betamax intentionally omits these VHS features for the first cut:
 `Source` is parsed so migrated VHS tapes get a clear error, but execution returns an explicit
 not-implemented error.
 
-## Fidelity Risks
+## Fidelity risks
 
-Betamax's renderer is good enough for the current examples, but it is not Ghostty's full renderer
-and is not VHS's browser output. Known risks:
+Betamax uses its own renderer, so output can differ from Ghostty and VHS. Known limitations:
 
 - no ligature shaping parity guarantee with Ghostty;
 - no image/Kitty graphics rendering path;
@@ -85,9 +80,9 @@ Key input has a similar caveat. Betamax routes key events through `libghostty-vt
 fallbacks for common control sequences, but broader named-key coverage and live terminal-mode input
 state remain future fidelity work.
 
-## Betamax-Only Features
+## Betamax-only features
 
-These are useful, but not VHS parity features:
+Betamax also provides:
 
 - strict JSON state snapshots for viewport, scrollback, and styles;
 - scrollback-inclusive state capture;

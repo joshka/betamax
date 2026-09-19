@@ -9,7 +9,7 @@ pnpm install
 mise run check
 ```
 
-## Toolchain Requirements
+## Toolchain requirements
 
 Betamax is a Rust workspace, but the terminal engine depends on Ghostty's native VT library through
 two Rust crates:
@@ -38,9 +38,9 @@ mise is not the only possible way to provide that Zig version. [Nix][nix], a man
 Rust bindings still pin the older source. Betamax must wait for a `libghostty-rs` release containing
 the update before changing its Zig pin.
 
-## Build Troubleshooting
+## Build troubleshooting
 
-### Cargo Finds Zig 0.16
+### Cargo finds Zig 0.16
 
 An error such as `Your Zig version v0.16.0 does not meet the required build version of v0.15.2`
 means Cargo found an incompatible compiler. `mise install` installs tools; `mise run` and
@@ -157,11 +157,12 @@ mise run clippy-beta
 Markdown linting uses [.markdownlint-cli2.yaml](../.markdownlint-cli2.yaml). It enforces aligned
 table columns via `MD060/table-column-style` and ignores table rows for line-length checks.
 
-## Rust Version Policy
+## Rust version policy
 
-The workspace `rust-version` is a compatibility floor, not a separately tested MSRV lane. It should
-move only when Betamax code or dependency requirements need a newer compiler. Routine CI follows
-the current stable compiler, with beta clippy used as an early warning for upcoming lint changes.
+The workspace `rust-version` declares the minimum supported compiler, but CI does not test that
+version separately. Raise it only when Betamax code or dependencies require a newer compiler.
+Routine CI follows the current stable compiler, with beta clippy used as an early warning for
+upcoming lint changes.
 
 ## Checks
 
@@ -217,7 +218,7 @@ Run source installs through `mise` so Cargo finds the Zig version pinned in
 mise run install-local
 ```
 
-## Installation Modes
+## Installation modes
 
 Users can install Betamax with Homebrew from [joshka/homebrew-tap][homebrew-tap]:
 
@@ -247,7 +248,7 @@ model. Those archive names must stay aligned with
 `libghostty-vt-sys` links the native VT library statically by default. The cargo-binstall archive
 therefore only needs the `betamax` executable and does not need a companion shared library payload.
 
-## Scripts And Tasks
+## Scripts and tasks
 
 Use mise tasks as the primary developer entrypoints. They load the repository toolchain before
 running scripts or Cargo commands:
@@ -311,15 +312,14 @@ Binary release assets are built by the `prepare-release-assets` and `release-ass
 changelog content, and GitHub Release creation; the asset jobs upload cargo-binstall archives for
 supported native targets.
 
-## Platform And Tooling Notes
+## Platform and tooling notes
 
 `libghostty-vt-sys` is a native dependency and currently determines Betamax's platform support.
 Betamax supports macOS and Linux. Windows is not supported because the upstream `libghostty-vt`
 build does not support Windows.
 
-GIF, PNG, screenshot, and state JSON outputs are written in process. MP4 and WebM intentionally use
-[ffmpeg][ffmpeg] on `PATH`; this keeps first-cut video support small and debuggable, but it means video
-output can fail at runtime on machines without ffmpeg installed.
+Betamax writes GIF, PNG, screenshots, and state JSON in process. MP4 and WebM require
+[ffmpeg][ffmpeg] on `PATH`. Video output fails at runtime if ffmpeg is missing.
 
 Install ffmpeg with the platform package manager before rendering `.mp4` or `.webm` outputs:
 
@@ -332,7 +332,7 @@ sudo apt-get update
 sudo apt-get install ffmpeg
 ```
 
-## README Assets
+## README assets
 
 README GIFs are generated artifacts, not tracked files. They are hosted on the GitHub Release tag
 `readme-assets` and can be refreshed after rendering examples:

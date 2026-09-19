@@ -1,11 +1,10 @@
 ---
-title: Presentation Overlays
+title: Presentation overlays
 description: Add captions and keyboard chips to visual terminal media.
 ---
 
-Presentation overlays annotate generated media without changing the terminal session. They are for
-human review: explaining a step, revealing invisible input, or making a GIF understandable without
-turning those annotations into test state.
+Add captions to explain a step and keyboard labels to show keys such as arrows or shortcuts.
+These overlays appear in recordings and screenshots without changing the terminal session.
 
 ## Captions
 
@@ -37,7 +36,7 @@ hold the new label.
 
 Use `Caption ""` before later frames that should not have a caption.
 
-## Keyboard Overlays
+## Keyboard overlays
 
 `Set KeyboardOverlay Input` draws compact input chips on generated visual media. Labels appear when
 input is queued and linger briefly after the input is typed, so a review GIF can show the action
@@ -68,7 +67,7 @@ Keyboard overlay modes are:
 See the [settings reference](../../reference/tape-reference/#settings) for exact setting names and
 defaults.
 
-## Overlay Placement
+## Overlay placement
 
 `KeyboardOverlayLocation CaptionRow` reserves a bottom presentation row before Betamax derives the
 terminal grid. Captions are left-aligned in that row and key chips are right-aligned, so overlays do
@@ -78,7 +77,7 @@ Corner locations such as `BottomRight`, `BottomLeft`, `TopRight`, and `TopLeft` 
 the terminal canvas with a small inset from the terminal edge. Corner overlays are useful when the
 terminal dimensions must stay unchanged, but they can cover terminal cells.
 
-## Layout Tradeoffs
+## Layout tradeoffs
 
 Captions and caption-row keyboard chips reserve presentation space before the PTY size is computed.
 If a tape proves modal placement, centering, wrapping, or split-pane behavior, verify the terminal

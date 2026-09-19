@@ -64,7 +64,7 @@ Open the HTML file in a browser, or open the PNGs alongside their JSON files. CI
 `renderer-fidelity-ubuntu-latest` and `renderer-fidelity-macos-14` artifacts, including on test
 failure. Filenames identify each transition; reruns overwrite matching files. Use a separate output
 directory for concurrent suite runs. These diagnostic outputs belong under ignored `target/` and
-must not be committed. There are no tracked image baselines or new binary assets.
+must not be committed. The suite does not use tracked image baselines.
 
 The `cell-graphics-demo` checkpoint reproduces the terminal content from
 `examples/cell-graphics.tape`, using the tracked VT input in
@@ -85,7 +85,7 @@ characters. Coverage includes the complete box-drawing and block-element ranges,
 selected geometric shapes, Powerline separators, branch symbols, and legacy-computing symbols.
 The dependency's dispatch table defines coverage, including gaps; Betamax does not duplicate it.
 Ordinary text, unsupported symbols, and multi-codepoint graphemes use cosmic-text. Terminal parsing
-and state remain with libghostty-vt; this is not a terminal-engine or rendering-stack migration.
+and state remain with libghostty-vt.
 
 The adapter supplies the same integer cell width and height used for terminal backgrounds and
 positions, including letter and line spacing. `Metrics::simple` supplies the crate's default stroke

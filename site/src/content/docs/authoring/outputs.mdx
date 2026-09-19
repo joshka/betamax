@@ -7,10 +7,10 @@ A single tape can write several artifacts from the same captured terminal sessio
 when one run should produce a README GIF, a final-frame PNG for quick inspection, and state JSON for
 snapshot tests.
 
-See the [Tape Reference](../../reference/tape-reference/#outputs) for extension validation and the
+See the [Tape reference](../../reference/tape-reference/#outputs) for extension validation and the
 exact command syntax.
 
-See [Generated Media Storage](../generated-media/) for guidance on keeping rendered media out of
+See [Generated media storage](../generated-media/) for guidance on keeping rendered media out of
 source control and publishing stable documentation assets.
 
 | Output             | Command example                      | Written when               | Encoder         |
@@ -26,13 +26,13 @@ source control and publishing stable documentation assets.
 | Screenshot         | `Screenshot checkpoint.png`          | At that command            | In process      |
 | Checkpoint state   | `State checkpoint.json`              | At that command            | In process      |
 
-## Choosing Outputs
+## Choosing outputs
 
 Use GIF for documentation and release notes. Use PNG screenshots when a human needs to review a
 single stable state. Use state JSON when a test should compare text, scrollback, cursor metadata,
 and styles without doing pixel comparisons.
 
-Use [Presentation Overlays](../presentation-overlays/) when generated visual media should explain a
+Use [Presentation overlays](../presentation-overlays/) when generated visual media should explain a
 workflow step or review checkpoint without changing terminal behavior. Captions render on visual
 outputs only; they do not appear in state JSON. Captions share a bottom presentation row with
 keyboard overlay chips when both are active.
@@ -41,16 +41,13 @@ Frame directories are useful when debugging capture timing or feeding rendered f
 tooling. The path must not have an extension; `Output target/frames` writes numbered PNG files under
 that directory.
 
-## Validation And Review Artifacts
+## Validation and review artifacts
 
-Validation artifacts should be easy to assert automatically. Prefer `State` checkpoints or final
-state JSON for the behavioral contract, and add checkpoint screenshots when the visual frame helps
+Use `State` checkpoints or final state JSON for automated assertions. Add screenshots to help
 debug failures.
 
-Review-media artifacts should be easy for a human to inspect. Pair animated GIF or video output
-with a final PNG or a checkpoint screenshot whose path describes the state, so reviewers can cite
-one stable frame without scrubbing an animation. Place checkpoint outputs immediately after a
-semantic wait:
+For review, pair a GIF or video with a screenshot so readers can inspect a frame without pausing
+the animation. Name the screenshot after the state it shows and capture it after a wait:
 
 ```text
 Wait+Screen "Profile saved"
@@ -59,11 +56,11 @@ Screenshot target/review/profile-saved.png
 Sleep 2s
 ```
 
-In review media, sleeps after waits are presentation pacing. Use 300-700 ms after simple
-transitions, 1.5-2.5 seconds for stable simple screens, and 4-5 seconds only for final review
-endpoints. Dense output needs a reading-time-based hold instead of a fixed one-size pause.
+To give viewers time to read, try 300-700 ms after simple transitions and 1.5-2.5 seconds for a
+screen of short output. Reserve 4-5 second pauses for the final screen. Allow more time for dense
+output.
 
-## WebP Encoding
+## WebP encoding
 
 Use `Output demo.webp` for an infinitely looping lossless animation. Use `Screenshot ready.webp`
 for a static image, including at the end of the tape for a final screenshot. CLI
@@ -83,9 +80,9 @@ frame hold must fit in 16,777,215 ms (about 4.66 hours), and the file must be sm
 See [`examples/webp.tape`](https://github.com/joshka/betamax/blob/main/examples/webp.tape) for
 animated and static output from the same capture.
 
-## Video Encoding
+## Video encoding
 
-MP4 and WebM use `ffmpeg` as a focused encoder boundary. Terminal execution, terminal parsing,
+Betamax encodes MP4 and WebM with `ffmpeg`. Terminal execution, terminal parsing,
 rendering, GIF/WebP encoding, PNG encoding, and state JSON writing are in process. Betamax only requires
 `ffmpeg` when the tape requests `.mp4` or `.webm`.
 
@@ -135,8 +132,8 @@ text and styles in a compact comparison format.
 
 Captions annotate rendered media without changing the terminal session. They are useful when a GIF
 or screenshot needs to explain hidden setup, a review checkpoint, or a step in a TUI flow. See
-[Presentation Overlays](../presentation-overlays/) for keyboard chips and placement tradeoffs.
-Keep semantic checks in waits and state outputs; captions are presentation metadata.
+[Presentation overlays](../presentation-overlays/) for keyboard chips and placement tradeoffs.
+Use waits and state outputs for assertions. Captions only label the recording.
 
 When a tape uses captions, Betamax reserves a bottom presentation row before deriving the terminal
 grid. Captions render below the terminal canvas instead of covering terminal rows. They are

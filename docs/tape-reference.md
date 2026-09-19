@@ -1,9 +1,8 @@
-# Tape Reference
+# Tape reference
 
-This page summarizes the tape commands and settings supported by Betamax. It is intentionally a
-compact reference rather than a tutorial; start with the examples in the main README when learning
-the tape format. The [feature field guide](feature-gallery.md) provides rendered scenarios and
-a coverage map for these commands and settings.
+This reference lists supported tape commands, settings, and defaults. Start with the
+[README examples](../README.md#tape-example) to write your first tape. The
+[feature field guide](feature-gallery.md) shows rendered examples and test coverage.
 
 ## Outputs
 
@@ -64,12 +63,11 @@ presentation row needed for captions or `KeyboardOverlayLocation CaptionRow` are
 width and height first, then padding, font size, letter spacing, and line height determine the PTY
 columns and rows. Extremely small dimensions are clamped to at least one row and one column.
 
-Treat larger `FontSize`, larger `Margin`, and decorative frame settings as presentation zoom. When
-the tape is proving modal placement, centered content, wrapping, or split-pane layout, prefer the
-default `FontSize`, default `Margin`, and a wider `Width` or `Height` so the proof matches the
-application layout rather than the demo framing.
+Font size, margins, and frame decoration affect the space available to the application. When testing
+modal placement, centering, wrapping, or split panes, start with the default `FontSize` and `Margin`.
+Increase `Width` or `Height` if the application needs more space.
 
-`Set KeyboardOverlay Input` draws compact time-aware input chips on generated PNG, GIF, video,
+`Set KeyboardOverlay Input` draws input labels on generated PNG, GIF, video,
 screenshot, and frame-sequence media. Labels appear when input is queued and linger briefly after
 the input is typed, so review GIFs show the action near the terminal change it caused. The overlay
 is presentation-only: it does not change PTY input bytes, waits, state JSON, or final output
@@ -144,9 +142,8 @@ capture frames during the sleep so animations show output that appears while wai
 Durations accept compact forms such as `500ms` and `1s`, as well as VHS-style forms such as `0.5`,
 `500 ms`, and `1 s`. Bare numeric durations are seconds.
 
-In validation tapes, use sleeps as a last resort for behavior that cannot be matched with a prompt,
-status line, or visible screen text. In example and review-media tapes, sleeps are presentation
-pacing after a semantic wait has already proved the screen state.
+In tests, use sleeps only when there is no prompt, status line, or other text to wait for. In demos,
+add sleeps after waits to give viewers time to read the output.
 
 ### `Type[@duration] <text>`
 
@@ -252,7 +249,7 @@ compact styled spans. See [State JSON](state-json.md) for the full format.
 Parsed for language compatibility but intentionally not executed. Running a tape containing
 `Source` currently returns an explicit not-implemented error.
 
-### Key Commands
+### Key commands
 
 Key commands send terminal key sequences to the PTY. They may include an optional `@duration`
 suffix, which sleeps after each key press, and an optional repeat count token after the key.

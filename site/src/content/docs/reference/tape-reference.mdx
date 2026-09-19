@@ -1,17 +1,17 @@
 ---
-title: Tape Reference
+title: Tape reference
 description: Commands, settings, defaults, parsing rules, and execution behavior.
 ---
 
 This is the canonical reference for Betamax tape files. Use it with
-[Tape Files](../../authoring/tape-files/), [Outputs](../../authoring/outputs/), and
+[Tape files](../../authoring/tape-files/), [Outputs](../../authoring/outputs/), and
 [Examples](../../examples/) when authoring tapes.
 
 Betamax parses a tape before it starts a shell. Syntax errors, unknown commands, invalid regexes,
 unknown settings, type mismatches, unsupported output extensions, and startup-command ordering
 errors fail before the PTY is spawned.
 
-## Parsing Rules
+## Parsing rules
 
 - A tape is line oriented.
 - Blank lines are ignored.
@@ -77,12 +77,11 @@ presentation row needed for captions or `KeyboardOverlayLocation CaptionRow` are
 width and height first, then padding, font size, letter spacing, and line height determine the PTY
 columns and rows. Extremely small dimensions are clamped to at least one row and one column.
 
-Treat larger `FontSize`, larger `Margin`, and decorative frame settings as presentation zoom. When
-the tape is proving modal placement, centered content, wrapping, or split-pane layout, prefer the
-default `FontSize`, default `Margin`, and a wider `Width` or `Height` so the proof matches the
-application layout rather than the demo framing.
+Font size, margins, and frame decoration affect the space available to the application. When testing
+modal placement, centering, wrapping, or split panes, start with the default `FontSize` and `Margin`.
+Increase `Width` or `Height` if the application needs more space.
 
-`Set KeyboardOverlay Input` draws compact time-aware input chips on generated PNG, GIF, video,
+`Set KeyboardOverlay Input` draws input labels on generated PNG, GIF, video,
 screenshot, and frame-sequence media. Labels appear when input is queued and linger briefly after
 the input is typed, so review GIFs show the action near the terminal change it caused. The overlay
 is presentation-only: it does not change PTY input bytes, waits, state JSON, or final output
@@ -99,7 +98,7 @@ Keyboard overlay modes are:
 - `Input`: key commands plus short typed input that reads like user intent.
 - `All`: every visible input event, including long `Type` commands summarized by character count.
 
-## Command Reference
+## Command reference
 
 ### `Output <path>`
 
@@ -129,7 +128,7 @@ Types text into the PTY one Unicode scalar at a time. `Type@25ms "hello"` overri
 typing speed for that command. Use `Type` for printable text and key commands for terminal control
 keys such as arrows, tab, delete, and interrupt.
 
-### Key Commands
+### Key commands
 
 Key commands send terminal key sequences to the PTY. They accept an optional `@duration` suffix and
 an optional repeat count:
@@ -155,9 +154,8 @@ Pauses tape execution while continuing to drain PTY output and capture frames. D
 compact forms such as `500ms`, `1s`, and `2m`, split forms such as `500 ms`, and bare numbers as
 seconds.
 
-In validation tapes, use sleeps as a last resort for behavior that cannot be matched with a prompt,
-status line, or visible screen text. In example and review-media tapes, sleeps are presentation
-pacing after a semantic wait has already proved the screen state.
+In tests, use sleeps only when there is no prompt, status line, or other text to wait for. In demos,
+add sleeps after waits to give viewers time to read the output.
 
 ### `Wait[@duration] [/regex/|text]`
 
@@ -226,7 +224,7 @@ Writes an immediate terminal-state snapshot. The state includes viewport text, s
 cursor metadata, a default style, compact style deltas, and styled text spans. See
 [State JSON](../../testing/state-json/) for the schema and snapshot-testing tradeoffs.
 
-### `Copy <text>` And `Paste`
+### `Copy <text>` and `Paste`
 
 `Copy` stores text in Betamax's tape-local clipboard. `Paste` writes that clipboard into the PTY.
 This does not touch the host operating system clipboard, which keeps tapes deterministic and safe
@@ -237,7 +235,7 @@ for CI.
 `Source` is parsed for VHS-language compatibility, but execution is intentionally not implemented.
 A tape containing `Source` returns a targeted error instead of silently skipping the include.
 
-## CLI Commands
+## CLI commands
 
 Betamax currently exposes these CLI commands:
 

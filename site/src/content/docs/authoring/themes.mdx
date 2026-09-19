@@ -1,12 +1,12 @@
 ---
-title: Themes And Styling
+title: Themes and styling
 description: Ghostty themes, window borders, padding, prompt defaults, and layout controls.
 ---
 
 Betamax uses Ghostty-style theme files to map terminal color indexes and named colors into rendered
 RGB values. It searches user Ghostty theme directories first, then the copied themes bundled with
-`betamax-core`. See [Differences From VHS](../../reference/vhs-differences/) for the larger
-Ghostty-first architecture.
+`betamax-core`. See [Differences from VHS](../../reference/vhs-differences/) for compatibility
+details and unsupported features.
 
 ```sh
 betamax themes
@@ -20,7 +20,7 @@ Use the exact listed name in a tape:
 Set Theme "Aardvark Blue"
 ```
 
-## Theme Lookup
+## Theme lookup
 
 Bundled themes make tapes portable across machines. User Ghostty themes make local experimentation
 convenient. Because user themes are searched first, a local theme with the same name as a bundled
@@ -30,7 +30,7 @@ theme name and run examples in CI or a consistent environment.
 The default theme is `Aardvark Blue`. It was chosen as a readable, VHS-like default for examples,
 not because it has special behavior in the renderer.
 
-## Layout Settings
+## Layout settings
 
 These settings affect the final output frame and PTY grid:
 
@@ -47,11 +47,10 @@ These settings affect the final output frame and PTY grid:
 Betamax derives PTY columns and rows from these values. Increasing padding or font size usually
 reduces the terminal grid size; increasing width or height usually increases it.
 
-Treat larger font size, padding, margins, window bars, and border radius as presentation choices.
-For layout proof captures, prefer default `FontSize` and `Margin` with a wider canvas; see
-[Presentation And Layout Proof](../tape-files/#presentation-and-layout-proof).
+When testing application layout, start with the default `FontSize` and `Margin`. Increase the canvas
+size if needed. See [Presentation and layout proof](../tape-files/#presentation-and-layout-proof).
 
-## Frame Decoration
+## Frame decoration
 
 These settings are applied after the raw terminal frame is rendered:
 
@@ -75,7 +74,7 @@ Set WindowBarSize 34
 Set BorderRadius 8
 ```
 
-## Timing And Cursor Styling
+## Timing and cursor styling
 
 `Framerate` controls capture cadence. `PlaybackSpeed` changes output playback speed without
 speeding up shell execution. `LoopOffset` rotates animated frames so a GIF loop can begin at a less
@@ -91,10 +90,8 @@ Set LoopOffset 10%
 Set CursorBlink false
 ```
 
-## Current Theme Boundary
+## Current theme boundary
 
 Betamax applies the selected theme in its Rust renderer. The
 [`libghostty-vt`](../../reference/vhs-differences/) terminal parser is not initialized with the
-selected palette yet, which mostly matters for future work where parser state may expose
-palette-aware data directly. The renderer path used for GIFs, PNGs, videos, and state style
-serialization uses Betamax's loaded theme.
+selected palette. Betamax uses the loaded theme when rendering media and serializing state styles.

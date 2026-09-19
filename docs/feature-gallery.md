@@ -1,9 +1,9 @@
 # Feature field guide
 
-The field guide makes Betamax's behavior visible in seven small, repeatable scenes. It is both
-executable documentation and every-PR regression evidence. Open **Betamax field guide** in the Linux
-package job summary for a self-contained gallery with animations, named checkpoints, expected
-results and the exact tapes. Raw PNG, GIF and state JSON are in `feature-checkpoints`.
+The field guide shows seven example scenes that CI renders and checks on every pull request. Open
+**Betamax field guide** in the Linux package job summary for a self-contained gallery with
+animations, named checkpoints, expected results and the exact tapes. Raw PNG, GIF and state JSON are
+in `feature-checkpoints`.
 
 ## Scenes and visual language
 
@@ -111,7 +111,7 @@ Use exact comparisons for state and for two checkpoints in the **same render run
 must leave the terminal canvas unchanged; returning from the alternate screen must restore the exact
 primary image. Background-region colors and broad mint-ink counts are independent of glyph
 antialiasing. Hidden visibility is checked against every decoded GIF frame, not one representative
-sample. These checks catch semantic and structural regressions without accepting broad image noise.
+sample.
 
 We intentionally do not commit cross-platform PNG goldens. Font discovery, CJK fallback and
 rasterization can differ between Linux and macOS. A perceptual whole-image threshold can hide a

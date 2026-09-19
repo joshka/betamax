@@ -1,20 +1,13 @@
-# Terminal Testing
+# Terminal testing
 
-Betamax can be used as a terminal testing harness. A tape can run an interactive terminal program,
-wait for text on the screen, capture PNG screenshots at checkpoints, write structured terminal
-state, and fail when expected terminal output does not appear before a timeout. That makes it useful
-for CLI and TUI smoke tests in the same broad role that Playwright fills for browser flows.
+Test a CLI or TUI with a tape that runs the program, waits for expected text, and captures
+screenshots or state JSON at checkpoints. The tape fails if the text does not appear before the
+timeout.
 
-Validation tapes and review-media tapes optimize for different readers. Validation tapes exercise a
-user journey, wait for semantic screen state, and write focused `State` or `Screenshot` checkpoints
-for assertions. Review-media tapes make the same kind of journey readable for humans in a GIF,
-video, screenshot, or pull-request artifact.
-
-Waits are assertions and synchronization points. In validation tapes, put a semantic `Wait`,
-`Wait+Line`, or `Wait+Screen` after each meaningful app transition, then add `Sleep` only when the
-generated media needs human pacing or no semantic wait is possible. Useful review-media pauses are
-300-700 ms after simple transitions, 1.5-2.5 seconds for stable simple screens, and 4-5 seconds
-only for final review endpoints.
+After each action, use `Wait`, `Wait+Line`, or `Wait+Screen` to check the result before capturing it.
+Add `Sleep` when viewers need time to read the recording, or when there is no text to wait for.
+For recordings, try 300-700 ms after simple transitions and 1.5-2.5 seconds for a screen of short
+output. Reserve 4-5 second pauses for the final screen.
 
 For test-oriented tapes, prefer:
 
@@ -52,4 +45,4 @@ assert!(artifacts.final_state.unwrap().viewport_text.contains("hello"));
 # Ok::<(), miette::Report>(())
 ```
 
-For Betamax’s own deterministic renderer checks, see [Renderer Fidelity](renderer-fidelity.md).
+For Betamax's own deterministic renderer checks, see [Renderer Fidelity](renderer-fidelity.md).

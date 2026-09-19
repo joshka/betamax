@@ -32,9 +32,9 @@ mise run docs-site-check
 mise run docs-site-build
 ```
 
-## Build Troubleshooting
+## Build troubleshooting
 
-### Cargo Finds Zig 0.16
+### Cargo finds Zig 0.16
 
 An error such as `Your Zig version v0.16.0 does not meet the required build version of v0.15.2`
 means Cargo found an incompatible compiler. `mise install` installs tools; `mise run` and
@@ -130,7 +130,7 @@ SDK installed, use a compatible developer-tool installation or Betamax's prebuil
 `DEVELOPER_DIR` can select another installation for a command, but only helps if that
 installation's default macOS SDK is compatible.
 
-## Internal Docs Links
+## Internal docs links
 
 The docs site is published under Astro's `/betamax` base path. Starlight-generated navigation,
 sidebar, and pagination links are already base-aware, but links authored directly in MDX are emitted
