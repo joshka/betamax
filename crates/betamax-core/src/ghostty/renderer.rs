@@ -5,7 +5,7 @@ use cosmic_text::{
     Weight,
 };
 use libghostty_vt::render::{CellIterator, RowIterator};
-use libghostty_vt::style::{RgbColor, Style};
+use libghostty_vt::style::{RgbColor, Style, Underline};
 use libghostty_vt::terminal::ScrollViewport;
 use libghostty_vt::{RenderState, Terminal};
 use miette::miette;
@@ -113,6 +113,7 @@ impl RasterRenderer {
                 .map_err(vt_error("failed to iterate libghostty-vt rows"))?;
             let mut y = 0u16;
             let mut frame_text = Vec::new();
+            let mut decorations = Vec::new();
             while let Some(row) = row_iter.next() {
                 let mut cell_iter = self
                     .cells
@@ -142,6 +143,11 @@ impl RasterRenderer {
                     let x_px = self.request.text.padding + u32::from(x) * self.cell_width;
                     let y_px = self.request.text.padding + u32::from(y) * self.cell_height;
                     target.fill_rect(x_px, y_px, self.cell_width, self.cell_height, background);
+                    if !style.invisible
+                        && (style.underline == Underline::Single || style.strikethrough)
+                    {
+                        decorations.push((x_px, y_px, foreground, style));
+                    }
                     if !style.invisible && !graphemes.is_empty() {
                         let text: String = graphemes.into_iter().collect();
                         frame_text.push((text, x_px, y_px, foreground, style));
@@ -156,6 +162,12 @@ impl RasterRenderer {
             for (text, x_px, y_px, foreground, style) in frame_text {
                 self.cell_renderer
                     .draw_cell(&mut target, &text, x_px, y_px, foreground, style);
+            }
+            // Decorate every occupied cell, including spaces and wide-glyph continuations.
+            // Draw after glyphs so sprite fills and glyph overhang cannot erase the lines.
+            for (x_px, y_px, foreground, style) in decorations {
+                self.cell_renderer
+                    .draw_decorations(&mut target, x_px, y_px, foreground, style);
             }
             tracing::trace!(rows = y, "iterated libghostty-vt render rows");
         }
@@ -456,6 +468,29 @@ impl CellRenderer {
             font_system: FontSystem::new(),
             swash_cache: SwashCache::new(),
             sprites: SpriteRenderer::new(cell_width, cell_height),
+        }
+    }
+
+    /// Draw SGR 4 and SGR 9 using the same approximate cell metrics as the glyph renderer.
+    /// Line thickness scales with font size; positions and thickness stay inside the cell even
+    /// when a caller requests a very small line height.
+    fn draw_decorations(
+        &self,
+        target: &mut PixelTarget,
+        x: u32,
+        y: u32,
+        color: RgbColor,
+        style: Style,
+    ) {
+        let thickness = (self.settings.font_size / 14.0).round().max(1.0) as u32;
+        let thickness = thickness.min(self.cell_height);
+        if style.underline == Underline::Single {
+            let offset = (self.cell_height * 9 / 10).min(self.cell_height - thickness);
+            target.fill_rect(x, y + offset, self.cell_width, thickness, color);
+        }
+        if style.strikethrough {
+            let offset = (self.cell_height / 2).min(self.cell_height - thickness);
+            target.fill_rect(x, y + offset, self.cell_width, thickness, color);
         }
     }
 
