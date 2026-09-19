@@ -12,6 +12,7 @@ use miette::miette;
 
 use super::engine::CaptureRequest;
 use super::render_theme::{style_colors, RenderTheme};
+use super::sprites::SpriteRenderer;
 use super::state::{
     compact_row, default_style, full_state_style, pending_rows_text, state_style, trim_empty_rows,
     PendingStateSpan, StateCellSnapshot, StateCursor, StyleTable, TerminalState,
@@ -42,15 +43,15 @@ pub(super) struct RasterRenderer {
     rows: RowIterator<'static>,
     /// Reusable cell iterator.
     cells: CellIterator<'static>,
-    /// Text rasterizer and glyph caches.
-    text_renderer: TextRenderer,
+    /// Font/sprite rasterizers and glyph caches.
+    cell_renderer: CellRenderer,
 }
 
 impl RasterRenderer {
     /// Create a renderer with reusable libghostty-vt and font resources.
     pub(super) fn new(request: CaptureRequest, cell_width: u32, cell_height: u32) -> Self {
         tracing::trace!("creating reusable libghostty-vt render helpers");
-        let text_renderer = TextRenderer::new(request.text.clone(), cell_width, cell_height);
+        let cell_renderer = CellRenderer::new(request.text.clone(), cell_width, cell_height);
         Self {
             request,
             cell_width,
@@ -58,15 +59,15 @@ impl RasterRenderer {
             render_state: RenderState::new().expect("libghostty-vt render state"),
             rows: RowIterator::new().expect("libghostty-vt row iterator"),
             cells: CellIterator::new().expect("libghostty-vt cell iterator"),
-            text_renderer,
+            cell_renderer,
         }
     }
 
     /// Render the visible terminal viewport to an RGBA frame.
     ///
     /// libghostty-vt provides rows, cells, styles, resolved colors, and cursor metadata. This
-    /// method maps colors into the selected theme, paints cell backgrounds, draws text with
-    /// cosmic-text, and overlays the cursor when requested.
+    /// method maps colors into the selected theme, paints all cell backgrounds, draws supported
+    /// sprites or cosmic-text glyphs, and overlays the cursor when requested.
     ///
     /// The result is the raw terminal canvas only. Runner-level decoration such as margins,
     /// rounded corners, and synthetic window bars is applied after this method returns.
@@ -111,7 +112,7 @@ impl RasterRenderer {
                 .update(&snapshot)
                 .map_err(vt_error("failed to iterate libghostty-vt rows"))?;
             let mut y = 0u16;
-            let mut row_text = Vec::new();
+            let mut frame_text = Vec::new();
             while let Some(row) = row_iter.next() {
                 let mut cell_iter = self
                     .cells
@@ -143,19 +144,18 @@ impl RasterRenderer {
                     target.fill_rect(x_px, y_px, self.cell_width, self.cell_height, background);
                     if !style.invisible && !graphemes.is_empty() {
                         let text: String = graphemes.into_iter().collect();
-                        row_text.push((text, x_px, foreground, style));
+                        frame_text.push((text, x_px, y_px, foreground, style));
                     }
 
                     x = x.saturating_add(1);
                 }
-                // A wide glyph extends into its continuation cell. Paint every background first
-                // so that cell cannot erase the glyph, while retaining backgrounds on empty cells.
-                let y_px = self.request.text.padding + u32::from(y) * self.cell_height;
-                for (text, x_px, foreground, style) in row_text.drain(..) {
-                    self.text_renderer
-                        .draw_text(&mut target, &text, x_px, y_px, foreground, style);
-                }
                 y = y.saturating_add(1);
+            }
+            // Wide text and sprite diagonals can extend into neighboring cells, including
+            // other rows. Paint all backgrounds first so none can erase that overhang.
+            for (text, x_px, y_px, foreground, style) in frame_text {
+                self.cell_renderer
+                    .draw_cell(&mut target, &text, x_px, y_px, foreground, style);
             }
             tracing::trace!(rows = y, "iterated libghostty-vt render rows");
         }
@@ -426,12 +426,12 @@ impl RasterRenderer {
     }
 }
 
-/// Text rasterizer used by [`RasterRenderer`].
+/// Cell foreground rasterizer used by [`RasterRenderer`].
 ///
-/// This type owns the font-system and glyph caches so terminal iteration can borrow render-state
+/// This type owns the font and sprite caches so terminal iteration can borrow render-state
 /// fields while text drawing mutates only this disjoint field. Keeping this as a real renderer
 /// concept avoids passing every font, metric, and cache value through each cell draw call.
-struct TextRenderer {
+struct CellRenderer {
     /// Text metrics and font choice used for every terminal cell in this session.
     settings: TextSettings,
     /// Cached terminal cell width in pixels.
@@ -442,10 +442,12 @@ struct TextRenderer {
     font_system: FontSystem,
     /// Glyph raster cache.
     swash_cache: SwashCache,
+    /// Procedural glyphs cached at this session's fixed cell metrics.
+    sprites: SpriteRenderer,
 }
 
-impl TextRenderer {
-    /// Create a text renderer for one capture session.
+impl CellRenderer {
+    /// Create a foreground renderer for one capture session.
     fn new(settings: TextSettings, cell_width: u32, cell_height: u32) -> Self {
         Self {
             settings,
@@ -453,15 +455,17 @@ impl TextRenderer {
             cell_height,
             font_system: FontSystem::new(),
             swash_cache: SwashCache::new(),
+            sprites: SpriteRenderer::new(cell_width, cell_height),
         }
     }
 
-    /// Draw one terminal cell's text into the pixel target.
+    /// Draw a sprite when supported, otherwise shape the complete grapheme with cosmic-text.
     ///
     /// The buffer width is deliberately wider than one cell to avoid clipping glyphs with
     /// overhangs. The terminal model still advances by one cell because libghostty-vt already
-    /// decided cell occupancy.
-    fn draw_text(
+    /// decided cell occupancy. Sprite placement instead uses its trimmed bitmap offsets; both
+    /// paths may overhang into neighboring cells.
+    fn draw_cell(
         &mut self,
         target: &mut PixelTarget,
         text: &str,
@@ -470,6 +474,9 @@ impl TextRenderer {
         color: RgbColor,
         style: Style,
     ) {
+        if self.sprites.draw(target, text, (x, y), color) {
+            return;
+        }
         let text_settings = &self.settings;
         let metrics = Metrics::new(text_settings.font_size, self.cell_height as f32);
         let mut buffer = Buffer::new(&mut self.font_system, metrics);

@@ -90,6 +90,31 @@ impl PixelTarget {
         }
     }
 
+    /// Composite a tightly packed coverage mask, clipping only to the image, not its source cell.
+    /// Signed origins preserve sprite overhang to the left or above the cell, including at edges.
+    pub(super) fn blend_alpha(
+        &mut self,
+        origin: (i32, i32),
+        size: (u32, u32),
+        alpha: &[u8],
+        color: RgbColor,
+    ) {
+        let (x, y) = origin;
+        let (width, height) = size;
+        let Some((x0, y0, x1, y1)) = self.clipped_rect(x, y, width, height) else {
+            return;
+        };
+        for yy in y0..y1 {
+            for xx in x0..x1 {
+                let offset = (yy as i32 - y) as usize * width as usize + (xx as i32 - x) as usize;
+                let coverage = alpha[offset];
+                if coverage != 0 {
+                    self.blend_pixel(xx, yy, color.r, color.g, color.b, coverage);
+                }
+            }
+        }
+    }
+
     /// Draw a cursor using libghostty-vt's visual style.
     ///
     /// Unknown cursor styles fall back to a filled block because that is the most visible failure
@@ -179,5 +204,35 @@ impl PixelTarget {
     /// Return the byte offset for a pixel.
     fn pixel_offset(&self, x: u32, y: u32) -> usize {
         ((y as usize * self.width as usize) + x as usize) * BYTES_PER_PIXEL
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn alpha_mask_clips_signed_origins_without_shifting_source_pixels() {
+        let mut target = PixelTarget::new(2, 2).unwrap();
+        target.clear(RgbColor {
+            r: 20,
+            g: 40,
+            b: 60,
+        });
+        // Only the lower-right 2×2 of this 3×3 mask intersects the image.
+        target.blend_alpha(
+            (-1, -1),
+            (3, 3),
+            &[9, 9, 9, 9, 0, 255, 9, 128, 64],
+            RgbColor {
+                r: 220,
+                g: 140,
+                b: 60,
+            },
+        );
+        assert_eq!(
+            target.into_frame().pixels,
+            [20, 40, 60, 255, 220, 140, 60, 255, 120, 90, 60, 255, 70, 65, 60, 255,]
+        );
     }
 }

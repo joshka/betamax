@@ -30,6 +30,7 @@ mod color;
 mod engine;
 mod render_theme;
 mod renderer;
+mod sprites;
 mod state;
 mod target;
 mod theme;

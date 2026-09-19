@@ -31,6 +31,20 @@ class GalleryTests(unittest.TestCase):
             self.assertEqual(build_gallery(root / "absent", output, "Linux", "failure", "abc"), 0)
             self.assertFalse(output.exists())
 
+    def test_demo_embeds_png_and_gif(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "cell-graphics-demo.png").write_bytes(b"png fixture")
+            (root / "cell-graphics-demo.gif").write_bytes(b"GIF89a fixture")
+            (root / "cell-graphics-demo.json").write_text("{}")
+            output = root / "gallery.html"
+            self.assertEqual(build_gallery(root, output, "macOS", "success", "abc"), 1)
+            parsed = Images()
+            parsed.feed(output.read_text())
+            self.assertEqual(len(parsed.sources), 2)
+            self.assertTrue(parsed.sources[1].startswith("data:image/gif;base64,"))
+            self.assertEqual(base64.b64decode(parsed.sources[1].split(",", 1)[1]), b"GIF89a fixture")
+
     def test_partial_failed_run_embeds_bytes_and_escapes_untrusted_text(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

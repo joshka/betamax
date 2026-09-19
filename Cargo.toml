@@ -30,6 +30,7 @@ libghostty-vt = { version = "0.2.1", features = ["tracing"] }
 miette = "7"
 png = "0.18"
 portable-pty = "0.9"
+qwertty-term-sprite = "0.4.0"
 regex = "1.12.2"
 serde = { version = "1.0.220", features = ["derive"] }
 serde_json = "1.0.142"

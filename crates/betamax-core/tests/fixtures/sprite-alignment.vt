@@ -1,0 +1,19 @@
+[?25l[HAlignment relationships
+Light   Heavy   Double  Rounded
+┌┬┐     ┏┳┓     ╔╦╗     ╭┬╮
+├┼┤     ┣╋┫     ╠╬╣     ├┼┤
+└┴┘     ┗┻┛     ╚╩╝     ╰┴╯
+
+Repeated patterns
+Dash phase    ┄┄┄┄
+Heavy dash    ┅┅┅┅
+Eighth fill   ▁▁▁▁
+Half fill     ▄▄▄▄
+Shade         ▒▒▒▒
+Braille       ⣿⣿⣿⣿
+Powerline     
+Pair union    AB = target
+Top/bottom    ▀▄ █
+Quadrants     ▖▗ ▄
+Dot columns   ⡇⢸ ⣿
+Sextants      🬀🬁 🬂

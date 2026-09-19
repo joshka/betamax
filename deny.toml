@@ -16,6 +16,15 @@ allow = [
 ]
 confidence-threshold = 0.8
 
+# The published sprite rasterizer depends on these BSD-3-Clause drawing libraries.
+[[licenses.exceptions]]
+name = "tiny-skia"
+allow = ["BSD-3-Clause"]
+
+[[licenses.exceptions]]
+name = "tiny-skia-path"
+allow = ["BSD-3-Clause"]
+
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"
