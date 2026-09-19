@@ -1,0 +1,36 @@
+name: Renderer gallery comment
+
+# Safe privileged reporter: trusted script and API metadata only; no PR checkout or artifact downloads.
+on: # zizmor: ignore[dangerous-triggers]
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions: {}
+
+concurrency:
+  group: renderer-comment-${{ github.event.workflow_run.head_branch }}-${{ github.event.workflow_run.head_repository.id }}
+  cancel-in-progress: false
+
+jobs:
+  comment:
+    if: github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+    steps:
+      # github.sha is the default-branch commit for workflow_run, NOT the triggering PR head.
+      - name: Check out trusted reporter
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          sparse-checkout: scripts/renderer-comment.cjs
+          sparse-checkout-cone-mode: false
+      - name: Link renderer galleries
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            await require('./scripts/renderer-comment.cjs')({ github, context });
