@@ -126,16 +126,75 @@ fn wide_characters_and_combining_marks_preserve_columns() {
     assert_eq!(json(&state), json(&fragmented_state));
 }
 
-// Desired behavior, kept separate from the passing baseline until wide-cell paint ordering is
-// fixed. Needs a CJK fallback font (PingFang on macOS, e.g. Noto Sans CJK on Linux).
 #[test]
-#[ignore = "known limitation: continuation-cell background erases the wide glyph's right half"]
 fn wide_glyph_retains_ink_in_both_cells() {
     let mut terminal = session();
-    terminal.write_vt("\x1b[?25l界".as_bytes());
-    let (frame, _) = checkpoint(&mut terminal, "wide-glyph-known-limitation");
+    terminal.write_vt("\x1b[?25l界X".as_bytes());
+    let (frame, state) = checkpoint(&mut terminal, "wide-glyph");
+    assert_eq!(state.viewport_text, "界 X\n");
+    assert_eq!(state.cursor.x, 3);
     assert_ink(&cell(&frame, 0, 0), BACKGROUND);
     assert_ink(&cell(&frame, 1, 0), BACKGROUND);
+}
+
+#[test]
+fn wide_glyph_preserves_adjacent_styles_and_cursor() {
+    let mut terminal = session();
+    terminal.write_vt(
+        concat!(
+            "\x1b[?25l\x1b[48;2;40;70;100m界",
+            "\x1b[48;2;100;30;50mX ",
+            "\x1b[2;1H\x1b[48;2;40;70;100m界",
+            "\x1b[48;2;100;30;50m  ",
+            "\x1b[3;3HX ",
+        )
+        .as_bytes(),
+    );
+    let (hidden, _) = checkpoint(&mut terminal, "wide-styled");
+    for x in 0..2 {
+        assert_ink(&cell(&hidden, x, 0), SELECTION);
+        assert_eq!(cell(&hidden, x, 0), cell(&hidden, x, 1));
+        assert_eq!(pixel(&hidden, PADDING + x * CELL_WIDTH, PADDING), SELECTION);
+    }
+    assert_eq!(cell(&hidden, 2, 0), cell(&hidden, 2, 2));
+    assert_solid(&cell(&hidden, 3, 0), [100, 30, 50, 255]);
+    assert_solid(&cell(&hidden, 2, 1), [100, 30, 50, 255]);
+
+    // The cursor must overlay even the continuation half of a wide glyph.
+    terminal.write_vt(b"\x1b[1;2H\x1b[?25h\x1b[2 q");
+    let (cursor, _) = checkpoint(&mut terminal, "wide-cursor");
+    assert_solid(&cell(&cursor, 1, 0), [0, 122, 204, 255]);
+    assert_eq!(cell(&cursor, 0, 0), cell(&hidden, 0, 0));
+    assert_eq!(
+        terminal.capture_frame_with_cursor(false).unwrap().pixels,
+        hidden.pixels
+    );
+}
+
+#[test]
+fn wide_glyph_erasure_and_replacement_leave_no_ink() {
+    // Exercise edits at both halves, and compare the entire frame to a fresh terminal.
+    for (name, edit, expected) in [
+        ("replace", "\x1b[1;1HA", "A X"),
+        ("erase", "\x1b[1;1H\x1b[2X", "  X"),
+        ("erase-continuation", "\x1b[1;2H\x1b[X", "  X"),
+        ("replace-continuation", "\x1b[1;2HA", " AX"),
+    ] {
+        let mut terminal = session();
+        terminal.write_vt("\x1b[?25l\x1b[48;2;40;70;100m界X".as_bytes());
+        let (before, _) = checkpoint(&mut terminal, &format!("wide-{name}-before"));
+        assert_ink(&cell(&before, 1, 0), SELECTION);
+        terminal.write_vt(edit.as_bytes());
+        let (after, _) = checkpoint(&mut terminal, &format!("wide-{name}"));
+        let mut reference = session();
+        reference.write_vt(format!("\x1b[?25l\x1b[48;2;40;70;100m{expected}").as_bytes());
+        assert_eq!(
+            after.pixels,
+            reference.capture_frame().unwrap().pixels,
+            "{name}"
+        );
+        assert_eq!(cell(&before, 2, 0), cell(&after, 2, 0));
+    }
 }
 
 #[test]
@@ -223,7 +282,7 @@ fn session() -> GhosttySession {
         } else {
             "DejaVu Sans Mono"
         };
-        let fonts = cosmic_text::FontSystem::new();
+        let mut fonts = cosmic_text::FontSystem::new();
         assert!(
             fonts
                 .db()
@@ -231,6 +290,7 @@ fn session() -> GhosttySession {
                 .any(|face| face.families.iter().any(|(name, _)| name == family)),
             "renderer fidelity tests require {family}; see docs/renderer-fidelity.md"
         );
+        assert_cjk_fallback(&mut fonts, family);
         family.to_owned()
     });
     let text = TextSettings {
@@ -252,6 +312,36 @@ fn session() -> GhosttySession {
             theme: TerminalTheme::default(),
         })
         .unwrap()
+}
+
+// Inspect the actual fallback chosen by the same shaper/settings as the renderer. Merely
+// finding an installed CJK family or visible pixels would also allow a .notdef box to pass.
+fn assert_cjk_fallback(fonts: &mut cosmic_text::FontSystem, family: &str) {
+    use cosmic_text::{Attrs, Buffer, Family, Metrics, Shaping};
+
+    let mut buffer = Buffer::new(fonts, Metrics::new(20.0, CELL_HEIGHT as f32));
+    buffer.set_size(Some(CELL_WIDTH as f32 * 2.0), Some(CELL_HEIGHT as f32));
+    let attrs = Attrs::new()
+        .family(Family::Name(family))
+        .letter_spacing(0.8 / 20.0);
+    buffer.set_text("界", &attrs, Shaping::Advanced, None);
+    buffer.shape_until_scroll(fonts, false);
+    let glyphs: Vec<_> = buffer.layout_runs().flat_map(|run| run.glyphs).collect();
+    assert_eq!(glyphs.len(), 1, "expected one shaped CJK glyph");
+    let glyph = glyphs[0];
+    assert_ne!(glyph.glyph_id, 0,
+        "missing CJK fallback for 界; install fonts-noto-cjk on Linux; see docs/renderer-fidelity.md");
+    let font = fonts.get_font(glyph.font_id, glyph.font_weight).unwrap();
+    assert_ne!(
+        font.as_swash().charmap().map('界'),
+        0,
+        "selected font must cover 界"
+    );
+    let face = fonts.db().face(glyph.font_id).unwrap();
+    eprintln!(
+        "CJK fallback: {:?}, glyph {}",
+        face.families, glyph.glyph_id
+    );
 }
 
 fn checkpoint(terminal: &mut GhosttySession, name: &str) -> (Frame, TerminalState) {
