@@ -67,6 +67,12 @@ MP4 and WebM use `ffmpeg` as a focused encoder boundary. Terminal execution, ter
 rendering, GIF encoding, PNG encoding, and state JSON writing are in process. Betamax only requires
 `ffmpeg` when the tape requests `.mp4` or `.webm`.
 
+Video uses the original raster frames and their captured hold times, including the final frame.
+`Framerate` selects the constant output cadence: transitions and total duration are rounded to the
+nearest frame interval, with at least one output frame. States shorter than one interval may be
+omitted. Rates below 1 FPS are clamped to 1 FPS; video rates use three decimal places. GIF uses
+hundredths of a second for each delay, so its duration can differ slightly from video.
+
 Install it with:
 
 ```sh

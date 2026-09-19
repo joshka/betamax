@@ -11,6 +11,7 @@ use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use gif::{Encoder as GifEncoder, Frame as GifFrame, Repeat};
@@ -41,6 +42,8 @@ const VIDEO_FRAMERATE_PRECISION: usize = 3;
 /// Lower values are larger/higher quality. `30` is ffmpeg's common quality-oriented VP9 example
 /// value and keeps WebM output useful without making example assets unnecessarily large.
 const WEBM_CRF: &str = "30";
+/// Disambiguate concurrent encodes when the system clock returns the same timestamp.
+static VIDEO_TEMP_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 /// Media writer stage that can report deterministic frame progress.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -350,12 +353,16 @@ pub fn write_gif_with_progress(
 /// Write an MP4 video through `ffmpeg`.
 ///
 /// Video support is process-backed for now. The Rust side writes deterministic temporary PNG frames
-/// and delegates encoding details to the user's installed `ffmpeg`.
+/// and delegates encoding details to the user's installed `ffmpeg`. Captured durations, including
+/// the last frame's hold, determine playback timing. Transitions and total duration are rounded to
+/// the nearest output frame interval (at least one frame overall); very short states may be
+/// dropped. `framerate` selects that output cadence, not the duration of each captured image.
 ///
 /// # Errors
 ///
-/// Returns an error if `ffmpeg` is not on `PATH`, if temporary PNG frame creation fails, if ffmpeg
-/// exits unsuccessfully, or if cleanup of the temporary frame directory fails after encoding.
+/// Returns an error if the frame list is empty, the rate is non-finite, `ffmpeg` is not on `PATH`,
+/// temporary PNG or timeline creation fails, ffmpeg exits unsuccessfully, or cleanup of the
+/// temporary frame directory fails after encoding.
 pub fn write_mp4(path: &Path, frames: &[(Frame, Duration)], framerate: f64) -> Result<()> {
     write_video(path, frames, framerate, VideoFormat::Mp4)
 }
@@ -379,8 +386,9 @@ pub fn write_mp4_with_progress(
 ///
 /// # Errors
 ///
-/// Returns an error if `ffmpeg` is not on `PATH`, if temporary PNG frame creation fails, if ffmpeg
-/// exits unsuccessfully, or if cleanup of the temporary frame directory fails after encoding.
+/// Returns an error if the frame list is empty, the rate is non-finite, `ffmpeg` is not on `PATH`,
+/// temporary PNG or timeline creation fails, ffmpeg exits unsuccessfully, or cleanup of the
+/// temporary frame directory fails after encoding.
 pub fn write_webm(path: &Path, frames: &[(Frame, Duration)], framerate: f64) -> Result<()> {
     write_video(path, frames, framerate, VideoFormat::Webm)
 }
@@ -467,6 +475,9 @@ fn write_video_with_progress(
         )
         .into());
     }
+    if !framerate.is_finite() {
+        return Err(miette!("video framerate must be finite").into());
+    }
     let ffmpeg = which("ffmpeg").ok_or_else(|| {
         miette!(
             "{} output requires ffmpeg on PATH",
@@ -475,8 +486,10 @@ fn write_video_with_progress(
     })?;
     ensure_parent_dir(path)?;
     let temp_dir = std::env::temp_dir().join(format!(
-        "betamax-{}-{}",
+        "betamax-{}-{}-{}-{}",
         format.extension(),
+        std::process::id(),
+        VIDEO_TEMP_COUNTER.fetch_add(1, Ordering::Relaxed),
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
@@ -535,18 +548,29 @@ fn write_video_inner(
             total,
         });
     }
+    let timeline = temp_dir.join("frames.ffconcat");
+    write_video_timeline(&timeline, frames)?;
+    let framerate = format!(
+        "{:.precision$}",
+        framerate.max(MIN_VIDEO_FRAMERATE),
+        precision = VIDEO_FRAMERATE_PRECISION
+    );
     let mut command = Command::new(ffmpeg);
     command
-        .arg("-y")
-        .arg("-framerate")
-        .arg(format!(
-            "{:.precision$}",
-            framerate.max(MIN_VIDEO_FRAMERATE),
-            precision = VIDEO_FRAMERATE_PRECISION
-        ))
-        .arg("-i")
-        .arg(temp_dir.join("frame-%05d.png"));
-    command.args(format.args()).arg(path);
+        .args(["-y", "-f", "concat", "-safe", "0", "-i"])
+        .arg(&timeline)
+        .arg("-vf")
+        .arg(format!("fps={framerate}:round=near:eof_action=pass"));
+    // Let the EOF timestamp round upward so even subframe clips produce a frame, then cap
+    // the result at the nearest whole output interval to exclude the timeline sentinel.
+    let rate: f64 = framerate.parse().into_diagnostic()?;
+    let duration: Duration = frames.iter().map(|(_, delay)| *delay).sum();
+    let output_frames = (duration.as_secs_f64() * rate).round().max(1.0);
+    command
+        .arg("-frames:v")
+        .arg(format!("{output_frames:.0}"))
+        .args(format.args())
+        .arg(path);
     let output = command
         .output()
         .into_diagnostic()
@@ -562,6 +586,39 @@ fn write_video_inner(
         )
         .into());
     }
+    Ok(())
+}
+
+/// Describe image dwell times without expanding coalesced frames on disk.
+///
+/// PNG's default 25 Hz demuxer clock would round timestamps before output resampling. Use a
+/// microsecond clock and round cumulative boundaries so sub-microsecond errors do not accumulate.
+/// The repeated last image establishes its end timestamp; the output frame limit excludes it.
+fn write_video_timeline(path: &Path, frames: &[(Frame, Duration)]) -> Result<()> {
+    let mut file = BufWriter::new(File::create(path).into_diagnostic()?);
+    writeln!(file, "ffconcat version 1.0").into_diagnostic()?;
+    let mut elapsed = Duration::ZERO;
+    let mut previous_micros = 0;
+    for (index, (_, delay)) in frames.iter().enumerate() {
+        elapsed += *delay;
+        let micros = (elapsed.as_nanos() + 500) / 1000;
+        let hold = micros - previous_micros;
+        writeln!(
+            file,
+            "file frame-{index:05}.png\noption framerate 1000000\nduration {}.{:06}",
+            hold / 1_000_000,
+            hold % 1_000_000,
+        )
+        .into_diagnostic()?;
+        previous_micros = micros;
+    }
+    writeln!(
+        file,
+        "file frame-{:05}.png\noption framerate 1000000",
+        frames.len() - 1,
+    )
+    .into_diagnostic()?;
+    file.flush().into_diagnostic()?;
     Ok(())
 }
 
