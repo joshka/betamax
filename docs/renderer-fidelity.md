@@ -24,7 +24,21 @@ To save the checkpoints before assertions:
 BETAMAX_FIDELITY_OUTPUT="$PWD/target/renderer-fidelity" mise run renderer-fidelity
 ```
 
-Open the resulting PNGs alongside their JSON files. CI uploads these files as
+In a GitHub Actions run summary, select **View Linux fixtures** or **View macOS fixtures** for a
+single-file HTML gallery with embedded PNGs and expandable state JSON. These unzipped artifacts
+require GitHub sign-in and expire with repository retention. The gallery labels the known CJK
+clipping/missing-font limitation and shows the test-step outcome; a partial gallery is not a passing
+result. Reporting runs after test failures too. If no checkpoints exist, the summary explains that
+no gallery is available. Generation/upload errors do not turn a failed test run into success.
+
+Build the same self-contained gallery locally with Python 3 (standard library only):
+
+```sh
+python3 scripts/renderer-gallery.py target/renderer-fidelity \
+  target/renderer-gallery/local.html --platform local
+```
+
+Open the HTML file in a browser, or open the PNGs alongside their JSON files. CI uploads these as
 `renderer-fidelity-ubuntu-latest` and `renderer-fidelity-macos-14` artifacts, including on test
 failure. Filenames identify each transition; reruns overwrite matching files. Use a separate output
 directory for concurrent suite runs. These diagnostic outputs belong under ignored `target/` and

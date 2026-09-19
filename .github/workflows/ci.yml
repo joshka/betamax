@@ -112,6 +112,9 @@ jobs:
           prefix-key: v1-rust-no-target
           cache-targets: false
 
+      - name: Test renderer gallery reporting
+        run: mise run renderer-gallery-test
+
       - name: Check workspace
         run: mise run cargo-check
 
@@ -120,17 +123,67 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y fonts-dejavu-core
 
       - name: Test workspace
+        id: tests
         env:
           BETAMAX_FIDELITY_OUTPUT: ${{ github.workspace }}/target/renderer-fidelity
         run: mise run test
 
       - name: Upload renderer checkpoints
+        id: raw-checkpoints
         if: ${{ always() }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: renderer-fidelity-${{ matrix.os }}
           path: target/renderer-fidelity
           if-no-files-found: warn
+
+      - name: Generate renderer gallery
+        id: gallery
+        if: ${{ always() }}
+        env:
+          PLATFORM: ${{ matrix.os }}
+          TEST_OUTCOME: ${{ steps.tests.outcome }}
+        run: |
+          python3 scripts/renderer-gallery.py target/renderer-fidelity \
+            "target/renderer-gallery/renderer-fidelity-${PLATFORM}.html" \
+            --platform "$PLATFORM" --outcome "$TEST_OUTCOME" --revision "$GITHUB_SHA"
+
+      - name: Upload renderer gallery
+        id: gallery-upload
+        if: ${{ always() && steps.gallery.outputs.available == 'true' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          path: target/renderer-gallery/renderer-fidelity-${{ matrix.os }}.html
+          archive: false
+          if-no-files-found: error
+
+      - name: Link renderer evidence
+        if: ${{ always() }}
+        env:
+          PLATFORM: ${{ runner.os }}
+          TEST_OUTCOME: ${{ steps.tests.outcome }}
+          GALLERY_URL: ${{ steps.gallery-upload.outputs.artifact-url }}
+          RAW_URL: ${{ steps.raw-checkpoints.outputs.artifact-url }}
+        run: |
+          {
+            echo "## Renderer fidelity — $PLATFORM"
+            echo
+            if [ -n "$GALLERY_URL" ]; then
+              echo "### [View $PLATFORM fixtures]($GALLERY_URL)"
+            else
+              echo "Gallery unavailable: no checkpoints were produced, or generation/upload failed. See the steps above."
+            fi
+            echo
+            echo "Test step: **${TEST_OUTCOME:-not run}**. Failed runs may contain partial checkpoints."
+            echo
+            echo "Known limitation: wide CJK glyphs may be clipped or missing; the full-glyph acceptance test remains ignored."
+            if [ -n "$RAW_URL" ]; then
+              echo
+              echo "[Download raw PNG/JSON diagnostics (ZIP)]($RAW_URL)"
+            fi
+            echo
+            echo "Artifacts require GitHub sign-in and expire with repository retention."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Validate tape syntax through CLI
         run: mise run validate
