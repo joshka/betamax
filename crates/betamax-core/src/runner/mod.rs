@@ -63,8 +63,8 @@ use crate::ghostty::{CaptureRequest, GhosttyFrameCapture, PixelSize, TerminalGri
 use crate::key::key_bytes;
 use crate::media::{
     write_gif_with_progress, write_json, write_mp4_with_progress, write_png,
-    write_png_sequence_with_progress, write_webm_with_progress, Frame, MediaProgressReporter,
-    NoMediaProgress,
+    write_png_sequence_with_progress, write_webm_with_progress, write_webp,
+    write_webp_animation_with_progress, Frame, MediaProgressReporter, NoMediaProgress,
 };
 use crate::output::{classify_outputs, Outputs};
 use crate::tape::{Command, Key, KeyCode, Tape, Value, WaitPattern, WaitTarget};
@@ -413,6 +413,7 @@ where
         let writes_animated_media = !outputs.gifs.is_empty()
             || !outputs.mp4s.is_empty()
             || !outputs.webms.is_empty()
+            || !outputs.webps.is_empty()
             || !outputs.frame_dirs.is_empty();
         if writes_animated_media {
             append_final_gif_frame(
@@ -456,6 +457,14 @@ where
                 format_args!("combining frames into gif {}", path.display()),
             );
             write_gif_with_progress(&path, &media_frames, &mut self.media_progress)?;
+            self.progress(ANSI_GREEN, format_args!("wrote {}", path.display()));
+        }
+        for path in outputs.webps {
+            self.progress(
+                ANSI_YELLOW,
+                format_args!("encoding webp {}", path.display()),
+            );
+            write_webp_animation_with_progress(&path, &media_frames, &mut self.media_progress)?;
             self.progress(ANSI_GREEN, format_args!("wrote {}", path.display()));
         }
         for path in outputs.frame_dirs {
@@ -571,14 +580,19 @@ where
             }
             Command::Screenshot(path) => {
                 session.drain_into(terminal, CHECKPOINT_IDLE)?;
-                write_png(
-                    path,
-                    &settings.decorate_frame_with_overlays(
-                        &capture_frame(terminal, settings, capture.frames.len())?,
-                        capture.caption.as_deref(),
-                        &active_keyboard_overlay_labels(capture),
-                    )?,
+                let frame = settings.decorate_frame_with_overlays(
+                    &capture_frame(terminal, settings, capture.frames.len())?,
+                    capture.caption.as_deref(),
+                    &active_keyboard_overlay_labels(capture),
                 )?;
+                if path
+                    .extension()
+                    .is_some_and(|ext| ext.eq_ignore_ascii_case("webp"))
+                {
+                    write_webp(path, &frame)?;
+                } else {
+                    write_png(path, &frame)?;
+                }
             }
             Command::State(path) => {
                 session.drain_into(terminal, CHECKPOINT_IDLE)?;

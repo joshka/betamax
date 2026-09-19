@@ -1,6 +1,6 @@
 ---
 title: Outputs
-description: GIFs, screenshots, video files, frame directories, and terminal state.
+description: GIFs, WebP animations, screenshots, video files, frame directories, and terminal state.
 ---
 
 A single tape can write several artifacts from the same captured terminal session. This is useful
@@ -15,6 +15,8 @@ source control and publishing stable documentation assets.
 
 | Output             | Command example                      | Written when               | Encoder         |
 | ------------------ | ------------------------------------ | -------------------------- | --------------- |
+| WebP animation     | `Output demo.webp`                   | After the tape finishes    | In process      |
+| WebP screenshot    | `Screenshot checkpoint.webp`         | At that command            | In process      |
 | GIF                | `Output demo.gif`                    | After the tape finishes    | In process      |
 | PNG final frame    | `Output demo.png`                    | After the tape finishes    | In process      |
 | State JSON         | `Output demo.json`                   | After the tape finishes    | In process      |
@@ -61,10 +63,30 @@ In review media, sleeps after waits are presentation pacing. Use 300-700 ms afte
 transitions, 1.5-2.5 seconds for stable simple screens, and 4-5 seconds only for final review
 endpoints. Dense output needs a reading-time-based hold instead of a fixed one-size pause.
 
+## WebP Encoding
+
+Use `Output demo.webp` for an infinitely looping lossless animation. Use `Screenshot ready.webp`
+for a static image, including at the end of the tape for a final screenshot. CLI
+`betamax run demo.tape --output demo.webp` adds an animated output.
+
+WebP uses the original RGBA frames, preserving colors and transparency without GIF palette
+quantization. It runs entirely in Rust on the supported macOS and Linux platforms; no `ffmpeg`,
+`cwebp`, or system WebP library is needed. The encoder favors straightforward full-frame lossless
+output over smaller files: it does not use libwebp's frame-difference optimization or lossy modes.
+
+Captured holds, including the final frame, are stored with millisecond precision. Cumulative
+boundaries round to the nearest millisecond, with a minimum of 1 ms per frame. Viewers may lengthen
+very short delays (especially 10 ms or less), so use normal presentation pacing for browser demos.
+A single-frame animation retains its hold. Dimensions must be 1–16384 pixels on each axis, each
+frame hold must fit in 16,777,215 ms (about 4.66 hours), and the file must be smaller than 4 GiB.
+
+See [`examples/webp.tape`](https://github.com/joshka/betamax/blob/main/examples/webp.tape) for
+animated and static output from the same capture.
+
 ## Video Encoding
 
 MP4 and WebM use `ffmpeg` as a focused encoder boundary. Terminal execution, terminal parsing,
-rendering, GIF encoding, PNG encoding, and state JSON writing are in process. Betamax only requires
+rendering, GIF/WebP encoding, PNG encoding, and state JSON writing are in process. Betamax only requires
 `ffmpeg` when the tape requests `.mp4` or `.webm`.
 
 Video uses the original raster frames and their captured hold times, including the final frame.
@@ -149,5 +171,5 @@ keys, `Show`, or final-frame output, and checkpoint screenshots captured by `Scr
 terminal is already stable and only the caption changed, add `Sleep` after `Caption` so GIF and
 video outputs hold that caption for a visible amount of time.
 
-Captions render on visual outputs: GIF, PNG, MP4, WebM, frame directories, and screenshots. They do
-not appear in state JSON or change final output dimensions.
+Captions render on visual outputs: GIF, WebP, PNG, MP4, WebM, frame directories, and screenshots.
+They do not appear in state JSON or change final output dimensions.

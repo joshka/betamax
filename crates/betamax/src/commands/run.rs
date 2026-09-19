@@ -24,7 +24,7 @@ pub struct Run {
     #[arg(long, short)]
     publish: bool,
 
-    /// File to write output to
+    /// Add an output: GIF, animated WebP, PNG, MP4, WebM, JSON, or a frame directory
     #[arg(long, short, value_name = "FILE")]
     output: Option<PathBuf>,
 
@@ -121,6 +121,7 @@ fn progress_style() -> ProgressStyle {
 
 fn progress_label(kind: MediaProgressKind) -> &'static str {
     match kind {
+        MediaProgressKind::Webp => "encoding webp",
         MediaProgressKind::Gif => "encoding gif",
         MediaProgressKind::PngSequence => "writing frames",
         MediaProgressKind::VideoFrames => "preparing video frames",

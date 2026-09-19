@@ -58,8 +58,8 @@ Other toolchain managers, including [Nix][nix], or [Zig][zig] 0.15.2 on `PATH` a
 See [build troubleshooting](https://www.joshka.net/betamax/reference/development/#build-troubleshooting)
 if Cargo finds the wrong Zig version.
 
-MP4 and WebM output require [ffmpeg][ffmpeg] on `PATH`; GIF, PNG, screenshots, and state JSON are
-written in process.
+MP4 and WebM output require [ffmpeg][ffmpeg] on `PATH`; GIF, WebP, PNG, screenshots, and
+state JSON are written in process.
 
 ```sh
 # macOS
@@ -118,6 +118,7 @@ stable even when terminal programs do real work.
 | Output               | Use case                                                   |
 | -------------------- | ---------------------------------------------------------- |
 | GIF                  | README demos, release notes, docs pages                    |
+| WebP                 | Lossless animations and checkpoint screenshots             |
 | PNG                  | Final-frame screenshots                                    |
 | Screenshot command   | Checkpoint screenshots from the middle of a run            |
 | MP4 and WebM         | Video assets encoded through `ffmpeg`                      |
@@ -142,6 +143,7 @@ The repository includes tapes that exercise the core behavior:
 | `examples/layout.tape`                    | padding, margin, fill, window bar, radius      |
 | `examples/presentation-overlays.tape`     | captions plus keyboard overlay layout          |
 | `examples/themes.tape`                    | copied Ghostty themes and palette mapping      |
+| `examples/webp.tape`                      | Lossless WebP animation and screenshots        |
 | `examples/video.tape`                     | GIF, MP4, and WebM from one capture            |
 
 ### Quick Start
@@ -204,7 +206,7 @@ Betamax intentionally keeps a smaller architecture than VHS:
 | Area              | Betamax status                                       |
 | ----------------- | ---------------------------------------------------- |
 | Architecture      | PTY plus `libghostty-vt`, no browser/server/xterm.js |
-| GIF/PNG/state     | In process                                           |
+| GIF/WebP/PNG      | In process                                           |
 | MP4/WebM          | Supported through `ffmpeg`                           |
 | Themes            | Copied Ghostty themes plus inline JSON themes        |
 | Window styling    | Rust composition                                     |

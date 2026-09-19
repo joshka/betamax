@@ -25,6 +25,7 @@ include = [
 [dependencies]
 cosmic-text.workspace = true
 gif.workspace = true
+image-webp.workspace = true
 libghostty-vt.workspace = true
 miette.workspace = true
 png.workspace = true

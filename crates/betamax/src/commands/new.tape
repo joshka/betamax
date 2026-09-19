@@ -5,6 +5,7 @@
 # behavior, each setting's default value, and the current VHS differences.
 #
 # Output:
+#   Output <path>.webp              Create a lossless animated WebP output
 #   Output <path>.gif               Create a GIF output at the given <path>
 #   Output <path>.png               Create a final-frame PNG output at the given <path>
 #   Output <path>.mp4               Create an MP4 output at the given <path>
@@ -42,6 +43,7 @@
 #   Set WaitPattern <regex>         Set the default regex for bare Wait commands
 #
 # Screenshot:
+#   Screenshot <path>.webp          Capture a lossless WebP screenshot
 #   Screenshot <path>.png           Capture a PNG screenshot at this point in the tape
 #
 # State:
