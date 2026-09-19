@@ -41,16 +41,33 @@ can compromise that entire runner. The action's path checks, output checks and p
 are diagnostics, not a sandbox or a security boundary. Never add a PAT or publication credential to
 any later step of that job.
 
-The existing **Renderer gallery comment** workflow runs after CI on a fresh runner. Its custom
-reporter comes from the default branch; the Betamax reporter uses the same reviewed commit pin as
-the rendering action. It checks source workflow, run, current PR head and artifact metadata, then
-publishes gallery links using `GITHUB_TOKEN` with `actions: read` and `pull-requests: write`.
-It never checks out PR code, executes the PR binary, restores PR caches or downloads artifact
-contents. Generated galleries remain untrusted downloadable artifacts.
+The **Renderer gallery comment** workflow runs after CI using trusted default-branch configuration.
+Its native preview job runs on a fresh runner with no checkout, PR binary or restored cache. The
+reporter uses the same reviewed commit pin as the rendering action. It checks source workflow, run,
+current PR head and artifact metadata. `GITHUB_TOKEN` has `actions: read` and `pull-requests: write`
+and owns the comment, which includes gallery links and inline media.
 
-Native attachments are disabled. Enabling them later requires a Betamax-scoped secret and a review
-of the trusted reporter's independent validation of downloaded media. Validation in the compromised
-render job is insufficient. A token scoped to `joshka/betamax-action` must not be reused here.
+Only this native preview job receives `BETAMAX_ATTACHMENT_TOKEN`, from the `betamax-attachments`
+environment. That environment permits the branch `main` explicitly, with no tag or PR-ref rules.
+The token must be restricted to Betamax and must not also exist as a repository secret: otherwise
+a same-repository PR could edit its workflow to request the repository-level copy. A token scoped
+to `joshka/betamax-action` must not be reused here. Required reviewers can be added to the environment
+if publishing each run should need approval; branch restriction alone keeps reporting automatic.
+
+Native mode downloads untrusted media and sends the PAT only to GitHub's upload endpoint. The
+pinned reporter independently checks allowed download hosts, artifact digests, byte limits and
+media signatures; it never extracts archives or executes downloaded files. These checks constrain
+the upload path but do not prove media harmless to every downstream decoder. Neither artifact
+digests nor passing checks on the compromised render runner establish that its content is safe.
+The custom PNG/JSON gallery reporter remains in its own job without the PAT or artifact downloads.
+
+## Configure the upload credential
+
+In repository settings, create `betamax-attachments` with **Selected branches and tags**, allowing
+only branch `main`. Save the Betamax-scoped PAT there as `BETAMAX_ATTACHMENT_TOKEN`, then remove any
+repository-level copy. GitHub cannot return an existing secret's value, so enter the original PAT
+directly in the environment settings or through `gh secret set --env betamax-attachments`; do not
+put it in source, logs or a PR comment. Verify the environment rule and secret before activation.
 
 ## Verify a workflow change
 
@@ -65,7 +82,9 @@ mise exec -- markdownlint-cli2 docs/action-previews.md
 On the PR, inspect the Linux build log for the local binary path and hash, the action log for local
 executable selection, and the decoded-frame/timing check. Open the resulting gallery and play both
 animations. A new `workflow_run` reporter step only activates once its workflow is on the default
-branch. After merging, use a subsequent PR run to verify the **Terminal previews** comment and
-rerun the reporting workflow to confirm it updates the same comment. Before that activation, the
+branch. After merging, use a subsequent PR run to verify the **Terminal previews** comment and its
+inline media. Check the reporter log for upload warnings: individual failures fall back to artifact
+links and can leave the job green. Rerun the source CI workflow to get a new run attempt and test
+comment updates; rerunning only the reporter skips an already reported attempt. Before activation, the
 PR run's gallery and media artifacts provide live rendering evidence, but do not prove the new
 reporter step ran in this repository.
