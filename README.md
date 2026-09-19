@@ -56,6 +56,7 @@ Other toolchain managers, including [Nix][nix], or [Zig][zig] 0.15.2 on `PATH` a
 
 See [build troubleshooting](https://www.joshka.net/betamax/reference/development/#build-troubleshooting)
 if Cargo finds the wrong Zig version.
+For SDK setup on Tahoe, see [Building on macOS Tahoe](docs/development.md#building-on-macos-tahoe).
 
 For local development or source checkouts, run from the workspace:
 

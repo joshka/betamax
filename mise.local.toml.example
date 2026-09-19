@@ -1,0 +1,9 @@
+# Building on macOS Tahoe with Zig 0.15.2 and a compatible installed SDK.
+# Copy to mise.local.toml, or merge into an existing local configuration.
+# Replace the SDK path with a compatible SDK already installed on your machine.
+# This example file is not loaded by mise.
+# See docs/development.md#building-on-macos-tahoe for setup and troubleshooting.
+
+[env]
+BETAMAX_MACOS_SDK = "/Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk"
+_.path = ["tools/macos-sdk"]
