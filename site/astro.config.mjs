@@ -58,6 +58,7 @@ export default defineConfig({
           label: 'Testing',
           items: [
             { label: 'Terminal Testing', slug: 'testing/terminal-testing' },
+            { label: 'Feature Field Guide', slug: 'testing/feature-guide' },
             { label: 'State JSON', slug: 'testing/state-json' },
           ],
         },

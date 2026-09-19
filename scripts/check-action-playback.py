@@ -10,7 +10,7 @@ import sys
 FORMATS = {
     "image/gif": "gif", "image/png": "png", "video/mp4": "h264", "video/webm": "vp9",
 }
-TAPES = {"examples/ci-playback.tape", "examples/ci-interaction.tape"}
+TAPES = {"examples/ci-playback.tape"}
 
 
 def require(condition, message):
@@ -50,33 +50,7 @@ def is_color(rgb, channel):
     return rgb[channel] > max(rgb[index] for index in range(3) if index != channel) + 50
 
 
-def check_interaction(checkpoints):
-    state = json.loads((checkpoints / "interaction.json").read_text())
-    line = "ENV=injected INPUT=paste-ok"
-    require(state["viewport_text"].splitlines() == [line, "READY", ">"], state["viewport_text"])
-    require(not state["cursor"]["visible"], "ANSI cursor hide did not reach State")
-    require(state["scrollback_rows"] == 0, "unexpected scrolling in compact fixture")
-    spans = state["viewport"][0]
-    require(len(spans) == 1 and isinstance(spans[0], list), spans)
-    text, style_index = spans[0]
-    style = state["styles"][style_index]
-    require(text == line and style.get("bold") and style.get("fg") == "#ff5028", style)
-    frame = pixels(checkpoints / "interaction.png")
-    ink = check_ink(frame, checkpoints / "interaction.png")
-    print(f"interaction: exact edited/pasted output, truecolor/bold state, {ink} orange glyph pixels")
-
-
-def check_ink(frame, file):
-    # Tolerate antialiasing, font differences, GIF quantization and lossy video encoding.
-    ink = sum(
-        r > 180 and 30 < g < 150 and b < 120
-        for r, g, b in zip(frame[::3], frame[1::3], frame[2::3])
-    )
-    require(ink > 100, f"{file}: missing orange styled text ({ink} pixels)")
-    return ink
-
-
-def check(directory, checkpoints):
+def check(directory):
     manifest = json.loads((directory / "manifest.json").read_text())
     require(not manifest["problems"], manifest["problems"])
     rows = manifest["results"]
@@ -97,9 +71,6 @@ def check(directory, checkpoints):
             require(stream["codec_name"] == FORMATS[kind], (file, stream))
             if kind.startswith("video/"):
                 require(stream["pix_fmt"] == "yuv420p", (file, stream))
-            if tape.endswith("ci-interaction.tape"):
-                check_ink(pixels(file, None if kind == "image/png" else 0.25), file)
-                continue
             if kind == "image/png":
                 color = background(file)
                 require(is_color(color, 2), f"{file}: expected final visible blue PNG, got {color}")
@@ -112,9 +83,7 @@ def check(directory, checkpoints):
                 color = background(file, timestamp)
                 require(is_color(color, channel), f"{file} at {timestamp}s: wrong phase {color}")
             print(f"{file.name}: {duration:.3f}s, red through 0.8s, blue from 1.3s through 2.8s")
-    check_interaction(checkpoints)
 
 
 if __name__ == "__main__":
-    checkpoints = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("target/ci-tapes")
-    check(Path(sys.argv[1]), checkpoints)
+    check(Path(sys.argv[1]))

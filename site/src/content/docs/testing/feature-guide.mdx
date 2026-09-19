@@ -1,0 +1,52 @@
+---
+title: Feature Field Guide
+description: Seven rendered scenarios connect Betamax features to checked terminal behavior.
+---
+
+The feature field guide is executable documentation: seven small scenes share a readable layout,
+with named checkpoints and explicit expected results. Every pull request renders GIF/PNG previews
+using the CLI built from that pull request.
+
+- **From intent to input:** environment values, typing, clipboard editing and encoded keys.
+- **Text with character:** emphasis, truecolor, Unicode and cell graphics.
+- **Room to breathe, dark and light:** matched content with themes and window framing.
+- **Present the action:** captions and keyboard chips, with clean and annotated checkpoints.
+- **Reveal the result:** hidden setup remains visible to checkpoints but absent from animation.
+- **Keep the history:** scrollback and alternate-screen restoration.
+
+## Open the rendered guide
+
+In a pull request's **CI → Package and smoke (ubuntu-24.04)** job summary, choose **Betamax field
+guide**. The standalone HTML includes animations, comparisons, descriptions, expectations and tapes.
+The `feature-checkpoints` artifact contains the PNG/GIF/state JSON files. GitHub sign-in is required;
+artifacts expire with retention.
+
+To generate a guide locally from the repository root:
+
+```sh
+mise run feature-gallery
+```
+
+Open `target/features/feature-gallery.html` in a browser. Python 3, ffmpeg and the repository's mise
+build tools are required. The runner supplies the fixture's absolute path to the PTY environment.
+Generated files stay outside version control.
+
+## What passing means
+
+The suite checks exact input and state, image regions, paired checkpoints and every hidden-setup
+animation frame. It avoids whole-image comparisons across different platform fonts. A separate
+three-second playback tape checks GIF/PNG/MP4/WebM, while Linux/macOS renderer tests keep their
+specialized glyph and cell diagnostics.
+
+There is a known [underline/strikethrough rendering gap][style-gap]: state spans are correct, but
+those decorations are absent from the image. The gallery labels this explicitly. Passing the
+current checks does not mean every style or every parameter value is covered.
+
+Read the [complete coverage map and comparison policy][coverage] before extending the suite. The
+[feature tapes][tapes] and [scene catalog][catalog] keep names and expected results close to the
+rendered evidence.
+
+[style-gap]: https://github.com/joshka/betamax/issues/151
+[coverage]: https://github.com/joshka/betamax/blob/main/docs/feature-gallery.md
+[tapes]: https://github.com/joshka/betamax/tree/main/examples/features
+[catalog]: https://github.com/joshka/betamax/blob/main/scripts/feature-gallery.json
