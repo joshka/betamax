@@ -7,15 +7,17 @@ the tape format.
 ## Outputs
 
 - `Output <path>.gif`
+- `Output <path>.webp`
 - `Output <path>.png`
 - `Output <path>.mp4`
 - `Output <path>.webm`
 - `Output <path>.json`
 - `Output <dir>`
 - `Screenshot <path>.png`
+- `Screenshot <path>.webp`
 - `State <path>.json`
 
-GIF, PNG, screenshot, state JSON, and PNG sequence output are produced in process. MP4 and WebM
+GIF, WebP, PNG, screenshot, state JSON, and PNG sequence output are produced in process. MP4 and WebM
 output require `ffmpeg` on `PATH`; Betamax reports that as a runtime error only when a video output
 is requested. Install it with `brew install ffmpeg` on macOS or
 `sudo apt-get update && sudo apt-get install ffmpeg` on Debian/Ubuntu.
@@ -98,6 +100,7 @@ before starting the shell.
 Supported output paths:
 
 - `.gif`: animated GIF written in process.
+- `.webp`: lossless animated WebP written in process, with millisecond frame holds.
 - `.png`: final-frame PNG written in process.
 - `.mp4`: MP4 written through `ffmpeg`.
 - `.webm`: WebM written through `ffmpeg`.
@@ -232,8 +235,10 @@ caption and chip edges are optically inset by half of the rounded-corner radius.
 
 ### `Screenshot <path>.png`
 
-Writes an immediate PNG screenshot at that point in the tape. The screenshot uses the same theme and
-frame decoration as primary PNG/GIF/video outputs. Only `.png` checkpoint screenshots are supported.
+Accepts `.png` and `.webp` (case-insensitive). Writes a static screenshot at that point in the tape,
+using the same theme and frame decoration as primary visual outputs. WebP screenshots are lossless
+and preserve transparency. To write a static final WebP, put `Screenshot final.webp` at the end of
+the tape; `Output final.webp` always writes an animation.
 
 ### `State <path>.json`
 

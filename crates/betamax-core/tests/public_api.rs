@@ -165,6 +165,53 @@ fn captions_affect_screenshots_not_state_json() {
     }
 }
 
+#[test]
+fn runner_writes_webp_animation_and_static_checkpoint() {
+    let output = temp_output("betamax-public-api-animation.WeBP");
+    let screenshot = temp_output("betamax-public-api-checkpoint.WEBP");
+    let tape = Tape::parse(&format!(
+        r#"
+        Output {}
+        Set Shell "bash"
+        Set Width 80
+        Set Height 60
+        Set Padding 0
+        Set Framerate 10
+        Show
+        Sleep 300ms
+        Screenshot {}
+        Hide
+        "#,
+        output.display(),
+        screenshot.display()
+    ))
+    .unwrap();
+    let artifacts = Runner::with_capture(
+        RunOptions {
+            publish: false,
+            quiet: true,
+        },
+        FakeCapture,
+    )
+    .run_artifacts(&tape)
+    .unwrap();
+    assert_eq!(artifacts.output_paths, vec![output.clone()]);
+    let decoder =
+        image_webp::WebPDecoder::new(std::io::Cursor::new(fs::read(&output).unwrap())).unwrap();
+    assert!(decoder.is_animated());
+    // Show contributes one 100 ms frame; PTY polling can add small wall-clock delays.
+    // The stable image coalesces into one frame whose hold must include the full sleep.
+    assert_eq!(decoder.num_frames(), 1);
+    assert!(decoder.loop_duration() >= 400);
+    let still =
+        image_webp::WebPDecoder::new(std::io::Cursor::new(fs::read(&screenshot).unwrap())).unwrap();
+    assert!(!still.is_animated());
+    assert_eq!(still.dimensions(), decoder.dimensions());
+    for path in [output, screenshot] {
+        let _ = fs::remove_file(path);
+    }
+}
+
 fn temp_output(name: &str) -> PathBuf {
     let suffix = SystemTime::now()
         .duration_since(UNIX_EPOCH)

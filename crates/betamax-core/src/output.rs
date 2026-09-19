@@ -24,6 +24,8 @@ pub(crate) struct Outputs {
     pub(crate) states: Vec<PathBuf>,
     /// WebM primary outputs written through ffmpeg.
     pub(crate) webms: Vec<PathBuf>,
+    /// Animated lossless WebP primary outputs.
+    pub(crate) webps: Vec<PathBuf>,
     /// Whether a command, rather than a primary output, requires capture.
     ///
     /// Inline `Screenshot`, inline `State`, and `Wait` need terminal state even if the tape does
@@ -41,6 +43,7 @@ impl Outputs {
             || !self.pngs.is_empty()
             || !self.states.is_empty()
             || !self.webms.is_empty()
+            || !self.webps.is_empty()
     }
 
     /// Return primary output paths in the order the runner writes output groups.
@@ -54,6 +57,7 @@ impl Outputs {
             .chain(&self.pngs)
             .chain(&self.states)
             .chain(&self.webms)
+            .chain(&self.webps)
             .chain(&self.frame_dirs)
             .cloned()
             .collect()
@@ -73,6 +77,7 @@ pub(crate) fn classify_outputs(tape: &Tape) -> Result<Outputs> {
                 Some("gif") => outputs.gifs.push(path.clone()),
                 Some("png") => outputs.pngs.push(path.clone()),
                 Some("json") => outputs.states.push(path.clone()),
+                Some("webp") => outputs.webps.push(path.clone()),
                 Some("webm") => outputs.webms.push(path.clone()),
                 Some("mp4") => outputs.mp4s.push(path.clone()),
                 Some(ext) => {
@@ -85,10 +90,10 @@ pub(crate) fn classify_outputs(tape: &Tape) -> Result<Outputs> {
                 None => outputs.frame_dirs.push(path.clone()),
             },
             Command::Screenshot(path) => match extension(path).as_deref() {
-                Some("png") => outputs.needs_capture = true,
+                Some("png" | "webp") => outputs.needs_capture = true,
                 Some(ext) => {
                     return Err(miette!(
-                        "Screenshot only supports .png in the first cut, got `.{ext}`: {}",
+                        "Screenshot only supports .png and .webp, got `.{ext}`: {}",
                         path.display()
                     )
                     .into());
@@ -130,6 +135,25 @@ fn extension(path: &Path) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn classifies_webp_animation_and_static_screenshots_case_insensitively() {
+        let tape = Tape::parse("Output demo.WeBP Screenshot checkpoint.WEBP").unwrap();
+        let outputs = classify_outputs(&tape).unwrap();
+        assert_eq!(outputs.webps, vec![PathBuf::from("demo.WeBP")]);
+        assert_eq!(outputs.paths(), vec![PathBuf::from("demo.WeBP")]);
+        assert!(outputs.needs_capture);
+        assert!(outputs.requires_capture());
+        let screenshot = Tape::parse("Screenshot checkpoint.webp").unwrap();
+        assert!(classify_outputs(&screenshot).unwrap().requires_capture());
+        for source in [
+            "Screenshot checkpoint.gif",
+            "Screenshot checkpoint",
+            "Output demo.webp2",
+        ] {
+            assert!(classify_outputs(&Tape::parse(source).unwrap()).is_err());
+        }
+    }
 
     #[test]
     fn classifies_webm_output() {

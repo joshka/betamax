@@ -73,8 +73,8 @@ impl Tape {
 pub enum Command {
     /// Primary output requested by the tape or CLI.
     ///
-    /// The runner classifies this by extension: `.gif`, `.png`, `.json`, `.webm`, `.mp4`, or an
-    /// extensionless directory for a PNG frame sequence.
+    /// The runner classifies this by extension: `.gif`, `.webp`, `.png`, `.json`, `.webm`, `.mp4`,
+    /// or an extensionless directory for a PNG frame sequence.
     Output(PathBuf),
     /// Require an executable to be present on `PATH` before running the tape.
     Require(String),

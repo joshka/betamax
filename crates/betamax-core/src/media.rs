@@ -1,8 +1,9 @@
 //! Media file writers and frame conversion.
 //!
 //! The renderer produces raw frames. This module owns the format-specific side effects for PNG,
-//! GIF, JSON, and video outputs. Video is intentionally implemented through `ffmpeg` for now so the
-//! Rust code only has to provide a deterministic PNG frame sequence and clear error reporting.
+//! GIF, WebP, JSON, and video outputs. Video is intentionally implemented through `ffmpeg` for now
+//! so the Rust code only has to provide a deterministic PNG frame sequence and clear error
+//! reporting.
 //!
 //! Most users should let [`crate::Runner`] write media outputs from a tape. Use this module when
 //! embedding Betamax's renderer directly or when tests need to inspect/write raw frames.
@@ -19,6 +20,10 @@ use miette::{miette, IntoDiagnostic};
 use serde::Serialize;
 
 use crate::Result;
+
+mod webp;
+
+pub use webp::{write_webp, write_webp_animation, write_webp_animation_with_progress};
 
 /// Number of bytes in one RGBA or BGRA pixel.
 const BYTES_PER_PIXEL: usize = 4;
@@ -50,6 +55,8 @@ static VIDEO_TEMP_COUNTER: AtomicU64 = AtomicU64::new(0);
 pub enum MediaProgressKind {
     /// Animated GIF frame encoding.
     Gif,
+    /// Lossless WebP animation frame encoding.
+    Webp,
     /// Numbered PNG frame sequence writing.
     PngSequence,
     /// Temporary PNG frame writing before handing video encoding to `ffmpeg`.

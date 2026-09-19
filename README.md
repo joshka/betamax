@@ -137,6 +137,7 @@ The checked-in examples are small smoke-test tapes that demonstrate core behavio
 | `examples/layout.tape`                    | padding, margin, fill, window bar, radius      | `layout.gif`              |
 | `examples/themes.tape`                    | copied Ghostty themes and palette mapping      | `themes.gif`              |
 | `examples/screenshot.tape`                | screenshots and terminal state JSON            | `screenshot.png`          |
+| `examples/webp.tape`                      | Lossless WebP animation and screenshots        | `webp.*`                  |
 | `examples/video.tape`                     | GIF, MP4, and WebM from one capture            | `video.*`                 |
 
 ### Quick Start
@@ -189,7 +190,7 @@ remaining parity notes.
 | Area              | Betamax status                                       |
 | ----------------- | ---------------------------------------------------- |
 | Architecture      | PTY plus `libghostty-vt`, no browser/server/xterm.js |
-| GIF/PNG/state     | In process                                           |
+| GIF/WebP/PNG      | In process                                           |
 | MP4/WebM          | Supported through `ffmpeg`                           |
 | Themes            | Copied Ghostty themes plus inline JSON themes        |
 | Window styling    | Rust composition                                     |
