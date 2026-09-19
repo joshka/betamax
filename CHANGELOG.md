@@ -2,6 +2,19 @@
 
 <!-- markdownlint-disable no-duplicate-heading -->
 
+## [0.1.18](https://github.com/joshka/betamax/compare/betamax-v0.1.17...betamax-v0.1.18) - 2026-09-19
+
+### Other
+
+- Add lossless animated and static WebP output ([#145](https://github.com/joshka/betamax/pull/145))
+
+## [0.1.14](https://github.com/joshka/betamax/compare/betamax-core-v0.1.13...betamax-core-v0.1.14) - 2026-09-19
+
+### Other
+
+- Render terminal graphics with cached sprites ([#144](https://github.com/joshka/betamax/pull/144))
+- Add lossless animated and static WebP output ([#145](https://github.com/joshka/betamax/pull/145))
+
 ## [0.1.17](https://github.com/joshka/betamax/compare/betamax-v0.1.16...betamax-v0.1.17) - 2026-09-19
 
 ### Other
