@@ -5,6 +5,12 @@ versions and identify the core version shipped in the release lockfile.
 
 ## [Unreleased]
 
+## [0.1.22](https://github.com/joshka/betamax/compare/betamax-v0.1.21...betamax-v0.1.22) - 2026-09-19
+
+### Other
+
+- Clarify documentation prose ([#161](https://github.com/joshka/betamax/pull/161))
+
 ## [0.1.21](https://github.com/joshka/betamax/compare/betamax-v0.1.20...betamax-v0.1.21) - 2026-09-19
 
 ### Other
