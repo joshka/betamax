@@ -11,8 +11,6 @@ versions and identify the core version shipped in the release lockfile.
 
 - Unify Betamax release history ([#157](https://github.com/joshka/betamax/pull/157))
 
-### Other
-
 - Use one shared version for the CLI and core library, starting with 0.1.21.
 - Consolidate release notes into one product changelog, including core improvements in CLI releases.
 
