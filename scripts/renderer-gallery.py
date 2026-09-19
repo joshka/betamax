@@ -19,9 +19,19 @@ LABELS = {
     "restored": "Restored primary screen",
     "inverse-hidden": "Inverse colors — hidden cursor",
     "cursor-block": "Visible block cursor",
-    "wide-glyph-known-limitation": "Wide-glyph acceptance test — known failure",
+    "wide-glyph": "Complete wide glyph and following column",
+    "wide-styled": "Wide glyph with adjacent background colors",
+    "wide-cursor": "Cursor over the wide continuation cell",
+    "wide-replace-before": "Wide glyph before replacement",
+    "wide-replace": "Replace the leading cell",
+    "wide-erase-before": "Wide glyph before erasure",
+    "wide-erase": "Erase both occupied cells",
+    "wide-erase-continuation-before": "Wide glyph before continuation erasure",
+    "wide-erase-continuation": "Erase the continuation cell",
+    "wide-replace-continuation-before": "Wide glyph before continuation replacement",
+    "wide-replace-continuation": "Replace the continuation cell",
 }
-EXPECTED = list(LABELS)[:-1]  # The ignored acceptance test is not part of normal CI.
+EXPECTED = list(LABELS)
 
 
 def build_gallery(source, destination, platform, outcome, revision):
@@ -84,10 +94,9 @@ code {{overflow-wrap: anywhere;}}
 · {len(names)} checkpoints</p>
 <p>Captured output, not an assertion that every pictured behavior is correct.
 A failed or interrupted test run may leave partial checkpoints.</p>
-<aside class="warning"><strong>Known limitation: wide-glyph rendering.</strong>
-The right half of 界 can be erased by the continuation-cell background. Linux may show a
-missing-glyph box without a CJK fallback font. Passing column-placement tests do not certify
-complete glyph rendering. The wide-glyph acceptance test is ignored in normal CI.</aside>
+<p>Wide-glyph acceptance checks run in normal CI: the selected fallback must cover 界,
+ink must span both cells, and edits, adjacent backgrounds, and cursor overlays are checked.
+Missing CJK font coverage fails the suite with a setup error.</p>
 {missing_notice}<main class="gallery">{"".join(cards)}</main>
 </body></html>
 '''

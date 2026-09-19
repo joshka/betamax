@@ -111,6 +111,7 @@ impl RasterRenderer {
                 .update(&snapshot)
                 .map_err(vt_error("failed to iterate libghostty-vt rows"))?;
             let mut y = 0u16;
+            let mut row_text = Vec::new();
             while let Some(row) = row_iter.next() {
                 let mut cell_iter = self
                     .cells
@@ -142,17 +143,17 @@ impl RasterRenderer {
                     target.fill_rect(x_px, y_px, self.cell_width, self.cell_height, background);
                     if !style.invisible && !graphemes.is_empty() {
                         let text: String = graphemes.into_iter().collect();
-                        self.text_renderer.draw_text(
-                            &mut target,
-                            &text,
-                            x_px,
-                            y_px,
-                            foreground,
-                            style,
-                        );
+                        row_text.push((text, x_px, foreground, style));
                     }
 
                     x = x.saturating_add(1);
+                }
+                // A wide glyph extends into its continuation cell. Paint every background first
+                // so that cell cannot erase the glyph, while retaining backgrounds on empty cells.
+                let y_px = self.request.text.padding + u32::from(y) * self.cell_height;
+                for (text, x_px, foreground, style) in row_text.drain(..) {
+                    self.text_renderer
+                        .draw_text(&mut target, &text, x_px, y_px, foreground, style);
                 }
                 y = y.saturating_add(1);
             }
