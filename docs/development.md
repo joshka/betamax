@@ -69,23 +69,72 @@ zig version # should print 0.15.2
 cargo install betamax --locked
 ```
 
-### macOS Undefined System Symbols
+## Building on macOS Tahoe
 
-Errors naming `__availability_version_check`, `_abort`, or `_bzero` while linking Zig's build
-runner can indicate a Zig 0.15.2/macOS SDK incompatibility. This can occur before Ghostty or
-Betamax code compiles, even with the correct Zig version.
+To build Betamax on macOS Tahoe, use the pinned Zig 0.15.2 with a compatible macOS SDK. If your
+default SDK comes from Xcode 26.4 or newer, select an older installed SDK using the local mise
+configuration below. This is a build-toolchain requirement; Betamax can run on Tahoe.
 
-Inspect the selected developer tools and SDK:
+With an incompatible SDK, the build can fail with undefined symbols such as
+`__availability_version_check`, `_abort`, or `_bzero` while linking Zig's build runner, before
+Ghostty or Betamax code compiles.
+The [upstream Ghostty report](https://github.com/ghostty-org/ghostty/issues/11991) tracks this
+SDK incompatibility. Keep Zig at 0.15.2 until the published Rust bindings support Zig 0.16.
+
+Inspect the selected developer tools and available SDKs:
 
 ```sh
 xcode-select -p
-xcrun --show-sdk-path
+/usr/bin/xcrun --sdk macosx --show-sdk-path
+ls /Library/Developer/CommandLineTools/SDKs
 ```
 
-Use a developer-tool installation with an SDK compatible with Zig 0.15.2, or use Betamax's
-prebuilt binaries. If you have a compatible installation, `DEVELOPER_DIR` can select it for one
-command without changing the machine-wide Xcode selection. Simply changing Zig to 0.16 will hit
-the published Ghostty dependency's version requirement instead.
+If you have a compatible SDK installed, copy the tracked `mise.local.toml.example` from the
+checkout root to `mise.local.toml`:
+
+```sh
+cp -i mise.local.toml.example mise.local.toml
+```
+
+If you already have local mise settings, merge the example's entries into that file instead,
+preserving any existing `_.path` entries. `mise.local.toml` is ignored by version control; the
+example is tracked but is not loaded by mise. Use only one local filename (`mise.local.toml` or
+`.mise.local.toml`), since mise supports both.
+
+Set the absolute path to a compatible SDK already installed on your machine. macOS SDK 15.2 has
+been verified with the pinned Ghostty build on Tahoe:
+
+```toml
+[env]
+BETAMAX_MACOS_SDK = "/Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk"
+_.path = ["tools/macos-sdk"]
+```
+
+Verify the selected compiler and SDK, then build or install normally:
+
+```sh
+mise exec -- sh -c 'zig version; xcrun --sdk macosx --show-sdk-path'
+mise run test
+mise run install-local
+```
+
+The version should be `0.15.2`, and the SDK path should match your local configuration. The
+`tools/macos-sdk/xcrun` wrapper overrides only the SDK lookup used by Zig and Ghostty, and forwards
+other commands to `/usr/bin/xcrun`. It leaves the machine-wide Xcode selection unchanged.
+`SDKROOT` alone does not override this lookup, and `zig build --sysroot` alone does not override
+Ghostty's separate SDK discovery. No Zig wrapper or additional linker flags are needed.
+
+If an IDE or agent still selects the wrong tools because it inherited stale mise activation,
+retry from a fresh shell, or clear that activation state for the command:
+
+```sh
+env -u __MISE_DIFF -u __MISE_SESSION -u __MISE_ORIG_PATH mise run test
+```
+
+To stop using the override, remove these entries from `mise.local.toml`. If you have no compatible
+SDK installed, use a compatible developer-tool installation or Betamax's prebuilt binaries.
+`DEVELOPER_DIR` can select another installation for a command, but only helps if that
+installation's default macOS SDK is compatible.
 
 ## Formatting
 

@@ -1,0 +1,16 @@
+#!/bin/sh
+# Select one SDK for both Zig's build runner and Ghostty's native dependencies.
+if [ "$#" -eq 3 ] &&
+    [ "$1" = "--sdk" ] &&
+    [ "$2" = "macosx" ] &&
+    [ "$3" = "--show-sdk-path" ] &&
+    [ -n "${BETAMAX_MACOS_SDK:-}" ]; then
+    if [ ! -f "$BETAMAX_MACOS_SDK/usr/lib/libSystem.tbd" ]; then
+        printf 'Invalid BETAMAX_MACOS_SDK: %s (missing usr/lib/libSystem.tbd)\n' \
+            "$BETAMAX_MACOS_SDK" >&2
+        exit 1
+    fi
+    printf '%s\n' "$BETAMAX_MACOS_SDK"
+else
+    exec /usr/bin/xcrun "$@"
+fi

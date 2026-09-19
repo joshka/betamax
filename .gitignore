@@ -4,3 +4,7 @@ site/.astro
 site/dist
 site/node_modules
 examples/output
+
+# Machine-specific mise settings, including optional macOS SDK selection.
+/mise.local.toml
+/.mise.local.toml

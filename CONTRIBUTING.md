@@ -33,6 +33,7 @@ native VT library. Zig 0.15.2 is required by the published dependency. Upstream 
 Zig 0.16, but Betamax is waiting for a `libghostty-rs` release containing that update. Run repository
 commands through `mise run ...` so Cargo sees the pinned Zig version. See
 [build troubleshooting](docs/development.md#build-troubleshooting) if the wrong version is used.
+For SDK setup on Tahoe, see [Building on macOS Tahoe](docs/development.md#building-on-macos-tahoe).
 
 Other toolchain managers can work too, including [Nix][nix] or a manually installed Zig 0.15.2 on
 `PATH`. mise is the documented path because it works for this repository today. PRs that add tested
