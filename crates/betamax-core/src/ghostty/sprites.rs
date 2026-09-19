@@ -9,7 +9,7 @@
 
 use std::collections::HashMap;
 
-use libghostty_vt::style::RgbColor;
+use cosmic_text::Color;
 use qwertty_term_sprite::{Glyph, Metrics};
 
 use super::target::PixelTarget;
@@ -41,7 +41,7 @@ impl SpriteRenderer {
         target: &mut PixelTarget,
         text: &str,
         origin: (u32, u32),
-        color: RgbColor,
+        color: Color,
     ) -> bool {
         let mut characters = text.chars();
         let Some(character) = characters.next() else {
@@ -70,13 +70,11 @@ impl SpriteRenderer {
 
 #[cfg(test)]
 mod tests {
+    use libghostty_vt::style::RgbColor;
+
     use super::*;
 
-    const WHITE: RgbColor = RgbColor {
-        r: 255,
-        g: 255,
-        b: 255,
-    };
+    const WHITE: Color = Color::rgb(255, 255, 255);
     const BLACK: RgbColor = RgbColor { r: 0, g: 0, b: 0 };
 
     #[test]
@@ -117,7 +115,7 @@ mod tests {
         let mut target = PixelTarget::new(24, 24).unwrap();
         target.clear(BLACK);
         assert!(renderer.draw(&mut target, "▒", (0, 0), WHITE));
-        assert!(renderer.draw(&mut target, "▒", (12, 0), RgbColor { r: 0, g: 255, b: 0 }));
+        assert!(renderer.draw(&mut target, "▒", (12, 0), Color::rgb(0, 255, 0)));
         assert_eq!(renderer.glyphs.len(), 1);
         let frame = target.into_frame();
         assert_eq!(&frame.pixels[0..4], &[128, 128, 128, 255]);

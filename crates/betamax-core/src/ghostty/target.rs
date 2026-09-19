@@ -97,8 +97,9 @@ impl PixelTarget {
         origin: (i32, i32),
         size: (u32, u32),
         alpha: &[u8],
-        color: RgbColor,
+        color: Color,
     ) {
+        let [r, g, b, opacity] = color.as_rgba();
         let (x, y) = origin;
         let (width, height) = size;
         let Some((x0, y0, x1, y1)) = self.clipped_rect(x, y, width, height) else {
@@ -107,9 +108,9 @@ impl PixelTarget {
         for yy in y0..y1 {
             for xx in x0..x1 {
                 let offset = (yy as i32 - y) as usize * width as usize + (xx as i32 - x) as usize;
-                let coverage = alpha[offset];
+                let coverage = (u16::from(alpha[offset]) * u16::from(opacity) / 255) as u8;
                 if coverage != 0 {
-                    self.blend_pixel(xx, yy, color.r, color.g, color.b, coverage);
+                    self.blend_pixel(xx, yy, r, g, b, coverage);
                 }
             }
         }
@@ -224,11 +225,7 @@ mod tests {
             (-1, -1),
             (3, 3),
             &[9, 9, 9, 9, 0, 255, 9, 128, 64],
-            RgbColor {
-                r: 220,
-                g: 140,
-                b: 60,
-            },
+            Color::rgb(220, 140, 60),
         );
         assert_eq!(
             target.into_frame().pixels,

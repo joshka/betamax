@@ -178,6 +178,16 @@ thickness scales with font size. Set `BETAMAX_FIDELITY_OUTPUT` to inspect the `d
 checkpoints alongside their state JSON. Run `examples/text-decorations.tape` for a GIF, screenshot,
 and state snapshot showing plain text and each decoration.
 
+Faint/dim (SGR 2) uses foreground alpha 128/255, matching Ghostty's default
+[`faint-opacity` of 0.5](https://ghostty.org/docs/config/reference#faint-opacity).
+Opacity multiplies glyph and sprite coverage and also applies to underline and strike. Backgrounds
+stay unchanged. This reduces contrast on dark and light backgrounds after theme mapping and inverse
+colors. SGR 22 restores normal intensity. Pixel tests cover these cases, ANSI and truecolor text,
+bold/italic combinations, invisible text, and reset. Run `examples/faint-text.tape` for a visual
+comparison; the tests also emit `faint-*.png` checkpoints with `BETAMAX_FIDELITY_OUTPUT`.
+Betamax uses its existing software alpha blending; this does not claim pixel parity with Ghostty's
+GPU shaders, font rasterization, or configurable blending modes.
+
 Emoji presentation/ZWJ sequences, Nerd Font symbols outside sprite coverage, broader font fallback,
 ligatures, other underline styles and explicit underline colors, bar/hollow/underline cursors,
 resizing, graphics protocols, and actual app integration remain outside this suite. Unsupported

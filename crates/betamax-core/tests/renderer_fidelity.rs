@@ -36,6 +36,117 @@ const LAYOUT: &str = concat!(
 
 const UNICODE: &str = "\x1b[?25l\x1b[H界X\x1b[2;1He\u{301}X\x1b[3;1HéX\x1b[4;1HeX\x1b[5;3HX";
 
+/// Compare faint output to independently specified RGB controls, including antialiased glyphs.
+#[test]
+fn faint_halves_resolved_contrast_without_changing_backgrounds() {
+    for (name, theme) in [
+        ("dark", TerminalTheme::default()),
+        (
+            "light",
+            TerminalTheme::from_name(
+                r##"{"background":"#f0e8d8","foreground":"#203040","red":"#902030"}"##,
+            )
+            .unwrap(),
+        ),
+    ] {
+        let fg = theme.foreground;
+        let bg = theme.background;
+        let red = theme.palette[1];
+        let mut terminal = session_with_theme(theme);
+        for (label, sgr, foreground, background) in [
+            ("default", "", [fg.r, fg.g, fg.b], [bg.r, bg.g, bg.b]),
+            ("ansi", "31", [red.r, red.g, red.b], [bg.r, bg.g, bg.b]),
+            ("inverse", "7", [bg.r, bg.g, bg.b], [fg.r, fg.g, fg.b]),
+            (
+                "truecolor",
+                "38;2;210;170;130;48;2;30;60;90",
+                [210, 170, 130],
+                [30, 60, 90],
+            ),
+            (
+                "truecolor-inverse",
+                "38;2;210;170;130;48;2;30;60;90;7",
+                [30, 60, 90],
+                [210, 170, 130],
+            ),
+        ] {
+            for modifiers in ["", "1;3"] {
+                let mut render = |style: &str, checkpoint_name: &str| {
+                    let style = style
+                        .split(';')
+                        .filter(|part| !part.is_empty())
+                        .collect::<Vec<_>>()
+                        .join(";");
+                    let vt = format!("\x1b[?25l\x1b[0m\x1b[2J\x1b[H\x1b[{style}mM 界─ █\x1b[0mX");
+                    terminal.write_vt(vt.as_bytes());
+                    checkpoint(&mut terminal, checkpoint_name).0
+                };
+                let prefix = format!("faint-{name}-{label}-{modifiers}");
+                let plain = render(&format!("{sgr};{modifiers}"), &format!("{prefix}-plain"));
+                let faint = render(&format!("{sgr};{modifiers};2"), &format!("{prefix}-dim"));
+                let dim = std::array::from_fn::<_, 3, _>(|i| {
+                    (u16::from(foreground[i]) * 128 + u16::from(background[i]) * 127) / 255
+                });
+                let [r, g, b] = dim;
+                let [br, bg, bb] = background;
+                let control = render(
+                    &format!("{modifiers};38;2;{r};{g};{b};48;2;{br};{bg};{bb}"),
+                    &format!("{prefix}-control"),
+                );
+                assert!(plain.pixels != faint.pixels, "{prefix} must change pixels");
+                // Italic overhang outside these cells blends with a different background,
+                // so a preblended RGB control is only equivalent inside the styled region.
+                for y in PADDING..PADDING + CELL_HEIGHT {
+                    for x in PADDING..PADDING + 7 * CELL_WIDTH {
+                        let actual = pixel(&faint, x, y);
+                        let expected = pixel(&control, x, y);
+                        assert!(
+                            actual.iter().zip(expected).all(|(a, b)| a.abs_diff(b) <= 2),
+                            "{prefix} at ({x}, {y}): {actual:?} vs {expected:?}"
+                        );
+                    }
+                }
+                // Empty space retains its background; the cell after SGR 0 stays unchanged.
+                assert_eq!(
+                    pixel(&faint, PADDING + CELL_WIDTH, PADDING),
+                    [br, bg, bb, 255]
+                );
+                assert_eq!(cell(&faint, 7, 0), cell(&plain, 7, 0));
+            }
+        }
+    }
+}
+
+#[test]
+fn faint_decorations_use_foreground_opacity() {
+    let mut terminal = session();
+    terminal.write_vt(b"\x1b[?25l\x1b[38;2;210;170;130;48;2;30;60;90;2;4;9m ");
+    let (frame, _) = checkpoint(&mut terminal, "faint-decorations");
+    for y in 0..CELL_HEIGHT {
+        for x in 0..CELL_WIDTH {
+            let expected = if y == 12 || y == 21 {
+                [120, 115, 110, 255]
+            } else {
+                [30, 60, 90, 255]
+            };
+            assert_eq!(pixel(&frame, PADDING + x, PADDING + y), expected);
+        }
+    }
+}
+
+#[test]
+fn faint_reset_22_and_invisible_text_preserve_pixels() {
+    let mut terminal = session();
+    let mut render = |sgr: &str| {
+        terminal.write_vt(format!("\x1b[?25l\x1b[0m\x1b[2J\x1b[H\x1b[{sgr}mMMMM").as_bytes());
+        terminal.capture_frame().unwrap()
+    };
+    let plain = render("0");
+    assert!(plain.pixels == render("2;22").pixels);
+    assert!(plain.pixels == render("1;2;22").pixels);
+    assert!(render("8").pixels == render("2;8").pixels);
+}
+
 /// Pixel assertions cover glyphs, spaces, wide continuations, sprites, and SGR reset together.
 #[test]
 fn text_decorations_cover_cells_and_reset() {
@@ -466,6 +577,10 @@ fn inverse_colors_and_cursor_visibility() {
 }
 
 fn session() -> GhosttySession {
+    session_with_theme(TerminalTheme::default())
+}
+
+fn session_with_theme(theme: TerminalTheme) -> GhosttySession {
     // Do not silently pass image tests with missing fonts / an entirely blank raster.
     static FONT: OnceLock<String> = OnceLock::new();
     let family = FONT.get_or_init(|| {
@@ -501,7 +616,7 @@ fn session() -> GhosttySession {
             canvas: PixelSize::new(392, 248),
             grid: TerminalGrid::new(COLUMNS, ROWS),
             text,
-            theme: TerminalTheme::default(),
+            theme,
         })
         .unwrap()
 }
