@@ -118,7 +118,6 @@ dependencies = [
  "indicatif",
  "interpolator",
  "libghostty-vt",
- "log",
  "miette",
  "serde_json",
  "tracing",
@@ -617,7 +616,7 @@ dependencies = [
  "bitflags 2.11.1",
  "int-enum",
  "libghostty-vt-sys",
- "log",
+ "tracing",
 ]
 
 [[package]]

@@ -24,7 +24,8 @@ fn main() -> Result<()> {
         .with_timer(tracing_subscriber::fmt::time::uptime())
         .with_writer(std::io::stderr)
         .init();
-    if let Err(error) = libghostty_vt::set_logger(Some(Box::new(log::logger()))) {
+    if let Err(error) = libghostty_vt::set_logger(Some(Box::new(libghostty_vt::log::TracingLogger)))
+    {
         tracing::debug!(%error, "failed to install libghostty-vt logger");
     }
     Cli::run()
