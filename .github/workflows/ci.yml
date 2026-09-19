@@ -211,7 +211,7 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - ubuntu-latest
+          - ubuntu-24.04
           - macos-14
 
     steps:
@@ -246,7 +246,37 @@ jobs:
         run: mise run install-smoke
 
       - name: Render smoke tape
+        if: runner.os == 'macOS'
         run: mise run smoke
+
+      # Build scripts and the resulting CLI can compromise this whole disposable runner.
+      # Keep all publication credentials in the separate workflow_run reporter.
+      - name: Build the PR CLI for action previews
+        if: runner.os == 'Linux'
+        run: |
+          mise exec -- cargo build -p betamax --locked
+          target/debug/betamax --version
+          sha256sum target/debug/betamax
+
+      - name: Render tapes with the PR CLI
+        id: previews
+        if: runner.os == 'Linux'
+        uses: joshka/betamax-action@46a3673d7a5dd7696b862848cb7e9902d797094d # local binary support
+        with:
+          binary: target/debug/betamax
+          tapes: |
+            examples/basic.tape
+            examples/ci-playback.tape
+          formats: gif,png,mp4,webm
+          comment-key: cli
+          variant: linux
+          retention-days: 14
+
+      - name: Check rendered frame changes and playback timing
+        if: runner.os == 'Linux'
+        env:
+          PREVIEW_DIRECTORY: ${{ steps.previews.outputs.output-directory }}
+        run: python3 scripts/check-action-playback.py "$PREVIEW_DIRECTORY"
 
   dependencies:
     name: Dependency check (${{ matrix.name }})

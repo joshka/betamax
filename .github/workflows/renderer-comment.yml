@@ -1,6 +1,7 @@
 name: Renderer gallery comment
 
-# Safe privileged reporter: trusted script and API metadata only; no PR checkout or artifact downloads.
+# Trusted reporting only: never check out PR code or restore its caches. The native publisher
+# independently validates untrusted media bytes; it never executes the PR-built binary.
 on: # zizmor: ignore[dangerous-triggers]
   workflow_run:
     workflows: [CI]
@@ -34,3 +35,23 @@ jobs:
         with:
           script: |
             await require('./scripts/renderer-comment.cjs')({ github, context });
+
+  previews:
+    if: github.event.workflow_run.event == 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    environment: betamax-attachments
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+    steps:
+      # The environment allows only the main branch. Keep the PAT there, never at repository
+      # scope or in CI. GITHUB_TOKEN owns the comment; the PAT is used only for media uploads.
+      # The pinned reporter checks run/PR metadata, artifact digests, sizes and signatures.
+      - name: Publish PR-built CLI previews
+        uses: joshka/betamax-action/report@46a3673d7a5dd7696b862848cb7e9902d797094d # local binary support
+        with:
+          workflow: ci.yml
+          comment-key: cli
+          mode: attachments
+          attachment-token: ${{ secrets.BETAMAX_ATTACHMENT_TOKEN }}

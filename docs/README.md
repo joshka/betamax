@@ -5,6 +5,8 @@
 - [Terminal Testing](terminal-testing.md): using Betamax tapes and state JSON for CLI/TUI tests.
 - [Renderer Fidelity](renderer-fidelity.md): controlled renderer fixtures, image assertions, and
   known coverage limits.
+- [PR-built CLI Previews](action-previews.md): action galleries, playback checks and reporting trust
+  boundaries.
 - [State JSON](state-json.md): generated terminal-state snapshot format and serialization tradeoffs.
 - [Differences From VHS](vhs-differences.md): architecture, parity, intentional omissions, and
   remaining fidelity gaps.
