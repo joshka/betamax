@@ -265,7 +265,6 @@ jobs:
         with:
           binary: target/debug/betamax
           tapes: |
-            examples/ci-interaction.tape
             examples/ci-playback.tape
           formats: gif,png,mp4,webm
           comment-key: cli
@@ -278,13 +277,52 @@ jobs:
           PREVIEW_DIRECTORY: ${{ steps.previews.outputs.output-directory }}
         run: python3 scripts/check-action-playback.py "$PREVIEW_DIRECTORY"
 
-      - name: Upload CLI tape checkpoints
+      - name: Render feature field guide with the PR CLI
+        id: features
+        if: runner.os == 'Linux'
+        env:
+          BETAMAX_FEATURE_ROOT: ${{ github.workspace }}
+        uses: joshka/betamax-action@46a3673d7a5dd7696b862848cb7e9902d797094d # local binary support
+        with:
+          binary: target/debug/betamax
+          tapes: examples/features/*.tape
+          formats: gif,png
+          comment-key: cli
+          variant: features
+          retention-days: 14
+
+      - name: Assert feature state and visual relationships
+        if: ${{ always() && runner.os == 'Linux' && steps.features.outcome != 'skipped' }}
+        env:
+          FEATURE_MEDIA: ${{ steps.features.outputs.output-directory }}
+        run: python3 scripts/check-feature-gallery.py --media-directory "$FEATURE_MEDIA"
+
+      - name: Upload feature guide and checkpoints
         if: ${{ always() && runner.os == 'Linux' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: cli-tape-checkpoints
-          path: target/ci-tapes
+          name: feature-checkpoints
+          path: target/features
           if-no-files-found: warn
+
+      - name: Publish standalone feature guide
+        id: feature-guide
+        if: ${{ always() && runner.os == 'Linux' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          path: target/features/feature-gallery.html
+          archive: false
+          if-no-files-found: warn
+
+      - name: Link feature guide
+        if: ${{ always() && runner.os == 'Linux' }}
+        env:
+          GUIDE_URL: ${{ steps.feature-guide.outputs.artifact-url }}
+        run: |
+          if [ -n "$GUIDE_URL" ]; then
+            echo "### [Betamax field guide — scenarios, expectations and checkpoints]($GUIDE_URL)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
 
   dependencies:
     name: Dependency check (${{ matrix.name }})

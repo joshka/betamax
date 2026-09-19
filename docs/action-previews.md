@@ -6,35 +6,22 @@ Linux's **Package and smoke** CI job builds the checked-out Betamax CLI with
 This bypasses the action's release installer. The build log records the executable's version and
 SHA-256 for diagnosis; it is not an attestation from a trusted runner.
 
-The every-PR selection is two small, purpose-built tapes, each rendered as GIF, PNG, MP4 and WebM:
+The every-PR selection combines the [feature field guide](feature-gallery.md) with one small
+format/timing smoke tape. Seven named GIF/PNG scenes demonstrate input, keys, styled Unicode,
+light/dark framing, captions, overlays, capture visibility and scrollback/alternate screens. The
+field guide records their assertions, coverage map, known gaps and reproduction instructions.
 
-- `examples/ci-interaction.tape` checks environment injection, clipboard paste, Backspace editing,
-  command execution, anchored screen waits and prompt synchronization. A styled line and a completion
-  marker must appear as exact state JSON. The checker verifies bold/truecolor spans, cursor hiding,
-  screenshot glyph ink, and visible glyph ink in every preview format.
-- `examples/ci-playback.tape` checks Hide/Show, frame changes and unequal one/two-second holds at
-  normal speed. Decoded samples bracket the red-to-blue transition and check the final blue hold.
-  The final PNG must also be blue. GIF/MP4/WebM duration must be 2.9–3.4 seconds, allowing frame and
-  encoder rounding around three seconds.
+`examples/ci-playback.tape` independently checks Hide/Show, frame changes and unequal one/two-second
+holds at normal speed in GIF, PNG, MP4 and WebM. `scripts/check-action-playback.py` requires exactly
+that successful tape result and all four formats, then checks decoded dimensions (480×240), codecs,
+video pixel format and duration. Decoded samples bracket the red-to-blue transition and the final
+blue hold. The final PNG must be blue. GIF/MP4/WebM duration must be 2.9–3.4 seconds, allowing frame
+and encoder rounding around three seconds. Sleeps provide visible holds after semantic waits.
 
-`scripts/check-action-playback.py` requires exactly these two successful tape results and all four
-formats for each, then checks decoded dimensions (480×240), codecs and video pixel format. Sleeps
-provide visible presentation holds only; waits synchronize execution before checkpoints. Hidden
-setup keeps the combined visible duration below four seconds and avoids recording long commands.
-The selection replaces the generic `basic.tape` preview with behavioral assertions; macOS retains
-that example as its CLI smoke test. No network, package installation or external app is used by a tape.
-
-The `cli-tape-checkpoints` artifact preserves the interaction PNG and JSON, including on failures.
-The preview gallery preserves encoded output for human review. This suite complements, rather than
-replaces, the specialized renderer fidelity tests: it intentionally avoids whole-image font goldens.
-It does not cover every key, theme, window decoration, Unicode shaping case, scrolling/alternate
-screen behavior, audio, WebP, or non-default playback speed. Those need their existing focused tests
-or separate coverage. The action preview suite runs on Linux; existing Linux/macOS fidelity tests
-and macOS CLI smoke testing continue independently.
-
-Open **Terminal previews → Open gallery** in the job summary for its self-contained HTML gallery.
-Individual media and action diagnostics are also run artifacts. GitHub sign-in is required, and
-artifacts expire after 14 days. Linux/macOS tests, macOS CLI smoke testing and the specialized
+Open **Terminal previews → Open gallery** in the job summary for the action's media gallery, or
+**Betamax field guide** for descriptions, expected results and checkpoint comparisons. Individual
+media, state JSON and action diagnostics are also run artifacts. GitHub sign-in is required, and
+preview artifacts expire after 14 days. Linux/macOS tests, macOS CLI smoke testing and the specialized
 [renderer fidelity PNG/JSON galleries](renderer-fidelity.md) remain in place.
 
 ## Known playback-speed issue

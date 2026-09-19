@@ -1,0 +1,72 @@
+[
+  {
+    "slug": "input-and-keys",
+    "title": "From intent to input",
+    "description": "An injected environment value, paced typing and a tape-local clipboard become an edited release name. Repeated Down, Tab and Ctrl+P reach the application as exact terminal bytes.",
+    "expected": "release-candidate-1; two Down sequences, Tab, Ctrl+P and Enter; visible editing cursor, then hidden completion cursor.",
+    "checkpoints": [
+      "input-cursor",
+      "input-and-keys"
+    ]
+  },
+  {
+    "slug": "text-and-unicode",
+    "title": "Text with character",
+    "description": "A compact specimen of emphasis, truecolor, indexed color, combining accents, CJK, box drawing and block graphics. Underline and strikethrough currently do not render; see https://github.com/joshka/betamax/issues/151.",
+    "expected": "Style spans preserve emphasis and colors; combining/CJK cells remain intact; mint glyphs render. Known gap: underline and strike are state-only (issue #151).",
+    "checkpoints": [
+      "text-and-unicode"
+    ]
+  },
+  {
+    "slug": "layout-dark",
+    "title": "Room to breathe · dark",
+    "description": "A file list framed by padding, an outer margin, colorful window controls and rounded corners in Catppuccin Mocha.",
+    "expected": "900 × 540 pixels; margin and panel colors occupy the correct regions; content matches the light layout.",
+    "checkpoints": [
+      "layout-dark"
+    ]
+  },
+  {
+    "slug": "layout-light",
+    "title": "Room to breathe · light",
+    "description": "The same file list in GitHub Light Default, with right-aligned window controls. Compare it directly with the dark page.",
+    "expected": "Identical terminal text and grid dimensions; light panel, dark margin and right-side window controls.",
+    "checkpoints": [
+      "layout-light"
+    ]
+  },
+  {
+    "slug": "captions-and-overlays",
+    "title": "Present the action",
+    "description": "A caption and a Ctrl+L key chip annotate the same terminal page without changing its state. Open the checkpoints to compare clean, captioned and annotated frames.",
+    "expected": "State JSON is identical across all checkpoints; caption and chip changes stay below the terminal; clearing after chip expiry restores the clean image.",
+    "checkpoints": [
+      "presentation-clean",
+      "presentation-caption",
+      "presentation-annotated",
+      "presentation-cleared"
+    ]
+  },
+  {
+    "slug": "hidden-setup",
+    "title": "Reveal the result",
+    "description": "A deliberately magenta setup screen is captured by State and Screenshot while hidden. Show reveals only the finished checklist in the animation.",
+    "expected": "Hidden checkpoint is magenta; every decoded animation frame excludes magenta; visible state contains only the prepared result.",
+    "checkpoints": [
+      "hidden-checkpoint",
+      "hidden-setup"
+    ]
+  },
+  {
+    "slug": "scrollback-and-screens",
+    "title": "Keep the history",
+    "description": "Twenty-four archive entries scroll off the viewport. An alternate-screen review temporarily replaces them, then restores the original viewport and history.",
+    "expected": "Archive entries survive across viewport plus scrollback; alternate content is distinct; restored state and pixels match the primary checkpoint.",
+    "checkpoints": [
+      "archive-primary",
+      "archive-alternate",
+      "scrollback-and-screens"
+    ]
+  }
+]

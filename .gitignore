@@ -8,3 +8,6 @@ examples/output
 # Machine-specific mise settings, including optional macOS SDK selection.
 /mise.local.toml
 /.mise.local.toml
+
+# Local Python script imports.
+__pycache__/

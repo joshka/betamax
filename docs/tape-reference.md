@@ -2,7 +2,8 @@
 
 This page summarizes the tape commands and settings supported by Betamax. It is intentionally a
 compact reference rather than a tutorial; start with the examples in the main README when learning
-the tape format.
+the tape format. The [feature field guide](feature-gallery.md) provides rendered scenarios and
+a coverage map for these commands and settings.
 
 ## Outputs
 

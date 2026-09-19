@@ -61,7 +61,7 @@ run = "cargo hack check --workspace --all-targets"
 run = "cargo +nightly udeps --workspace --all-targets"
 
 [tasks.validate]
-run = "cargo run -p betamax -- validate 'examples/*.tape' docs.tape"
+run = "cargo run -p betamax -- validate 'examples/*.tape' 'examples/features/*.tape' docs.tape"
 
 [tasks.version]
 run = "cargo run -p betamax -- --version"
@@ -142,3 +142,7 @@ mise run package
 mise run install-smoke
 mise run smoke
 '''
+
+[tasks.feature-gallery]
+description = "Render and verify the feature field guide"
+run = "cargo build -p betamax --locked && python3 scripts/check-feature-gallery.py --render target/debug/betamax"
