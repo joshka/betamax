@@ -24,6 +24,8 @@ use crate::Result;
 
 /// Minimum font size divisor used for letter-spacing normalization.
 const MIN_FONT_SIZE_FOR_SPACING: f32 = 1.0;
+/// Ghostty's default faint-opacity (0.5), rounded up to an 8-bit foreground alpha.
+const FAINT_ALPHA: u8 = 128;
 
 /// Software renderer for libghostty-vt terminal state.
 ///
@@ -482,15 +484,29 @@ impl CellRenderer {
         color: RgbColor,
         style: Style,
     ) {
+        let alpha = if style.faint { FAINT_ALPHA } else { 255 };
+        let color = Color::rgba(color.r, color.g, color.b, alpha);
         let thickness = (self.settings.font_size / 14.0).round().max(1.0) as u32;
         let thickness = thickness.min(self.cell_height);
         if style.underline == Underline::Single {
             let offset = (self.cell_height * 9 / 10).min(self.cell_height - thickness);
-            target.fill_rect(x, y + offset, self.cell_width, thickness, color);
+            target.blend_rect(
+                x as i32,
+                (y + offset) as i32,
+                self.cell_width,
+                thickness,
+                color,
+            );
         }
         if style.strikethrough {
             let offset = (self.cell_height / 2).min(self.cell_height - thickness);
-            target.fill_rect(x, y + offset, self.cell_width, thickness, color);
+            target.blend_rect(
+                x as i32,
+                (y + offset) as i32,
+                self.cell_width,
+                thickness,
+                color,
+            );
         }
     }
 
@@ -509,7 +525,9 @@ impl CellRenderer {
         color: RgbColor,
         style: Style,
     ) {
-        if self.sprites.draw(target, text, (x, y), color) {
+        let alpha = if style.faint { FAINT_ALPHA } else { 255 };
+        let sprite_color = Color::rgba(color.r, color.g, color.b, alpha);
+        if self.sprites.draw(target, text, (x, y), sprite_color) {
             return;
         }
         let text_settings = &self.settings;
@@ -547,12 +565,15 @@ impl CellRenderer {
             &mut self.swash_cache,
             Color::rgb(color.r, color.g, color.b),
             |glyph_x, glyph_y, width, height, glyph_color| {
+                // Apply opacity to coverage, including glyphs with their own embedded colors.
+                let [r, g, b, coverage] = glyph_color.as_rgba();
+                let coverage = (u16::from(coverage) * u16::from(alpha) / 255) as u8;
                 target.blend_rect(
                     x as i32 + glyph_x,
                     y as i32 + glyph_y,
                     width,
                     height,
-                    glyph_color,
+                    Color::rgba(r, g, b, coverage),
                 );
             },
         );
