@@ -265,18 +265,26 @@ jobs:
         with:
           binary: target/debug/betamax
           tapes: |
-            examples/basic.tape
+            examples/ci-interaction.tape
             examples/ci-playback.tape
           formats: gif,png,mp4,webm
           comment-key: cli
           variant: linux
           retention-days: 14
 
-      - name: Check rendered frame changes and playback timing
+      - name: Check tape behavior, rendered frames, and playback timing
         if: runner.os == 'Linux'
         env:
           PREVIEW_DIRECTORY: ${{ steps.previews.outputs.output-directory }}
         run: python3 scripts/check-action-playback.py "$PREVIEW_DIRECTORY"
+
+      - name: Upload CLI tape checkpoints
+        if: ${{ always() && runner.os == 'Linux' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cli-tape-checkpoints
+          path: target/ci-tapes
+          if-no-files-found: warn
 
   dependencies:
     name: Dependency check (${{ matrix.name }})
