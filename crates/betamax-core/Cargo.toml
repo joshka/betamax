@@ -19,6 +19,7 @@ include = [
     "build.rs",
     "src/**/*.rs",
     "tests/**/*.rs",
+    "tests/fixtures/*.vt",
     "resources/ghostty/themes/**",
 ]
 
@@ -29,6 +30,7 @@ libghostty-vt.workspace = true
 miette.workspace = true
 png.workspace = true
 portable-pty.workspace = true
+qwertty-term-sprite.workspace = true
 regex.workspace = true
 serde.workspace = true
 serde_json.workspace = true

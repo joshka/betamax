@@ -2,12 +2,13 @@
 
 use std::path::PathBuf;
 use std::sync::OnceLock;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use betamax_core::ghostty::{
     CaptureRequest, GhosttyFrameCapture, GhosttySession, PixelSize, StateSpan, TerminalGrid,
     TerminalState, TerminalTheme, TextSettings,
 };
-use betamax_core::media::{write_png, Frame};
+use betamax_core::media::{write_gif, write_png, Frame};
 
 const COLUMNS: u16 = 32;
 const ROWS: u16 = 10;
@@ -34,6 +35,118 @@ const LAYOUT: &str = concat!(
 );
 
 const UNICODE: &str = "\x1b[?25l\x1b[H界X\x1b[2;1He\u{301}X\x1b[3;1HéX\x1b[4;1HeX\x1b[5;3HX";
+
+#[test]
+fn cell_graphics_demo_image() {
+    let mut terminal = GhosttyFrameCapture
+        .open(CaptureRequest {
+            canvas: PixelSize::new(780, 350),
+            grid: TerminalGrid::new(53, 11),
+            text: TextSettings {
+                font_family: None,
+                font_size: 20.0,
+                letter_spacing: 1.0,
+                line_height: 1.2,
+                padding: 40,
+            },
+            theme: TerminalTheme::from_name("Catppuccin Mocha").unwrap(),
+        })
+        .unwrap();
+    terminal.write_vt(include_bytes!("fixtures/cell-graphics.vt"));
+    let (frame, state) = checkpoint_with_size(&mut terminal, "cell-graphics-demo", (780, 350));
+    assert!(state.viewport_text.contains("Betamax · Terminal previews"));
+    assert!(!state.cursor.visible);
+    // The demo uses 13×24 cells. Check the complete fill and uninterrupted border spans.
+    let green = [166, 227, 161, 255];
+    let foreground = [205, 214, 244, 255];
+    for y in 40 + 4 * 24..40 + 5 * 24 {
+        for x in 40 + 13..40 + 45 * 13 {
+            assert_eq!(pixel(&frame, x, y), green);
+        }
+    }
+    for x in 40 + 6..=40 + 45 * 13 + 6 {
+        assert_eq!(pixel(&frame, x, 40 + 5 * 24 + 12), foreground);
+    }
+    for y in 40 + 3 * 24 + 12..=40 + 5 * 24 + 12 {
+        assert_eq!(pixel(&frame, 40 + 6, y), foreground);
+        assert_eq!(pixel(&frame, 40 + 45 * 13 + 6, y), foreground);
+    }
+
+    terminal.write_vt(b"\x1b[5;24H\x1b[32m                      ");
+    let half = terminal.capture_frame().unwrap();
+    assert_demo_gif(&frame, &half);
+}
+
+/// Exercise the public GIF writer and inspect decoded animation pixels, not just file creation.
+fn assert_demo_gif(full: &Frame, half: &Frame) {
+    let suffix = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let temporary =
+        std::env::temp_dir().join(format!("betamax-demo-{}-{suffix}.gif", std::process::id()));
+    let path = std::env::var_os("BETAMAX_FIDELITY_OUTPUT")
+        .map(|directory| PathBuf::from(directory).join("cell-graphics-demo.gif"))
+        .unwrap_or_else(|| temporary.clone());
+    let frames = [
+        (full.clone(), Duration::from_millis(100)),
+        (half.clone(), Duration::from_millis(250)),
+    ];
+    write_gif(&path, &frames).unwrap();
+    let bytes = std::fs::read(&path).unwrap();
+    if path == temporary {
+        std::fs::remove_file(&path).unwrap();
+    }
+    let mut options = gif::DecodeOptions::new();
+    options.set_color_output(gif::ColorOutput::RGBA);
+    let mut decoder = options.read_info(bytes.as_slice()).unwrap();
+    assert_eq!((decoder.width(), decoder.height()), (780, 350));
+    for (expected, delay) in [(full, 10), (half, 25)] {
+        let decoded = decoder.read_next_frame().unwrap().expect("animation frame");
+        assert_eq!(
+            (decoded.left, decoded.top, decoded.width, decoded.height),
+            (0, 0, 780, 350)
+        );
+        assert_eq!(decoded.delay, delay);
+        // GIF palette quantization may shift colors slightly; every fill/border pixel must remain.
+        for y in 40 + 4 * 24..=40 + 5 * 24 + 12 {
+            for x in 40 + 6..=40 + 45 * 13 + 6 {
+                let offset = ((y * 780 + x) * 4) as usize;
+                let actual = &decoded.buffer[offset..offset + 4];
+                let expected = pixel(expected, x, y);
+                assert!(
+                    actual.iter().zip(expected).all(|(a, b)| a.abs_diff(b) <= 3),
+                    "GIF pixel ({x}, {y}) differs: {actual:?} vs {expected:?}"
+                );
+            }
+        }
+    }
+    assert!(decoder.read_next_frame().unwrap().is_none());
+}
+
+#[test]
+fn blocks_and_borders_have_no_cell_seams() {
+    let mut terminal = session();
+    terminal.write_vt("\x1b[?25l\x1b[38;2;240;220;180m┌──┐\r\n│██│\r\n└──┘".as_bytes());
+    let (frame, _) = checkpoint(&mut terminal, "cell-graphics");
+    let ink = [240, 220, 180, 255];
+    assert_solid(&cell(&frame, 1, 1), ink);
+    assert_solid(&cell(&frame, 2, 1), ink);
+    for x in PADDING + CELL_WIDTH / 2..=PADDING + 3 * CELL_WIDTH + CELL_WIDTH / 2 {
+        assert_eq!(pixel(&frame, x, PADDING + CELL_HEIGHT / 2), ink);
+        assert_eq!(
+            pixel(&frame, x, PADDING + 2 * CELL_HEIGHT + CELL_HEIGHT / 2),
+            ink
+        );
+    }
+    for y in PADDING + CELL_HEIGHT / 2..=PADDING + 2 * CELL_HEIGHT + CELL_HEIGHT / 2 {
+        assert_eq!(pixel(&frame, PADDING + CELL_WIDTH / 2, y), ink);
+        assert_eq!(
+            pixel(&frame, PADDING + 3 * CELL_WIDTH + CELL_WIDTH / 2, y),
+            ink
+        );
+    }
+}
 
 #[test]
 fn full_screen_layout_and_selection() {
@@ -345,6 +458,14 @@ fn assert_cjk_fallback(fonts: &mut cosmic_text::FontSystem, family: &str) {
 }
 
 fn checkpoint(terminal: &mut GhosttySession, name: &str) -> (Frame, TerminalState) {
+    checkpoint_with_size(terminal, name, (392, 248))
+}
+
+fn checkpoint_with_size(
+    terminal: &mut GhosttySession,
+    name: &str,
+    size: (u32, u32),
+) -> (Frame, TerminalState) {
     let frame = terminal.capture_frame().unwrap();
     let state = terminal.terminal_state().unwrap();
     // Opt-in artifacts are written before assertions so failures can be inspected too.
@@ -358,7 +479,7 @@ fn checkpoint(terminal: &mut GhosttySession, name: &str) -> (Frame, TerminalStat
         )
         .unwrap();
     }
-    assert_eq!((frame.width, frame.height), (392, 248));
+    assert_eq!((frame.width, frame.height), size);
     assert!(frame
         .pixels
         .as_chunks::<4>()

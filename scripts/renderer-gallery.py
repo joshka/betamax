@@ -10,6 +10,17 @@ from pathlib import Path
 
 
 LABELS = {
+    "alignment-12x24": "Sprite alignment — joins, repeats and partitions (12×24)",
+    "alignment-13x25": "Sprite alignment — joins, repeats and partitions (13×25)",
+    "alignment-12x25": "Sprite alignment — joins, repeats and partitions (12×25)",
+    "alignment-13x24": "Sprite alignment — joins, repeats and partitions (13×24)",
+
+    "sprites-12x24": "Sprite coverage — even width / even height (12×24)",
+    "sprites-13x25": "Sprite coverage — odd width / odd height (13×25)",
+    "sprites-12x25": "Sprite coverage — even width / odd height (12×25)",
+    "sprites-13x24": "Sprite coverage — odd width / even height (13×24)",
+    "cell-graphics-demo": "Terminal preview — continuous borders and solid fill",
+    "cell-graphics": "Cell graphics — exact border and block pixels",
     "layout": "Full-screen file picker — selected row",
     "layout-cleared": "Partial redraw — cleared selection",
     "unicode": "Wide characters and combining marks",
@@ -55,6 +66,10 @@ def build_gallery(source, destination, platform, outcome, revision):
         if image_path.is_file():
             encoded = base64.b64encode(image_path.read_bytes()).decode("ascii")
             image = f'<img alt="{label}" src="data:image/png;base64,{encoded}">'
+        gif_path = source / f"{name}.gif"
+        if gif_path.is_file():
+            encoded = base64.b64encode(gif_path.read_bytes()).decode("ascii")
+            image += f'<p>GIF output</p><img alt="{label} — GIF" src="data:image/gif;base64,{encoded}">'
         state = "JSON checkpoint unavailable."
         if state_path.is_file():
             try:
