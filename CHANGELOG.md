@@ -2,6 +2,12 @@
 
 <!-- markdownlint-disable no-duplicate-heading -->
 
+## [0.1.20](https://github.com/joshka/betamax/compare/betamax-v0.1.19...betamax-v0.1.20) - 2026-09-19
+
+### Other
+
+- updated the following local packages: betamax-core
+
 ## [0.1.19](https://github.com/joshka/betamax/compare/betamax-v0.1.18...betamax-v0.1.19) - 2026-09-19
 
 ### Other
