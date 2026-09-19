@@ -46,15 +46,21 @@ mise install
 mise run install-local
 ```
 
-Other toolchain managers can work too, including [Nix][nix] or a manually installed [Zig][zig]
-0.15.2 on `PATH`. mise is the documented path because it works for this repository today. The
-specific Zig version is an upstream Ghostty build requirement until Ghostty supports newer Zig
-releases such as 0.16.
+> [!NOTE]
+> Source builds require **Zig 0.15.2**. Upstream Ghostty supports Zig 0.16, but the published
+> `libghostty-vt-sys` dependency still pins older Ghostty source. Betamax is waiting for a
+> `libghostty-rs` release containing the update. Use the mise commands above to select the
+> supported toolchain.
+
+Other toolchain managers, including [Nix][nix], or [Zig][zig] 0.15.2 on `PATH` also work.
+
+See [build troubleshooting](https://www.joshka.net/betamax/reference/development/#build-troubleshooting)
+if Cargo finds the wrong Zig version.
 
 For local development or source checkouts, run from the workspace:
 
 ```sh
-cargo run -- run examples/basic.tape
+mise run smoke
 ```
 
 Render all local examples:
@@ -166,8 +172,8 @@ here; the video files are generated next to it.
 List available themes:
 
 ```sh
-cargo run -- themes
-cargo run -- themes --json
+mise exec -- cargo run -- themes
+mise exec -- cargo run -- themes --json
 ```
 
 Theme lookup searches user Ghostty theme directories first, then the copied themes in

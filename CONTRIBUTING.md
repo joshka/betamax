@@ -29,9 +29,10 @@ mise install
 The checked-in `.mise.toml` installs [markdownlint-cli2][markdownlint-cli2], Node, [pnpm][pnpm],
 and [Zig][zig]. Betamax uses the safe `libghostty-vt` wrapper through `betamax-core`; the wrapper's
 `libghostty-vt-sys` dependency fetches a pinned Ghostty source commit and runs Zig to build the
-native VT library. The pinned Zig version is 0.15.2, which is an upstream Ghostty build requirement
-until Ghostty supports newer Zig releases such as 0.16. Run repository commands through
-`mise run ...` so Cargo sees the pinned Zig version.
+native VT library. Zig 0.15.2 is required by the published dependency. Upstream Ghostty supports
+Zig 0.16, but Betamax is waiting for a `libghostty-rs` release containing that update. Run repository
+commands through `mise run ...` so Cargo sees the pinned Zig version. See
+[build troubleshooting](docs/development.md#build-troubleshooting) if the wrong version is used.
 
 Other toolchain managers can work too, including [Nix][nix] or a manually installed Zig 0.15.2 on
 `PATH`. mise is the documented path because it works for this repository today. PRs that add tested
