@@ -3,6 +3,8 @@
 - [Tape Reference](tape-reference.md): supported tape outputs, settings with defaults, command
   behavior, durations, and theme lookup.
 - [Terminal Testing](terminal-testing.md): using Betamax tapes and state JSON for CLI/TUI tests.
+- [Renderer Fidelity](renderer-fidelity.md): controlled renderer fixtures, image assertions, and
+  known coverage limits.
 - [State JSON](state-json.md): generated terminal-state snapshot format and serialization tradeoffs.
 - [Differences From VHS](vhs-differences.md): architecture, parity, intentional omissions, and
   remaining fidelity gaps.

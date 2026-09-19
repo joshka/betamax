@@ -51,3 +51,5 @@ let artifacts = Runner::new(RunOptions::default()).run_artifacts(&tape)?;
 assert!(artifacts.final_state.unwrap().viewport_text.contains("hello"));
 # Ok::<(), miette::Report>(())
 ```
+
+For Betamax’s own deterministic renderer checks, see [Renderer Fidelity](renderer-fidelity.md).

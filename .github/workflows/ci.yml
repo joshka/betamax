@@ -115,8 +115,22 @@ jobs:
       - name: Check workspace
         run: mise run cargo-check
 
+      - name: Install renderer test font
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y fonts-dejavu-core
+
       - name: Test workspace
+        env:
+          BETAMAX_FIDELITY_OUTPUT: ${{ github.workspace }}/target/renderer-fidelity
         run: mise run test
+
+      - name: Upload renderer checkpoints
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: renderer-fidelity-${{ matrix.os }}
+          path: target/renderer-fidelity
+          if-no-files-found: warn
 
       - name: Validate tape syntax through CLI
         run: mise run validate
