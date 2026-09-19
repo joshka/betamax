@@ -14,9 +14,13 @@ mise run renderer-fidelity
 ```
 
 The suite also runs with `mise run test`. It requires **Menlo on macOS** (included with macOS) or
-**DejaVu Sans Mono on other platforms**. On Debian/Ubuntu, install `fonts-dejavu-core`. A missing
-family fails with an actionable message; tests do not silently skip or accept an empty raster.
-The existing Linux/macOS CI matrix runs the suite and installs the Linux font explicitly.
+**DejaVu Sans Mono on other platforms**, plus a CJK fallback covering `界`. On Debian/Ubuntu,
+install `fonts-dejavu-core fonts-noto-cjk`. macOS can use its system CJK fonts (for example PingFang
+or Arial Unicode MS). The suite checks the actual fallback selected by cosmic-text: its shaped
+glyph must be nonzero and its character map must cover `界`. A missing family or CJK glyph fails
+with a setup message; tests do not silently skip or accept a missing-glyph box. Run with
+`-- --nocapture` to print the selected CJK family and glyph ID. The Linux/macOS CI matrix runs the
+suite and installs both Linux font packages explicitly.
 
 To save the checkpoints before assertions:
 
@@ -46,12 +50,12 @@ must not be committed. There are no tracked image baselines or new binary assets
 
 ## Acceptance criteria
 
-| Fixture                 | State assertions                                                                               | Image assertions                                                                                                    |
-| ----------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Full-screen file picker | Exact 32×10 layout, selection colors, hidden cursor, no scrollback                             | Border/title/selection ink, exact blank-cell colors, padding, partial redraw erases old text and background         |
-| Wide and combining text | Wide continuation cell, combining sequence, cursor columns, fragmented UTF-8/CSI equivalence   | Following glyphs occupy correct columns; decomposed and precomposed accents agree and differ from unaccented text   |
-| Alternate screen        | Primary viewport and scrollback, isolated alternate screen, restored cursor and complete state | Primary frame restored byte-for-byte; state inspection leaves the viewport unchanged                                |
-| Inverse and cursor      | Hidden/visible cursor and exact location                                                       | Inverse agrees with swapped truecolor; block cursor occupies only its cell; blink suppression restores hidden frame |
+| Fixture                 | State assertions                                                                               | Image assertions                                                                                                                              |
+| ----------------------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Full-screen file picker | Exact 32×10 layout, selection colors, hidden cursor, no scrollback                             | Border/title/selection ink, exact blank-cell colors, padding, partial redraw erases old text and background                                   |
+| Wide and combining text | Wide continuation cell, combining sequence, cursor columns, fragmented UTF-8/CSI equivalence   | Real CJK glyph ink spans both cells; following columns and accents agree; edits erase both halves; adjacent styles and cursor overlay survive |
+| Alternate screen        | Primary viewport and scrollback, isolated alternate screen, restored cursor and complete state | Primary frame restored byte-for-byte; state inspection leaves the viewport unchanged                                                          |
+| Inverse and cursor      | Hidden/visible cursor and exact location                                                       | Inverse agrees with swapped truecolor; block cursor occupies only its cell; blink suppression restores hidden frame                           |
 
 The file picker is a hand-authored **Ratatui-style** border, tabs, selected row, details, and footer.
 It is not captured output from Ratatui and does not claim compatibility with a specific release.
@@ -69,29 +73,21 @@ from passing equality checks. This suite intentionally does not pin every glyph 
 every typographic regression. Its small relational checks need no platform-specific golden PNGs,
 font downloads, or baseline regeneration procedure.
 
-## Known limitation and remaining coverage
+## Font coverage and remaining coverage
 
-A separate ignored acceptance test, `wide_glyph_retains_ink_in_both_cells`, describes desired
-wide-glyph raster behavior. With the current renderer on macOS/Menlo and system CJK fallback, `界`
-loses its right half: the renderer paints each cell background immediately before its text, so the
-empty continuation cell overwrites that half. The default Unicode test checks column placement and
-combining marks; it does **not** certify the wide glyph's complete shape. Reproduce the failing
-acceptance test and inspect its PNG with:
+Wide-glyph rendering is an active acceptance test. Row backgrounds are painted before text, so a
+continuation cell cannot erase the right half of a glyph. Erasure and replacement at either half
+are compared with a fresh terminal, including styled backgrounds. Adjacent colors and a cursor
+over the continuation cell are checked separately.
 
-```sh
-BETAMAX_FIDELITY_OUTPUT="$PWD/target/renderer-fidelity" \
-  mise exec -- cargo test -p betamax-core --test renderer_fidelity \
-  wide_glyph_retains_ink_in_both_cells -- --ignored
-```
+Betamax relies on installed fonts and cosmic-text fallback selection. Missing font coverage is a
+rendering limitation: production captures may show a missing-glyph box instead of reporting an
+error. Install a suitable fallback for the scripts in your content. The fidelity suite treats
+missing coverage as an actionable setup error rather than accepting that box as a complete glyph.
 
-This test needs a CJK fallback font, such as system PingFang on macOS or Noto Sans CJK on Linux.
-Do not remove the ignore until the renderer fix and supported-font checks are reviewed. A missing
-fallback font can also fail this test; the recorded macOS failure used visible CJK ink in the first
-cell and no ink in the second. The fixture PR does not change production rendering.
-
-Emoji presentation/ZWJ sequences, Nerd Font symbols, fallback selection, ligatures, underline and
-other text decorations, bar/hollow/underline cursors, resizing, graphics protocols, and actual app
+Emoji presentation/ZWJ sequences, Nerd Font symbols, broader fallback selection, ligatures, and
+text decorations, bar/hollow/underline cursors, resizing, graphics protocols, and actual app
 integration remain outside this first suite. Unsupported graphics behavior is not specified here.
-A future backend should pass the state/geometry tests and explicitly reassess the known wide-glyph
-limitation; the current continuation-space representation in state JSON is recorded as a baseline,
+A future backend should pass the state/geometry and wide-glyph tests. The current
+continuation-space representation in state JSON is recorded as a baseline,
 not a requirement for every future terminal-state API.

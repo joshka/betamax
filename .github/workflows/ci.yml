@@ -118,9 +118,9 @@ jobs:
       - name: Check workspace
         run: mise run cargo-check
 
-      - name: Install renderer test font
+      - name: Install renderer test fonts
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y fonts-dejavu-core
+        run: sudo apt-get update && sudo apt-get install -y fonts-dejavu-core fonts-noto-cjk
 
       - name: Test workspace
         id: tests
