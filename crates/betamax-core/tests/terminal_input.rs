@@ -41,7 +41,65 @@ fn mouse_and_keys_reach_real_pty_with_cell_coordinates() {
     );
 }
 
-fn run_fixture(name: &str, commands: &str) {
+#[test]
+fn resize_reaches_child_and_updates_live_grid() {
+    let state = run_fixture(
+        "resize",
+        r#"
+        Resize 50 16
+        Wait+Screen@2s "resize 50 16"
+        MouseMove 49 15
+        MouseDown Left
+        Wait+Screen@2s "mouse down left 49 15 none"
+        MouseUp Left
+        Resize 30 8
+        Wait+Screen@2s "resize 30 8"
+        Resize 100 30
+        Wait+Screen@2s "resize 100 30"
+    "#,
+    );
+    assert_eq!(state.size, [100, 30]);
+}
+
+#[test]
+fn resize_keeps_canvas_and_clamps_pointer_with_held_button() {
+    let mut terminal = GhosttyFrameCapture
+        .open(CaptureRequest {
+            canvas: PixelSize::new(200, 100),
+            grid: TerminalGrid::new(10, 5),
+            text: TextSettings::default(),
+            theme: TerminalTheme::default(),
+        })
+        .unwrap();
+    terminal.write_vt(b"\x1b[?1006h\x1b[?1002h");
+    let modifiers = KeyModifiers::default();
+    terminal
+        .mouse_input(MouseEvent::Move { column: 9, row: 4 }, modifiers)
+        .unwrap();
+    terminal
+        .mouse_input(MouseEvent::Down(MouseButton::Left), modifiers)
+        .unwrap();
+    terminal.resize(TerminalGrid::new(3, 2)).unwrap();
+    assert_eq!(terminal.terminal_state().unwrap().size, [3, 2]);
+    assert_eq!(
+        terminal
+            .mouse_input(MouseEvent::Up(MouseButton::Left), modifiers)
+            .unwrap(),
+        b"\x1b[<0;3;2m"
+    );
+    let frame = terminal.capture_frame_with_cursor(false).unwrap();
+    assert_eq!((frame.width, frame.height), (200, 100));
+    terminal.resize(TerminalGrid::new(40, 20)).unwrap();
+    assert_eq!(terminal.terminal_state().unwrap().size, [40, 20]);
+    let frame = terminal.capture_frame_with_cursor(false).unwrap();
+    assert_eq!((frame.width, frame.height), (200, 100));
+    assert!(terminal.resize(TerminalGrid::new(0, 2)).is_err());
+    assert_eq!(terminal.terminal_state().unwrap().size, [40, 20]);
+    terminal.resize(TerminalGrid::new(1, 1)).unwrap();
+    assert_eq!(terminal.terminal_state().unwrap().size, [1, 1]);
+}
+
+fn run_fixture(name: &str, commands: &str) -> betamax_core::ghostty::TerminalState {
     let fixture =
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/terminal_events.py");
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -88,7 +146,9 @@ fn run_fixture(name: &str, commands: &str) {
         publish: false,
     })
     .run_artifacts(&tape)
-    .unwrap();
+    .unwrap()
+    .final_state
+    .unwrap()
 }
 
 #[test]

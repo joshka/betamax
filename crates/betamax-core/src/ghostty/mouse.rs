@@ -41,6 +41,22 @@ impl MouseInput {
         })
     }
 
+    pub(super) fn resize(&mut self, grid: TerminalGrid) {
+        self.grid = grid;
+        self.position.0 = self.position.0.min(grid.columns - 1);
+        self.position.1 = self.position.1.min(grid.rows - 1);
+        self.encoder.set_size(mouse::EncoderSize {
+            screen_width: u32::from(grid.columns) * self.cell_width,
+            screen_height: u32::from(grid.rows) * self.cell_height,
+            cell_width: self.cell_width,
+            cell_height: self.cell_height,
+            padding_top: 0,
+            padding_bottom: 0,
+            padding_left: 0,
+            padding_right: 0,
+        });
+    }
+
     pub(super) fn encode(
         &mut self,
         terminal: &Terminal<'_, '_>,

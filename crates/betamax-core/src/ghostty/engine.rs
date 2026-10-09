@@ -128,6 +128,7 @@ pub struct GhosttySession {
     /// Software renderer and reusable render iterators.
     renderer: RasterRenderer,
     mouse: MouseInput,
+    cell_size: (u32, u32),
 }
 
 impl std::fmt::Debug for GhosttySession {
@@ -206,6 +207,7 @@ impl GhosttySession {
                 cell_height,
             )?,
             renderer: RasterRenderer::new(request, cell_width, cell_height),
+            cell_size: (cell_width, cell_height),
         })
     }
 }
@@ -227,6 +229,19 @@ impl TerminalSession for GhosttySession {
             "captured frame from libghostty-vt state",
         );
         Ok(frame)
+    }
+
+    fn resize(&mut self, grid: TerminalGrid) -> Result<()> {
+        if grid.columns == 0 || grid.rows == 0 {
+            return Err(
+                miette::miette!("terminal resize requires positive columns and rows").into(),
+            );
+        }
+        self.terminal
+            .resize(grid.columns, grid.rows, self.cell_size.0, self.cell_size.1)
+            .map_err(vt_error("failed to resize libghostty-vt terminal"))?;
+        self.mouse.resize(grid);
+        Ok(())
     }
 
     fn mouse_input(&mut self, event: MouseEvent, modifiers: KeyModifiers) -> Result<Vec<u8>> {

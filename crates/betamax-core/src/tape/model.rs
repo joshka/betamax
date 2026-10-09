@@ -126,6 +126,13 @@ pub enum Command {
         /// Modifiers active for this action only.
         modifiers: KeyModifiers,
     },
+    /// Resize the live PTY and terminal grid while preserving the media canvas.
+    Resize {
+        /// Positive terminal column count.
+        columns: u16,
+        /// Positive terminal row count.
+        rows: u16,
+    },
     /// Stop recording frames while continuing to execute and update terminal state.
     Hide,
     /// Resume recording and immediately capture the current terminal frame.

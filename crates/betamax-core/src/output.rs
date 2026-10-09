@@ -117,7 +117,9 @@ pub(crate) fn classify_outputs(tape: &Tape) -> Result<Outputs> {
                     return Err(miette!("state path has no extension: {}", path.display()).into());
                 }
             },
-            Command::Wait { .. } | Command::Mouse { .. } => outputs.needs_capture = true,
+            Command::Wait { .. } | Command::Mouse { .. } | Command::Resize { .. } => {
+                outputs.needs_capture = true
+            }
             _ => {}
         }
     }

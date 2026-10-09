@@ -124,6 +124,24 @@ fn parse_tokens(line_number: usize, tokens: &[String], commands: &mut Vec<Comman
                 commands.push(Command::Mouse { event, modifiers });
                 cursor += consumed;
             }
+            "Resize" => {
+                if delay.is_some() {
+                    return Err(miette!(
+                        "line {line_number}: Resize does not accept @duration; use Wait for redraw"
+                    )
+                    .into());
+                }
+                let columns = positive_grid_number(
+                    line_number,
+                    required_token(line_number, tokens, cursor, "resize columns")?,
+                )?;
+                let rows = positive_grid_number(
+                    line_number,
+                    required_token(line_number, tokens, cursor + 1, "resize rows")?,
+                )?;
+                commands.push(Command::Resize { columns, rows });
+                cursor += 2;
+            }
             "Hide" => commands.push(Command::Hide),
             "Show" => commands.push(Command::Show),
             "Env" => {
@@ -176,6 +194,16 @@ fn parse_tokens(line_number: usize, tokens: &[String], commands: &mut Vec<Comman
     }
 
     Ok(())
+}
+
+fn positive_grid_number(line: usize, value: &str) -> Result<u16> {
+    match value.parse::<u16>() {
+        Ok(value) if value > 0 => Ok(value),
+        _ => Err(miette!(
+            "line {line}: invalid resize dimension `{value}`; expected integer in range 1..=65535"
+        )
+        .into()),
+    }
 }
 
 fn parse_mouse(
@@ -494,6 +522,7 @@ fn is_command_token(token: &str) -> bool {
             | "Source"
             | "Screenshot"
             | "State"
+            | "Resize"
     ) || name.split('+').any(|part| part.starts_with("Mouse"))
         || name == "Wait"
         || name.starts_with("Wait+")
@@ -558,6 +587,31 @@ fn validate_command_order(commands: &[Command]) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parses_runtime_resize_and_rejects_invalid_dimensions() {
+        let tape = Tape::parse("Wait Resize 50 16 MouseMove 49 15").unwrap();
+        assert!(matches!(
+            tape.commands[1],
+            Command::Resize {
+                columns: 50,
+                rows: 16
+            }
+        ));
+        for source in [
+            "Resize 0 1",
+            "Resize 1 0",
+            "Resize -1 1",
+            "Resize 65536 1",
+            "Resize 1",
+            "Resize@1s 50 16",
+        ] {
+            assert!(Tape::parse(&format!("# heading\n{source}"))
+                .unwrap_err()
+                .to_string()
+                .contains("line 2"));
+        }
+    }
 
     #[test]
     fn parses_chained_mouse_actions_and_modifiers() {

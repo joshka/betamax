@@ -35,6 +35,8 @@ const POST_DURATION_IDLE: Duration = Duration::from_millis(20);
 /// channel so the runner can express "drain until idle", "drain for this duration", and "wait while
 /// sampling frames" without blocking permanently on a shell that is waiting for input.
 pub(super) struct PtySession {
+    /// Control handle retained for runtime resize, released with this session.
+    master: Box<dyn portable_pty::MasterPty + Send>,
     /// Writable PTY master side.
     writer: Box<dyn Write + Send>,
     /// Reader-thread channel carrying raw bytes from the PTY.
@@ -95,10 +97,29 @@ impl PtySession {
         });
 
         Ok(Self {
+            master: pair.master,
             writer,
             reader: output_rx,
             _child: child,
         })
+    }
+
+    /// Change kernel winsize and notify the child through the normal PTY resize mechanism.
+    pub(super) fn resize(&self, columns: u16, rows: u16, settings: &Settings) -> Result<()> {
+        self.master
+            .resize(PtySize {
+                cols: columns,
+                rows,
+                // Zero means unspecified when the optional pixel dimensions exceed PTY limits.
+                pixel_width: u16::try_from(u32::from(columns) * settings.text.cell_width())
+                    .unwrap_or(0),
+                pixel_height: u16::try_from(u32::from(rows) * settings.text.cell_height())
+                    .unwrap_or(0),
+            })
+            .map_err(|error| {
+                miette!("failed to resize PTY to {columns} columns by {rows} rows: {error}")
+            })?;
+        Ok(())
     }
 
     /// Type text without capture support.
