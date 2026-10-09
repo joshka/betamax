@@ -60,6 +60,7 @@
 #[cfg(windows)]
 compile_error!("betamax-core is not supported on Windows because libghostty-vt-sys does not support Windows builds.");
 
+mod assertion;
 mod error;
 pub mod ghostty;
 mod key;
@@ -67,6 +68,7 @@ pub mod media;
 mod output;
 pub mod runner;
 mod shell;
+pub mod state_diff;
 pub mod tape;
 mod trace;
 mod wait;

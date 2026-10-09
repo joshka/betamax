@@ -231,6 +231,10 @@ impl TerminalSession for GhosttySession {
         Ok(frame)
     }
 
+    fn viewport_cells(&mut self) -> Result<Vec<Vec<super::state::TerminalCell>>> {
+        self.renderer.viewport_cells(&self.terminal)
+    }
+
     fn resize(&mut self, grid: TerminalGrid) -> Result<()> {
         if grid.columns == 0 || grid.rows == 0 {
             return Err(

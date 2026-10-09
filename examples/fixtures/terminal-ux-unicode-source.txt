@@ -1,0 +1,3 @@
+title: café / café / 世界
+status: 👩‍💻 approved ✅
+route: /資料/界界界界界界/very/long/component/name?query=beta&language=日本語&status=approved

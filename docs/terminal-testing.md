@@ -12,7 +12,9 @@ output. Reserve 4-5 second pauses for the final screen.
 For test-oriented tapes, prefer:
 
 - `Require` for external programs the test depends on.
-- `Wait+Screen@<duration> "<text>"` for explicit screen assertions.
+- `Wait+Screen@<duration> "<text>"` to synchronize with application output.
+- `AssertText`, `AssertCells`, `AssertStyle`, `AssertAbsent`, and `AssertState` for settled
+  checkpoint assertions.
 - `MouseMove`, `MouseDown`, `MouseUp`, and `MouseScroll` for application mouse input in terminal
   cells. Use `Wait+Screen` after the action to synchronize with redraw.
 - `Screenshot <path>.png` for debugging failed or changed terminal states.
@@ -48,3 +50,32 @@ assert!(artifacts.final_state.unwrap().viewport_text.contains("hello"));
 ```
 
 For Betamax's own deterministic renderer checks, see [Renderer Fidelity](renderer-fidelity.md).
+
+## Automated terminal UX
+
+[Mouse tape](../examples/ratatui-diff-mouse.tape) and
+[resize tape](../examples/ratatui-diff-resize.tape) exercise the merged `ratatui-diff` viewer.
+Build its `viewer` example and set `BETAMAX_DIFF_VIEWER` to the executable path. CI pins merged
+revision `e05b74b4236e4306e93feb242b6e005e467c1077` for reproducible acceptance behavior.
+Run tapes from the Betamax checkout root. They pin Aardvark Ink, JetBrains Mono, and media geometry;
+mouse cells describe terminal coordinates rather than screenshot pixels. Copy preview belongs to
+that example and does not exercise an OS clipboard.
+
+The [combined UX tape](../examples/ratatui-diff-ux.tape) asserts search counts and navigation,
+word-highlight styles, correct-side source selection, keyboard selection, mode changes, and tiny
+resize behavior. The [Unicode tape](../examples/ratatui-diff-unicode.tape) selects across wrapped
+source lines; [the checker](../scripts/check-terminal-ux.py) compares the complete preview with an
+original text fixture, proving display wraps do not add source newlines. It temporarily grows the
+grid to expose the full preview in state JSON; the media canvas remains fixed. The
+[multi-file tape](../examples/ratatui-diff-multi-file.tape) checks nine search matches across three
+files, mode/resize continuity, and start/end navigation.
+
+Betamax's own [event fixture](../crates/betamax-core/tests/fixtures/terminal_events.py) runs in a real
+PTY and independently decodes input with Python's standard library. It covers named keys, mouse
+press/drag/release, wheel direction, and normal child resize notification. The `terminal_input` and
+`terminal_assertions` integration tests run in macOS and Linux CI. Failure PNG/JSON/diff artifacts
+are uploaded even when tests fail.
+
+Checkpoint text and cell/style assertions provide the first baseline surface. Pixel baselines need
+pinned fonts, theme, and geometry plus meaningful tolerances and an explicit approval workflow;
+they are deferred. Real-terminal subjective feel and OS clipboard integration remain manual checks.

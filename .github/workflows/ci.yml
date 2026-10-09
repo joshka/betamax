@@ -137,6 +137,7 @@ jobs:
         id: tests
         env:
           BETAMAX_FIDELITY_OUTPUT: ${{ github.workspace }}/target/renderer-fidelity
+          BETAMAX_FAILURE_DIR: ${{ github.workspace }}/target/betamax-failures
         run: mise run test
 
       - name: Upload renderer checkpoints
@@ -148,12 +149,41 @@ jobs:
           path: target/renderer-fidelity
           if-no-files-found: warn
 
+      - name: Checkout pinned terminal UX consumer
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: joshka/ratatui-diff
+          ref: e05b74b4236e4306e93feb242b6e005e467c1077
+          path: target/terminal-ux-source
+          persist-credentials: false
+
+      - name: Build terminal UX consumer and runner
+        run: |
+          mise exec -- cargo build --locked -p betamax
+          mv target/terminal-ux-source "$RUNNER_TEMP/terminal-ux-source"
+          mise exec -- cargo build --locked --example viewer \
+            --manifest-path "$RUNNER_TEMP/terminal-ux-source/Cargo.toml" \
+            --target-dir target/terminal-ux-consumer
+
+      - name: Test terminal UX consumer
+        env:
+          BETAMAX_DIFF_VIEWER: ${{ github.workspace }}/target/terminal-ux-consumer/debug/examples/viewer
+          BETAMAX_FAILURE_DIR: ${{ github.workspace }}/target/betamax-failures
+        run: |
+          target/debug/betamax run examples/ratatui-diff-ux.tape
+          target/debug/betamax run examples/ratatui-diff-resize.tape
+          target/debug/betamax run examples/ratatui-diff-unicode.tape
+          target/debug/betamax run examples/ratatui-diff-multi-file.tape
+          python3 scripts/check-terminal-ux.py
+
       - name: Upload terminal input diagnostics
         if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: terminal-input-${{ matrix.os }}
-          path: target/terminal-input
+          path: |
+            target/terminal-input
+            target/betamax-failures
           if-no-files-found: warn
 
       - name: Generate renderer gallery

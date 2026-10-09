@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use libghostty_vt::style::{RgbColor, Style, Underline};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use super::color::hex_color;
 use super::render_theme::RenderTheme;
@@ -20,7 +20,7 @@ use super::render_theme::RenderTheme;
 /// [`TerminalState::default_style`], and styled spans reference [`TerminalState::styles`] by index.
 /// Style indexes are produced by Betamax and are only meaningful within the containing
 /// `TerminalState`.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TerminalState {
     /// `[columns, rows]` terminal grid size.
     pub size: [u16; 2],
@@ -29,10 +29,10 @@ pub struct TerminalState {
     /// Number of scrollback rows currently available.
     pub scrollback_rows: usize,
     /// Terminal title, omitted from JSON when empty.
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub title: String,
     /// Terminal working directory, omitted from JSON when empty.
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub working_directory: String,
     /// Cursor position and visibility.
     pub cursor: StateCursor,
@@ -43,7 +43,7 @@ pub struct TerminalState {
     /// Non-default styles referenced by styled spans.
     ///
     /// Each entry is a delta from [`TerminalState::default_style`] to keep state JSON compact.
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub styles: Vec<StateStyle>,
     /// Plain text for the trimmed viewport, including a trailing newline when non-empty.
     pub viewport_text: String,
@@ -60,8 +60,21 @@ pub struct TerminalState {
     pub scrollback: Vec<StateRow>,
 }
 
+/// One visible terminal cell with its full resolved style.
+///
+/// Empty cells contain a space. Wide-glyph continuation cells also contain a space; the leading
+/// cell contains the complete grapheme, including combining characters. Coordinates come from
+/// this cell's position in the viewport grid, never from Unicode string offsets.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TerminalCell {
+    /// Complete grapheme in this cell, or a space for an empty/continuation cell.
+    pub text: String,
+    /// Full style with resolved foreground/background and all attributes.
+    pub style: StateStyle,
+}
+
 /// Cursor metadata in a [`TerminalState`].
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StateCursor {
     /// Zero-based cursor column.
     pub x: u16,
@@ -82,7 +95,7 @@ pub type StateRow = Vec<StateSpan>;
 /// Plain text spans use [`TerminalState::default_style`]. Styled spans reference an entry in
 /// [`TerminalState::styles`] by index. Adjacent cells with identical style are merged before spans
 /// are serialized, so a span may contain more than one terminal cell.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum StateSpan {
     /// Text using the default style.
@@ -99,7 +112,8 @@ pub enum StateSpan {
 /// Boolean fields default to false and are omitted from JSON when false. The empty underline value
 /// represents `none` and is also omitted. Color fields are lowercase `#RRGGBB` strings when
 /// present.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
 pub struct StateStyle {
     /// Foreground color as `#RRGGBB`; omitted for default-style deltas.
     #[serde(skip_serializing_if = "Option::is_none")]

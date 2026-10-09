@@ -42,7 +42,7 @@ pub(super) struct PtySession {
     /// Reader-thread channel carrying raw bytes from the PTY.
     reader: Receiver<Vec<u8>>,
     /// Child process handle kept alive for the session lifetime.
-    _child: Box<dyn portable_pty::Child + Send + Sync>,
+    child: Box<dyn portable_pty::Child + Send + Sync>,
 }
 
 impl PtySession {
@@ -100,7 +100,7 @@ impl PtySession {
             master: pair.master,
             writer,
             reader: output_rx,
-            _child: child,
+            child,
         })
     }
 
@@ -188,6 +188,74 @@ impl PtySession {
             }
         }
         Ok(saw_output)
+    }
+
+    /// Wait for 100ms of PTY quiet, bounded by the tape's wait timeout.
+    ///
+    /// Unlike a Wait, this does not succeed on an intermediate matching frame.
+    pub(super) fn settle_into(
+        &mut self,
+        terminal: &mut impl TerminalSession,
+        timeout: Duration,
+    ) -> Result<()> {
+        let started = Instant::now();
+        let idle = Duration::from_millis(100);
+        let mut last_output = started;
+        loop {
+            if started.elapsed() >= timeout {
+                return Err(miette!("terminal output did not settle within {timeout:?}").into());
+            }
+            let remaining_idle = idle.saturating_sub(last_output.elapsed());
+            if remaining_idle.is_zero() {
+                return Ok(());
+            }
+            let wait = remaining_idle.min(timeout.saturating_sub(started.elapsed()));
+            if self.read_once_into(terminal, wait)? {
+                last_output = Instant::now();
+            }
+        }
+    }
+
+    /// Check absence after each received chunk and at the end of a bounded observation period.
+    pub(super) fn observe_absence(
+        &mut self,
+        terminal: &mut impl TerminalSession,
+        text: &str,
+        duration: Duration,
+    ) -> Result<()> {
+        let started = Instant::now();
+        crate::assertion::check_absent(terminal, text)?;
+        while started.elapsed() < duration {
+            let wait = duration
+                .saturating_sub(started.elapsed())
+                .min(Duration::from_millis(20));
+            self.read_once_into(terminal, wait)?;
+            crate::assertion::check_absent(terminal, text)?;
+        }
+        Ok(())
+    }
+
+    fn read_once_into(
+        &mut self,
+        terminal: &mut impl TerminalSession,
+        wait: Duration,
+    ) -> Result<bool> {
+        match self.reader.recv_timeout(wait) {
+            Ok(bytes) => {
+                terminal.write_vt(&bytes);
+                let reply = terminal.take_pending_pty_reply();
+                if !reply.is_empty() {
+                    self.write_all(&reply)?;
+                }
+                Ok(true)
+            }
+            Err(mpsc::RecvTimeoutError::Timeout) => Ok(false),
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                // A completed child has stable final output. Avoid spinning on a closed channel.
+                thread::sleep(wait);
+                Ok(false)
+            }
+        }
     }
 
     /// Drain PTY output without terminal capture.
@@ -279,6 +347,15 @@ impl PtySession {
             wait_pattern_name(pattern)
         )
         .into())
+    }
+}
+
+impl Drop for PtySession {
+    fn drop(&mut self) {
+        // Failed assertions may leave a child waiting for input or still producing output.
+        // Reap it before releasing the control handle so test failures do not leak processes.
+        let _ = self.child.kill();
+        let _ = self.child.wait();
     }
 }
 
