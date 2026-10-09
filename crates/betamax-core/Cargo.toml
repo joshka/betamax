@@ -20,6 +20,7 @@ include = [
     "src/**/*.rs",
     "tests/**/*.rs",
     "tests/fixtures/*.vt",
+    "tests/fixtures/*.py",
     "resources/ghostty/themes/**",
 ]
 

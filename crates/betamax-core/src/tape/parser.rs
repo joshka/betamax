@@ -4,7 +4,10 @@ use std::time::Duration;
 use miette::miette;
 use regex::Regex;
 
-use super::{Command, Key, KeyCode, KeyModifiers, Tape, Value, WaitPattern, WaitTarget};
+use super::{
+    Command, Key, KeyCode, KeyModifiers, MouseButton, MouseEvent, ScrollDirection, Tape, Value,
+    WaitPattern, WaitTarget,
+};
 use crate::Result;
 
 /// Percent divisor used when parsing `Set` values like `50%`.
@@ -113,6 +116,14 @@ fn parse_tokens(line_number: usize, tokens: &[String], commands: &mut Vec<Comman
                     timeout: delay,
                 });
             }
+            _ if name.split('+').any(|part| part.starts_with("Mouse")) => {
+                if delay.is_some() {
+                    return Err(miette!("line {line_number}: mouse commands do not accept @duration; use Wait for synchronization").into());
+                }
+                let (event, modifiers, consumed) = parse_mouse(line_number, name, tokens, cursor)?;
+                commands.push(Command::Mouse { event, modifiers });
+                cursor += consumed;
+            }
             "Hide" => commands.push(Command::Hide),
             "Show" => commands.push(Command::Show),
             "Env" => {
@@ -165,6 +176,94 @@ fn parse_tokens(line_number: usize, tokens: &[String], commands: &mut Vec<Comman
     }
 
     Ok(())
+}
+
+fn parse_mouse(
+    line: usize,
+    name: &str,
+    tokens: &[String],
+    cursor: usize,
+) -> Result<(MouseEvent, KeyModifiers, usize)> {
+    let mut modifiers = KeyModifiers::default();
+    let mut action = None;
+    for part in name.split('+') {
+        match part {
+            "Alt" => modifiers.alt = true,
+            "Ctrl" => modifiers.ctrl = true,
+            "Shift" => modifiers.shift = true,
+            "MouseMove" | "MouseDown" | "MouseUp" | "MouseScroll" if action.is_none() => {
+                action = Some(part)
+            }
+            _ => return Err(miette!("line {line}: invalid mouse command `{name}`").into()),
+        }
+    }
+    let value = required_token(line, tokens, cursor, "mouse argument")?;
+    let (event, consumed) = match action {
+        Some("MouseMove") => {
+            let column = mouse_number(line, value, "column", false)?;
+            let row = mouse_number(
+                line,
+                required_token(line, tokens, cursor + 1, "mouse row")?,
+                "row",
+                false,
+            )?;
+            (MouseEvent::Move { column, row }, 2)
+        }
+        Some("MouseDown" | "MouseUp") => {
+            let button = match value {
+                "Left" => MouseButton::Left,
+                "Middle" => MouseButton::Middle,
+                "Right" => MouseButton::Right,
+                _ => {
+                    return Err(miette!(
+                        "line {line}: expected mouse button Left, Middle, or Right, got `{value}`"
+                    )
+                    .into())
+                }
+            };
+            let event = if action == Some("MouseDown") {
+                MouseEvent::Down(button)
+            } else {
+                MouseEvent::Up(button)
+            };
+            (event, 1)
+        }
+        Some("MouseScroll") => {
+            let direction = match value {
+                "Up" => ScrollDirection::Up,
+                "Down" => ScrollDirection::Down,
+                "Left" => ScrollDirection::Left,
+                "Right" => ScrollDirection::Right,
+                _ => {
+                    return Err(miette!(
+                    "line {line}: expected wheel direction Up, Down, Left, or Right, got `{value}`"
+                )
+                    .into())
+                }
+            };
+            let count = mouse_number(
+                line,
+                required_token(line, tokens, cursor + 1, "wheel tick count")?,
+                "wheel tick count",
+                true,
+            )?;
+            (MouseEvent::Scroll { direction, count }, 2)
+        }
+        _ => return Err(miette!("line {line}: invalid mouse command `{name}`").into()),
+    };
+    Ok((event, modifiers, consumed))
+}
+
+fn mouse_number(line: usize, value: &str, label: &str, positive: bool) -> Result<u16> {
+    match value.parse::<u16>() {
+        Ok(value) if !positive || value > 0 => Ok(value),
+        _ => Err(miette!(
+            "line {line}: invalid mouse {label} `{value}`; expected {}integer in range {}..=65535",
+            if positive { "positive " } else { "" },
+            if positive { 1 } else { 0 }
+        )
+        .into()),
+    }
 }
 
 /// Return a required token or attach line-number context to the parse error.
@@ -395,7 +494,8 @@ fn is_command_token(token: &str) -> bool {
             | "Source"
             | "Screenshot"
             | "State"
-    ) || name == "Wait"
+    ) || name.split('+').any(|part| part.starts_with("Mouse"))
+        || name == "Wait"
         || name.starts_with("Wait+")
         || parse_key(name).is_some()
 }
@@ -458,6 +558,58 @@ fn validate_command_order(commands: &[Command]) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parses_chained_mouse_actions_and_modifiers() {
+        let tape = Tape::parse("Wait MouseMove 0 1 Shift+Ctrl+MouseDown Left MouseMove 4 1 MouseUp Left MouseScroll Down 3").unwrap();
+        assert_eq!(tape.commands.len(), 6);
+        assert!(matches!(
+            tape.commands[1],
+            Command::Mouse {
+                event: MouseEvent::Move { column: 0, row: 1 },
+                ..
+            }
+        ));
+        assert!(matches!(
+            tape.commands[2],
+            Command::Mouse {
+                modifiers: KeyModifiers {
+                    shift: true,
+                    ctrl: true,
+                    alt: false
+                },
+                ..
+            }
+        ));
+        assert!(matches!(
+            tape.commands[5],
+            Command::Mouse {
+                event: MouseEvent::Scroll {
+                    direction: ScrollDirection::Down,
+                    count: 3
+                },
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn rejects_invalid_mouse_arguments_with_line_context() {
+        for source in [
+            "MouseMove -1 0",
+            "MouseMove 0",
+            "MouseMove 65536 0",
+            "MouseDown Nope",
+            "MouseScroll Down 0",
+            "MouseScroll Down",
+            "MouseScroll Nope 1",
+            "Meta+MouseDown Left",
+            "MouseMove@1s 0 0",
+        ] {
+            let error = Tape::parse(&format!("# heading\n{source}")).unwrap_err();
+            assert!(error.to_string().contains("line 2"), "{source}: {error}");
+        }
+    }
 
     #[test]
     fn parses_multiple_commands_on_one_line() {

@@ -36,7 +36,7 @@
 use std::thread;
 use std::time::Duration;
 
-use miette::miette;
+use miette::{miette, Context};
 
 use crate::Result;
 
@@ -67,7 +67,9 @@ use crate::media::{
     write_webp_animation_with_progress, Frame, MediaProgressReporter, NoMediaProgress,
 };
 use crate::output::{classify_outputs, Outputs};
-use crate::tape::{Command, Key, KeyCode, Tape, Value, WaitPattern, WaitTarget};
+use crate::tape::{
+    Command, Key, KeyCode, KeyModifiers, MouseEvent, Tape, Value, WaitPattern, WaitTarget,
+};
 
 /// Terminal session used by the runner's capture path.
 ///
@@ -98,6 +100,19 @@ pub trait TerminalSession {
     ///
     /// Returns an error when the terminal backend cannot expose structured state.
     fn terminal_state(&mut self) -> Result<crate::ghostty::TerminalState>;
+
+    /// Encode mouse input using the application's current tracking mode and protocol.
+    ///
+    /// An empty result means reporting is disabled or this event is filtered by the active mode.
+    /// Custom backends may leave the default implementation, which reports unsupported input.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for unsupported input, out-of-bounds cells, invalid button transitions,
+    /// or encoding failures.
+    fn mouse_input(&mut self, _event: MouseEvent, _modifiers: KeyModifiers) -> Result<Vec<u8>> {
+        Err(miette!("terminal backend does not support mouse input").into())
+    }
 
     /// Take reply bytes the emulator wants written back to the PTY master,
     /// e.g. the response to a cursor position query (`ESC[6n`). Default is
@@ -403,7 +418,14 @@ where
                 &mut terminal,
                 &mut capture,
                 &mut clipboard,
-            )?;
+            )
+            .wrap_err_with(|| {
+                format!(
+                    "tape command {} ({}) failed",
+                    index + 1,
+                    describe_command(command)
+                )
+            })?;
         }
 
         tracing::debug!("draining final PTY output");
@@ -552,6 +574,12 @@ where
                     )?;
                 }
             }
+            Command::Mouse { event, modifiers } => {
+                session.drain_into(terminal, CHECKPOINT_IDLE)?;
+                let bytes = terminal.mouse_input(*event, *modifiers)?;
+                session.write_all(&bytes)?;
+                session.drain_for(terminal, settings.capture_interval(), settings, capture)?;
+            }
             Command::Wait {
                 target,
                 pattern,
@@ -667,6 +695,9 @@ where
                 | Command::Require(_)
                 | Command::Set { .. }
                 | Command::Show => {}
+                Command::Mouse { .. } => {
+                    return Err(miette!("mouse input requires terminal capture").into())
+                }
                 Command::Wait { .. } => {
                     return Err(miette!(
                         "Wait is parsed but not executed until libghostty-vt screen-state matching is wired"
@@ -792,6 +823,7 @@ fn describe_command(command: &Command) -> String {
                 format!("{key}{suffix} {count}")
             }
         }
+        Command::Mouse { event, modifiers } => format!("Mouse {event:?} {modifiers:?}"),
         Command::Hide => "Hide".to_string(),
         Command::Show => "Show".to_string(),
         Command::Env { key, .. } => format!("Env {key} <value>"),
@@ -813,6 +845,7 @@ fn command_kind(command: &Command) -> &'static str {
         Command::Type { .. } => "Type",
         Command::Wait { .. } => "Wait",
         Command::Key { .. } => "Key",
+        Command::Mouse { .. } => "Mouse",
         Command::Hide => "Hide",
         Command::Show => "Show",
         Command::Env { .. } => "Env",
