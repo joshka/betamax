@@ -13,7 +13,7 @@
     "@astrojs/check": "0.9.10",
     "@astrojs/starlight": "0.42.4",
     "astro": "7.3.5",
-    "typescript": "7.0.2"
+    "typescript": "6.0.3"
   },
   "pnpm": {
     "overrides": {
