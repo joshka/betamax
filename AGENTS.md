@@ -63,8 +63,11 @@ change affects tape syntax, settings, rendering, or output formats. Use `State <
 Keep unrelated fixes in separate pull requests. Use imperative, concise commit or pull-request
 titles such as `Document contributor workflow` or `Fix state JSON style spans`.
 
-Pull requests should explain the user-visible behavior, mention relevant docs or examples, and
-include validation commands run, especially `mise run check` or why a narrower check was sufficient.
+Follow [Pull request descriptions](docs/pr-writing.md): lead with the caller's problem and result,
+use short behavior bullets and captioned evidence when useful, and separate local validation from
+hosted results. Show essential new syntax or API usage in the PR; links supplement the example.
+Keep validation compact and link full contracts. Include validation commands run,
+especially `mise run check` or why a narrower check was sufficient.
 
 Route questions, early ideas, and examples of Betamax in real projects to GitHub Discussions
 instead of issues. Use the `Show and tell` category for screenshots, rendered tapes, repo links, and
