@@ -230,6 +230,31 @@ accept `@duration`; use `Sleep` separately for recording pacing. Mouse input req
 backend even when the tape requests no media. Custom `TerminalSession` implementations can opt in
 by implementing `mouse_input`; its default reports unsupported input when a mouse command runs.
 
+### `Resize <columns> <rows>`
+
+Resize the live terminal grid and PTY in cells. Both dimensions must be integers in `1..=65535`.
+The child receives its normal resize notification; follow the command with an output wait to
+verify redraw rather than assuming a timing delay is sufficient.
+
+```text
+Resize 50 16
+Wait+Screen@5s "narrow layout"
+State target/narrow.json
+```
+
+The media canvas, font metrics, decorations, and padding stay fixed for the entire tape. The live
+grid starts at the same top-left origin as the original grid. Shrinking leaves unused canvas space
+in the terminal background color; growing beyond the canvas clips the rendered grid. State JSON
+and subsequent mouse bounds use the live grid even for clipped cells. The pointer clamps to the
+last valid column and row after shrinking; held buttons remain held.
+
+The terminal backend updates before the PTY notification, so child redraw goes into the new grid.
+Either update failing aborts the tape; commands do not continue with inconsistent dimensions.
+Optional kernel pixel dimensions use grid size times cell metrics, or zero (unspecified) if they
+exceed the PTY's 16-bit pixel fields. The PTY control handle remains alive for the session and is
+released with its reader, writer, and child handles. A custom `TerminalSession` can implement
+`resize`; the default returns an unsupported-resize error when this command runs.
+
 ### `Hide`
 
 Stops appending frames to animated outputs. PTY output still feeds the terminal model, waits still

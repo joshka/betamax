@@ -101,6 +101,16 @@ pub trait TerminalSession {
     /// Returns an error when the terminal backend cannot expose structured state.
     fn terminal_state(&mut self) -> Result<crate::ghostty::TerminalState>;
 
+    /// Resize the live terminal grid, keeping the capture canvas fixed.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for zero dimensions or if the backend cannot resize. The default reports
+    /// unsupported resize so existing custom backends can opt in without source changes.
+    fn resize(&mut self, _grid: TerminalGrid) -> Result<()> {
+        Err(miette!("terminal backend does not support runtime resize").into())
+    }
+
     /// Encode mouse input using the application's current tracking mode and protocol.
     ///
     /// An empty result means reporting is disabled or this event is filtered by the active mode.
@@ -574,6 +584,15 @@ where
                     )?;
                 }
             }
+            Command::Resize { columns, rows } => {
+                if *columns == 0 || *rows == 0 {
+                    return Err(miette!("Resize requires positive columns and rows").into());
+                }
+                session.drain_into(terminal, CHECKPOINT_IDLE)?;
+                terminal.resize(TerminalGrid::new(*columns, *rows))?;
+                session.resize(*columns, *rows, settings)?;
+                session.drain_for(terminal, settings.capture_interval(), settings, capture)?;
+            }
             Command::Mouse { event, modifiers } => {
                 session.drain_into(terminal, CHECKPOINT_IDLE)?;
                 let bytes = terminal.mouse_input(*event, *modifiers)?;
@@ -695,6 +714,9 @@ where
                 | Command::Require(_)
                 | Command::Set { .. }
                 | Command::Show => {}
+                Command::Resize { .. } => {
+                    return Err(miette!("runtime resize requires terminal capture").into())
+                }
                 Command::Mouse { .. } => {
                     return Err(miette!("mouse input requires terminal capture").into())
                 }
@@ -823,6 +845,7 @@ fn describe_command(command: &Command) -> String {
                 format!("{key}{suffix} {count}")
             }
         }
+        Command::Resize { columns, rows } => format!("Resize {columns} {rows}"),
         Command::Mouse { event, modifiers } => format!("Mouse {event:?} {modifiers:?}"),
         Command::Hide => "Hide".to_string(),
         Command::Show => "Show".to_string(),
@@ -846,6 +869,7 @@ fn command_kind(command: &Command) -> &'static str {
         Command::Wait { .. } => "Wait",
         Command::Key { .. } => "Key",
         Command::Mouse { .. } => "Mouse",
+        Command::Resize { .. } => "Resize",
         Command::Hide => "Hide",
         Command::Show => "Show",
         Command::Env { .. } => "Env",
