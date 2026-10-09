@@ -6,6 +6,7 @@ import signal
 import sys
 import termios
 import tty
+import time
 
 
 def emit(message):
@@ -77,6 +78,29 @@ try:
                     sys.exit(0)
                 elif key in (b"0", b"1", b"2", b"3"):
                     configure(key.decode())
+                elif key == b"h":
+                    sys.stdout.write("\x1b[2J\x1b[H\x1b[1;38;2;255;0;0mA界e\u0301\x1b[0m")
+                    sys.stdout.flush()
+                elif key == b"d":
+                    sys.stdout.write("\x1b[2J\x1b[HTRANSIENT")
+                    sys.stdout.flush()
+                    time.sleep(0.03)
+                    sys.stdout.write("\x1b[2J\x1b[HFINAL")
+                    sys.stdout.flush()
+                elif key == b"o":
+                    emit("armed")
+                    # Let Type finish its short drain before the assertion starts settling.
+                    time.sleep(0.05)
+                    # Keep the PTY readable even when a busy CI runner delays this process.
+                    # Scheduled sleeps can accidentally exceed the assertion's quiet window.
+                    deadline = time.monotonic() + 6
+                    while time.monotonic() < deadline:
+                        sys.stdout.write("\rbusy")
+                        sys.stdout.flush()
+                elif key == b"b":
+                    emit("armed")
+                    time.sleep(0.25)
+                    emit("FORBIDDEN")
                 elif key == b"x":
                     sys.stdout.write("\x1b[?1006l")
                     emit("format x10")

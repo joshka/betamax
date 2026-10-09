@@ -68,7 +68,8 @@ use crate::media::{
 };
 use crate::output::{classify_outputs, Outputs};
 use crate::tape::{
-    Command, Key, KeyCode, KeyModifiers, MouseEvent, Tape, Value, WaitPattern, WaitTarget,
+    Assertion, Command, Key, KeyCode, KeyModifiers, MouseEvent, Tape, Value, WaitPattern,
+    WaitTarget,
 };
 
 /// Terminal session used by the runner's capture path.
@@ -100,6 +101,16 @@ pub trait TerminalSession {
     ///
     /// Returns an error when the terminal backend cannot expose structured state.
     fn terminal_state(&mut self) -> Result<crate::ghostty::TerminalState>;
+
+    /// Return the untrimmed visible cell grid for coordinate assertions.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when a backend does not expose cells. Existing backends can use text and
+    /// state assertions without implementing this optional method.
+    fn viewport_cells(&mut self) -> Result<Vec<Vec<crate::ghostty::TerminalCell>>> {
+        Err(miette!("terminal backend does not expose viewport cells").into())
+    }
 
     /// Resize the live terminal grid, keeping the capture canvas fixed.
     ///
@@ -421,21 +432,23 @@ where
                 kind = command_kind(command),
             );
             let _enter = span.enter();
-            self.run_capture_command(
+            if let Err(error) = self.run_capture_command(
                 command,
                 &settings,
                 &mut session,
                 &mut terminal,
                 &mut capture,
                 &mut clipboard,
-            )
-            .wrap_err_with(|| {
-                format!(
-                    "tape command {} ({}) failed",
+            ) {
+                let diagnostics =
+                    save_failure(&mut terminal, &settings, &capture, index + 1, &error);
+                let summary = format!(
+                    "tape command {} ({}) failed: {error}; diagnostics: {diagnostics}",
                     index + 1,
                     describe_command(command)
-                )
-            })?;
+                );
+                return Err(error).wrap_err(summary).map_err(Into::into);
+            }
         }
 
         tracing::debug!("draining final PTY output");
@@ -584,6 +597,17 @@ where
                     )?;
                 }
             }
+            Command::Assert(assertion) => {
+                session.settle_into(terminal, settings.wait_timeout)?;
+                crate::assertion::check(terminal, assertion)?;
+                if let Assertion::Absent {
+                    text,
+                    duration: Some(duration),
+                } = assertion
+                {
+                    session.observe_absence(terminal, text, *duration)?;
+                }
+            }
             Command::Resize { columns, rows } => {
                 if *columns == 0 || *rows == 0 {
                     return Err(miette!("Resize requires positive columns and rows").into());
@@ -714,6 +738,9 @@ where
                 | Command::Require(_)
                 | Command::Set { .. }
                 | Command::Show => {}
+                Command::Assert(_) => {
+                    return Err(miette!("assertions require terminal capture").into())
+                }
                 Command::Resize { .. } => {
                     return Err(miette!("runtime resize requires terminal capture").into())
                 }
@@ -785,6 +812,61 @@ where
     }
 }
 
+fn save_failure(
+    terminal: &mut impl TerminalSession,
+    settings: &Settings,
+    capture: &CaptureState,
+    index: usize,
+    error: &crate::Error,
+) -> String {
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    let root = std::env::var_os("BETAMAX_FAILURE_DIR")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| "target/betamax-failures".into());
+    let directory = root.join(format!("{}-{stamp}-command-{index}", std::process::id()));
+    if let Err(write_error) = std::fs::create_dir_all(&directory) {
+        return format!("unable to create {}: {write_error}", directory.display());
+    }
+    let mut failures = Vec::new();
+    let state = terminal.terminal_state();
+    let state_output = state.and_then(|state| write_json(&directory.join("actual.json"), &state));
+    if let Err(write_error) = state_output {
+        failures.push(write_error.to_string());
+    }
+    let frame_output = capture_frame(terminal, settings, capture.frames.len())
+        .and_then(|frame| {
+            settings.decorate_frame_with_overlays(
+                &frame,
+                capture.caption.as_deref(),
+                &active_keyboard_overlay_labels(capture),
+            )
+        })
+        .and_then(|frame| write_png(&directory.join("actual.png"), &frame));
+    if let Err(write_error) = frame_output {
+        failures.push(write_error.to_string());
+    }
+    if let Ok(cells) = terminal.viewport_cells() {
+        if let Err(write_error) = write_json(&directory.join("cells.json"), &cells) {
+            failures.push(write_error.to_string());
+        }
+    }
+    if let Err(write_error) = std::fs::write(directory.join("diff.txt"), error.to_string()) {
+        failures.push(write_error.to_string());
+    }
+    if failures.is_empty() {
+        directory.display().to_string()
+    } else {
+        format!(
+            "{} (artifact errors: {})",
+            directory.display(),
+            failures.join("; ")
+        )
+    }
+}
+
 fn decorate_captured_frames(
     settings: &Settings,
     capture: &mut CaptureState,
@@ -845,6 +927,7 @@ fn describe_command(command: &Command) -> String {
                 format!("{key}{suffix} {count}")
             }
         }
+        Command::Assert(assertion) => format!("Assert {assertion:?}"),
         Command::Resize { columns, rows } => format!("Resize {columns} {rows}"),
         Command::Mouse { event, modifiers } => format!("Mouse {event:?} {modifiers:?}"),
         Command::Hide => "Hide".to_string(),
@@ -870,6 +953,7 @@ fn command_kind(command: &Command) -> &'static str {
         Command::Key { .. } => "Key",
         Command::Mouse { .. } => "Mouse",
         Command::Resize { .. } => "Resize",
+        Command::Assert(_) => "Assert",
         Command::Hide => "Hide",
         Command::Show => "Show",
         Command::Env { .. } => "Env",

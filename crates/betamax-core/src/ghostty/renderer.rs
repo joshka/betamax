@@ -15,7 +15,7 @@ use super::render_theme::{style_colors, RenderTheme};
 use super::sprites::SpriteRenderer;
 use super::state::{
     compact_row, default_style, full_state_style, pending_rows_text, state_style, trim_empty_rows,
-    PendingStateSpan, StateCellSnapshot, StateCursor, StyleTable, TerminalState,
+    PendingStateSpan, StateCellSnapshot, StateCursor, StyleTable, TerminalCell, TerminalState,
 };
 use super::target::PixelTarget;
 use super::theme::TextSettings;
@@ -365,6 +365,25 @@ impl RasterRenderer {
         })
     }
 
+    /// Return untrimmed visible cells for coordinate assertions and failure diagnostics.
+    pub(super) fn viewport_cells(
+        &mut self,
+        terminal: &Terminal<'static, 'static>,
+    ) -> Result<Vec<Vec<TerminalCell>>> {
+        Ok(self
+            .state_cells(terminal)?
+            .into_iter()
+            .map(|row| {
+                row.into_iter()
+                    .map(|cell| TerminalCell {
+                        text: cell.text,
+                        style: state_style(&cell.style),
+                    })
+                    .collect()
+            })
+            .collect())
+    }
+
     /// Convert the currently visible viewport into pending styled rows.
     ///
     /// Rows are "pending" because styles are still full values. A later interning step compares
@@ -373,6 +392,17 @@ impl RasterRenderer {
         &mut self,
         terminal: &Terminal<'static, 'static>,
     ) -> Result<Vec<Vec<PendingStateSpan>>> {
+        Ok(self
+            .state_cells(terminal)?
+            .into_iter()
+            .map(compact_row)
+            .collect())
+    }
+
+    fn state_cells(
+        &mut self,
+        terminal: &Terminal<'static, 'static>,
+    ) -> Result<Vec<Vec<StateCellSnapshot>>> {
         tracing::trace!("updating libghostty-vt render state for state rows");
         let snapshot = self
             .render_state
@@ -429,7 +459,7 @@ impl RasterRenderer {
                     style: full_state_style(style, foreground, background),
                 });
             }
-            rows.push(compact_row(cells));
+            rows.push(cells);
         }
 
         tracing::trace!(

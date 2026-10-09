@@ -5,8 +5,8 @@ use miette::miette;
 use regex::Regex;
 
 use super::{
-    Command, Key, KeyCode, KeyModifiers, MouseButton, MouseEvent, ScrollDirection, Tape, Value,
-    WaitPattern, WaitTarget,
+    Assertion, Command, Key, KeyCode, KeyModifiers, MouseButton, MouseEvent, ScrollDirection, Tape,
+    Value, WaitPattern, WaitTarget,
 };
 use crate::Result;
 
@@ -124,6 +124,12 @@ fn parse_tokens(line_number: usize, tokens: &[String], commands: &mut Vec<Comman
                 commands.push(Command::Mouse { event, modifiers });
                 cursor += consumed;
             }
+            "AssertText" | "AssertAbsent" | "AssertCells" | "AssertStyle" | "AssertState" => {
+                let (assertion, consumed) =
+                    parse_assertion(line_number, name, delay, tokens, cursor)?;
+                commands.push(Command::Assert(assertion));
+                cursor += consumed;
+            }
             "Resize" => {
                 if delay.is_some() {
                     return Err(miette!(
@@ -194,6 +200,92 @@ fn parse_tokens(line_number: usize, tokens: &[String], commands: &mut Vec<Comman
     }
 
     Ok(())
+}
+
+fn parse_assertion(
+    line: usize,
+    name: &str,
+    delay: Option<Duration>,
+    tokens: &[String],
+    cursor: usize,
+) -> Result<(Assertion, usize)> {
+    if delay.is_some() && name != "AssertAbsent" {
+        return Err(miette!("line {line}: only AssertAbsent accepts @duration").into());
+    }
+    let value = required_token(line, tokens, cursor, "assertion argument")?;
+    match name {
+        "AssertText" | "AssertAbsent" => {
+            if value.is_empty() || delay.is_some_and(|duration| duration.is_zero()) {
+                return Err(miette!("line {line}: text assertions require nonempty text and positive observation durations").into());
+            }
+            let assertion = if name == "AssertText" {
+                Assertion::Text(value.to_owned())
+            } else {
+                Assertion::Absent {
+                    text: value.to_owned(),
+                    duration: delay,
+                }
+            };
+            Ok((assertion, 1))
+        }
+        "AssertState" => Ok((Assertion::State(PathBuf::from(value)), 1)),
+        _ => {
+            let column = mouse_number(line, value, "column", false)?;
+            let row = mouse_number(
+                line,
+                required_token(line, tokens, cursor + 1, "assertion row")?,
+                "row",
+                false,
+            )?;
+            let value = required_token(line, tokens, cursor + 2, "cell list or style width")?;
+            if name == "AssertCells" {
+                let text: Vec<String> = serde_json::from_str(value).map_err(|error| {
+                    miette!("line {line}: expected JSON array of cell strings: {error}")
+                })?;
+                if text.is_empty() {
+                    return Err(miette!("line {line}: expected at least one cell").into());
+                }
+                Ok((Assertion::Cells { column, row, text }, 3))
+            } else {
+                let width = positive_grid_number(line, value)?;
+                let style = required_token(line, tokens, cursor + 3, "expected style JSON")?;
+                let expected: crate::ghostty::StateStyle =
+                    serde_json::from_str(style).map_err(|error| {
+                        miette!("line {line}: invalid expected style JSON: {error}")
+                    })?;
+                for color in [&expected.fg, &expected.bg].into_iter().flatten() {
+                    if color.len() != 7
+                        || !color.starts_with('#')
+                        || !color[1..].bytes().all(|byte| byte.is_ascii_hexdigit())
+                    {
+                        return Err(miette!(
+                            "line {line}: expected #RRGGBB assertion color, got `{color}`"
+                        )
+                        .into());
+                    }
+                }
+                if !matches!(
+                    expected.underline.as_str(),
+                    "" | "none" | "single" | "double" | "curly" | "dotted" | "dashed"
+                ) {
+                    return Err(miette!(
+                        "line {line}: invalid underline style `{}`",
+                        expected.underline
+                    )
+                    .into());
+                }
+                Ok((
+                    Assertion::Style {
+                        column,
+                        row,
+                        width,
+                        expected,
+                    },
+                    4,
+                ))
+            }
+        }
+    }
 }
 
 fn positive_grid_number(line: usize, value: &str) -> Result<u16> {
@@ -523,6 +615,11 @@ fn is_command_token(token: &str) -> bool {
             | "Screenshot"
             | "State"
             | "Resize"
+            | "AssertText"
+            | "AssertAbsent"
+            | "AssertCells"
+            | "AssertStyle"
+            | "AssertState"
     ) || name.split('+').any(|part| part.starts_with("Mouse"))
         || name == "Wait"
         || name.starts_with("Wait+")
@@ -587,6 +684,30 @@ fn validate_command_order(commands: &[Command]) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parses_chained_assertions_and_validates_json_with_line_context() {
+        let tape = Tape::parse(r#"AssertText "ready" AssertCells 0 1 '["界", " "]' AssertStyle 0 1 2 '{"bold":true}' AssertAbsent@100ms "error" AssertState baseline.json"#).unwrap();
+        assert_eq!(tape.commands.len(), 5);
+        for source in [
+            r#"AssertText """#,
+            "AssertText@1s ready",
+            "AssertCells 0 0 []",
+            "AssertCells 0 0 [1]",
+            r#"AssertStyle 0 0 1 '{"unknown":true}'"#,
+            r#"AssertStyle 0 0 1 '{"fg":"red"}'"#,
+            "AssertAbsent@0ms error",
+            "AssertStyle 0 0 0 {}",
+        ] {
+            assert!(
+                Tape::parse(&format!("# heading\n{source}"))
+                    .unwrap_err()
+                    .to_string()
+                    .contains("line 2"),
+                "{source}"
+            );
+        }
+    }
 
     #[test]
     fn parses_runtime_resize_and_rejects_invalid_dimensions() {

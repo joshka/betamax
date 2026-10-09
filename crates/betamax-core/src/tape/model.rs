@@ -133,6 +133,8 @@ pub enum Command {
         /// Positive terminal row count.
         rows: u16,
     },
+    /// Check settled visible terminal state without waiting for a matching transient.
+    Assert(Assertion),
     /// Stop recording frames while continuing to execute and update terminal state.
     Hide,
     /// Resume recording and immediately capture the current terminal frame.
@@ -317,4 +319,40 @@ pub enum ScrollDirection {
     Left,
     /// Wheel right.
     Right,
+}
+
+/// A checkpoint condition evaluated after output settles.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Assertion {
+    /// Require a visible screen substring at the checkpoint.
+    Text(String),
+    /// Require a substring to be absent, optionally throughout a bounded observation interval.
+    Absent {
+        /// Literal substring that must not appear.
+        text: String,
+        /// Optional observation period after the screen settles.
+        duration: Option<Duration>,
+    },
+    /// Match an exact horizontal range of terminal cell graphemes.
+    Cells {
+        /// Zero-based starting column.
+        column: u16,
+        /// Zero-based row.
+        row: u16,
+        /// One expected grapheme (or space) per physical terminal cell.
+        text: Vec<String>,
+    },
+    /// Check foreground/background and attributes across a horizontal cell range.
+    Style {
+        /// Zero-based starting column.
+        column: u16,
+        /// Zero-based row.
+        row: u16,
+        /// Positive number of cells.
+        width: u16,
+        /// Optional colors constrain only specified colors; attributes match exactly.
+        expected: crate::ghostty::StateStyle,
+    },
+    /// Compare all captured state fields with an explicitly supplied JSON baseline.
+    State(PathBuf),
 }
