@@ -1,21 +1,5 @@
-# Pull Request
-
-## Summary
-
-Describe the user-visible behavior or maintainer-facing change.
-
-## Validation
-
-List the commands run, or explain why a narrower check was sufficient.
-
-```sh
-mise run check
-```
-
-## Notes
-
-Mention docs, examples, release notes, or follow-up work when relevant.
-
-If Betamax helped your project, consider sharing a short note or screenshot in
-[Discussions](https://github.com/joshka/betamax/discussions/new?category=show-and-tell&welcome_text=true).
-Open source work can be quiet, and real examples help maintainers understand what is useful.
+<!-- Open with the concrete caller problem and result in one or two sentences. -->
+<!-- Show essential new tape syntax or API usage near the top; links supplement the example. -->
+<!-- Use short behavior bullets, captioned evidence, and validation headings when useful. -->
+<!-- Retain caller implications and material limits; link full contracts. -->
+<!-- Follow docs/pr-writing.md. Remove these prompts and fit the structure to the change. -->

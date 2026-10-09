@@ -13,3 +13,5 @@
 - [Roadmap](roadmap.md): suggested follow-up work that is not part of the VHS differences list.
 - [Development](development.md): local checks, formatting, packaging checks, and README asset
   maintenance.
+- [Pull request descriptions](pr-writing.md): caller context, scannable behavior, visual evidence,
+  and validation reporting.
