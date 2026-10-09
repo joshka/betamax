@@ -13,6 +13,8 @@ For test-oriented tapes, prefer:
 
 - `Require` for external programs the test depends on.
 - `Wait+Screen@<duration> "<text>"` for explicit screen assertions.
+- `MouseMove`, `MouseDown`, `MouseUp`, and `MouseScroll` for application mouse input in terminal
+  cells. Use `Wait+Screen` after the action to synchronize with redraw.
 - `Screenshot <path>.png` for debugging failed or changed terminal states.
 - `State <path>.json` for checkpoint snapshots that can be compared with snapshot-testing tools
   such as `insta`.

@@ -195,6 +195,41 @@ Waits against the visible viewport text instead of only the cursor line. Use thi
 that may appear away from the prompt or for TUI assertions where the cursor location is not the
 important part.
 
+### Mouse commands
+
+Mouse coordinates are zero-based terminal cells: column `0`, row `0` is the top-left cell.
+They exclude font padding, margins, window bars, and captions. The pointer starts at `(0, 0)`.
+
+```text
+MouseMove 42 8
+MouseDown Left
+MouseMove 46 8
+MouseUp Left
+Shift+MouseScroll Down 3
+```
+
+`MouseMove <column> <row>` moves the pointer; moving with a held button produces a drag.
+`MouseDown <button>` and `MouseUp <button>` accept `Left`, `Middle`, or `Right`.
+`MouseScroll <direction> <count>` sends a positive number of wheel ticks at the pointer, with
+`Up`, `Down`, `Left`, or `Right` describing wheel direction. These commands accept `Ctrl+`,
+`Alt+`, and `Shift+` prefixes in any order. Modifiers apply to that action only.
+
+The application controls mouse reporting. Betamax uses Ghostty's encoder to respect disabled,
+press/release, button-motion, and all-motion reporting and the negotiated X10, UTF-8, SGR, urxvt,
+or SGR-pixel format. Legacy protocols can suppress coordinates they cannot represent. SGR-pixel
+reports use the center of the requested cell with the current cell metrics. Wheel commands emit
+press reports without changing held-button state. Multiple held buttons are supported; motion
+reports the most recently pressed button still held.
+
+Out-of-bounds coordinates, pressing an already-held button, and releasing a button that is not held
+fail the tape. With reporting disabled, input produces no PTY bytes while pointer/button state
+still updates. Betamax does not emulate a terminal window's local selection or scrolling.
+
+Use an output wait after each action to synchronize with application redraw. Mouse commands do not
+accept `@duration`; use `Sleep` separately for recording pacing. Mouse input requires a terminal
+backend even when the tape requests no media. Custom `TerminalSession` implementations can opt in
+by implementing `mouse_input`; its default reports unsupported input when a mouse command runs.
+
 ### `Hide`
 
 Stops appending frames to animated outputs. PTY output still feeds the terminal model, waits still

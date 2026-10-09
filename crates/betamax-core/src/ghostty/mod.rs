@@ -28,6 +28,7 @@
 
 mod color;
 mod engine;
+mod mouse;
 mod render_theme;
 mod renderer;
 mod sprites;

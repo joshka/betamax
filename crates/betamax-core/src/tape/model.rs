@@ -119,6 +119,13 @@ pub enum Command {
         /// Repeat count parsed from the token after the key name; defaults to one.
         count: u16,
     },
+    /// Send a mouse action at the current zero-based terminal cell position.
+    Mouse {
+        /// Motion, button transition, or wheel ticks.
+        event: MouseEvent,
+        /// Modifiers active for this action only.
+        modifiers: KeyModifiers,
+    },
     /// Stop recording frames while continuing to execute and update terminal state.
     Hide,
     /// Resume recording and immediately capture the current terminal frame.
@@ -256,4 +263,51 @@ pub enum WaitPattern {
     Contains(String),
     /// Regular expression match without surrounding slash delimiters.
     Regex(String),
+}
+
+/// Mouse action in terminal cells, independent of media decorations.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MouseEvent {
+    /// Move to a zero-based column and row; held buttons turn motion into dragging.
+    Move {
+        /// Column, with zero at the left edge.
+        column: u16,
+        /// Row, with zero at the top edge.
+        row: u16,
+    },
+    /// Press a button at the current position.
+    Down(MouseButton),
+    /// Release a previously pressed button at the current position.
+    Up(MouseButton),
+    /// Send discrete wheel ticks at the current position.
+    Scroll {
+        /// Wheel direction.
+        direction: ScrollDirection,
+        /// Positive number of ticks.
+        count: u16,
+    },
+}
+
+/// Physical mouse button supported by tape commands.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MouseButton {
+    /// Left button.
+    Left,
+    /// Middle button.
+    Middle,
+    /// Right button.
+    Right,
+}
+
+/// Direction of discrete wheel input, rather than viewport movement.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScrollDirection {
+    /// Wheel up.
+    Up,
+    /// Wheel down.
+    Down,
+    /// Wheel left.
+    Left,
+    /// Wheel right.
+    Right,
 }

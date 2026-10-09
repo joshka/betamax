@@ -5,11 +5,13 @@ use std::rc::Rc;
 
 use libghostty_vt::{Terminal, TerminalOptions};
 
+use super::mouse::MouseInput;
 use super::renderer::RasterRenderer;
 use super::state::TerminalState;
 use super::theme::{TerminalTheme, TextSettings};
 use crate::media::Frame;
 use crate::runner::{FrameCapture, TerminalSession};
+use crate::tape::{KeyModifiers, MouseEvent};
 use crate::trace::ByteSample;
 use crate::Result;
 
@@ -125,6 +127,7 @@ pub struct GhosttySession {
     pending_pty_reply: Rc<Cell<Vec<u8>>>,
     /// Software renderer and reusable render iterators.
     renderer: RasterRenderer,
+    mouse: MouseInput,
 }
 
 impl std::fmt::Debug for GhosttySession {
@@ -197,6 +200,11 @@ impl GhosttySession {
         Ok(Self {
             terminal,
             pending_pty_reply,
+            mouse: MouseInput::new(
+                TerminalGrid::new(request.grid.columns.max(1), request.grid.rows.max(1)),
+                cell_width,
+                cell_height,
+            )?,
             renderer: RasterRenderer::new(request, cell_width, cell_height),
         })
     }
@@ -219,6 +227,10 @@ impl TerminalSession for GhosttySession {
             "captured frame from libghostty-vt state",
         );
         Ok(frame)
+    }
+
+    fn mouse_input(&mut self, event: MouseEvent, modifiers: KeyModifiers) -> Result<Vec<u8>> {
+        self.mouse.encode(&self.terminal, event, modifiers)
     }
 
     fn screen_text(&mut self) -> Result<String> {
