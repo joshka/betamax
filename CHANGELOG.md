@@ -5,6 +5,17 @@ versions and identify the core version shipped in the release lockfile.
 
 ## [Unreleased]
 
+## [0.1.22](https://github.com/joshka/betamax/compare/betamax-v0.1.21...betamax-v0.1.22) - 2026-10-10
+
+### Other
+
+- Clarify documentation prose ([#161](https://github.com/joshka/betamax/pull/161))
+- Make checkpoint output tests deterministic ([#176](https://github.com/joshka/betamax/pull/176))
+- Honor deadlines while draining terminal output ([#175](https://github.com/joshka/betamax/pull/175))
+- Add settled terminal checkpoint assertions ([#173](https://github.com/joshka/betamax/pull/173))
+- Support runtime terminal resize in tapes ([#172](https://github.com/joshka/betamax/pull/172))
+- Add cell-based mouse input to tapes ([#171](https://github.com/joshka/betamax/pull/171))
+
 ## [0.1.21](https://github.com/joshka/betamax/compare/betamax-v0.1.20...betamax-v0.1.21) - 2026-09-19
 
 ### Other
