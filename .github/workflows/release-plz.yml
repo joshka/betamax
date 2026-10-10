@@ -6,11 +6,22 @@ name: Release-plz
 # https://release-plz.dev/docs/github/token#how-to-trigger-further-workflow-runs
 permissions: {}
 
+env:
+  LIBGHOSTTY_VT_SYS_CPU: baseline
+
 on:
   push:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      operation:
+        description: Publish prepared versions or refresh the release PR
+        type: choice
+        default: release
+        options:
+          - release
+          - release-pr
 
 jobs:
   release-plz-release:
@@ -26,7 +37,7 @@ jobs:
       ${{
         github.repository_owner == 'joshka' &&
         (
-          github.event_name == 'workflow_dispatch' ||
+          (github.event_name == 'workflow_dispatch' && inputs.operation == 'release') ||
           startsWith(github.event.head_commit.message, 'chore: release') ||
           contains(github.event.head_commit.message, '): release')
         )
@@ -37,8 +48,7 @@ jobs:
       # crates.io Trusted Publishing uses GitHub OIDC, not CARGO_REGISTRY_TOKEN.
       id-token: write
     steps:
-      - &checkout
-        name: Checkout repository
+      - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
@@ -131,6 +141,13 @@ jobs:
         uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
         with:
           install: true
+      - name: Cache release dependencies
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          prefix-key: v2-rust-baseline
+          key: release-${{ matrix.target }}-${{ hashFiles('.mise.toml') }}
+          env-vars: CARGO CC CFLAGS CXX CMAKE RUST LIBGHOSTTY
+          cache-targets: true
       - name: Build CLI
         env:
           TARGET: ${{ matrix.target }}
@@ -186,9 +203,14 @@ jobs:
     if: >-
       ${{
         github.repository_owner == 'joshka' &&
-        github.event_name == 'push' &&
-        !startsWith(github.event.head_commit.message, 'chore: release') &&
-        !contains(github.event.head_commit.message, '): release')
+        (
+          (github.event_name == 'workflow_dispatch' && inputs.operation == 'release-pr') ||
+          (
+            github.event_name == 'push' &&
+            !startsWith(github.event.head_commit.message, 'chore: release') &&
+            !contains(github.event.head_commit.message, '): release')
+          )
+        )
       }}
     permissions:
       contents: write
@@ -197,7 +219,23 @@ jobs:
       group: release-plz-${{ github.ref }}
       cancel-in-progress: false
     steps:
-      - *checkout
+      - name: Check release PR authentication
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::Set RELEASE_PLZ_TOKEN so release PR updates trigger normal checks."
+            exit 1
+          fi
+          gh api user --silent
+      # Serialized jobs may wait behind earlier pushes. Start from current main,
+      # rather than generating a stale PR from the SHA that queued this run.
+      - name: Checkout current main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
       - *install-rust
       - *install-mise
       - name: Run release-plz
@@ -205,4 +243,6 @@ jobs:
         with:
           command: release-pr
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # A PAT makes each PR update trigger CI and CodeQL without close/reopen.
+          # Keep publishing and asset upload on their job-scoped GITHUB_TOKEN.
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}

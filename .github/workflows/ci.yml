@@ -15,12 +15,17 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
+  # Cached native artifacts must run on every runner of the target architecture.
+  LIBGHOSTTY_VT_SYS_CPU: baseline
 
 permissions: {}
 
 jobs:
   lint:
     name: Lint, docs, and validation
+    # The release PR already ran these gates; leave runners available for publishing.
+    if: &check-source >-
+      ${{ github.event_name != 'push' || !(startsWith(github.event.head_commit.message, 'chore: release') || contains(github.event.head_commit.message, '): release')) }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -54,8 +59,10 @@ jobs:
       - name: Cache Rust builds
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
-          prefix-key: v1-rust-no-target
-          cache-targets: false
+          prefix-key: v2-rust-baseline
+          key: ${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.mise.toml') }}
+          env-vars: CARGO CC CFLAGS CXX CMAKE RUST LIBGHOSTTY
+          cache-targets: true
 
       - name: Test renderer PR comments
         run: node --test scripts/renderer-comment.test.cjs
@@ -83,6 +90,7 @@ jobs:
 
   test:
     name: Test (${{ matrix.os }})
+    if: *check-source
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
@@ -112,8 +120,10 @@ jobs:
       - name: Cache Rust builds
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
-          prefix-key: v1-rust-no-target
-          cache-targets: false
+          prefix-key: v2-rust-baseline
+          key: ${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.mise.toml') }}
+          env-vars: CARGO CC CFLAGS CXX CMAKE RUST LIBGHOSTTY
+          cache-targets: true
 
       - name: Test renderer gallery reporting
         run: mise run renderer-gallery-test
@@ -242,6 +252,7 @@ jobs:
 
   package:
     name: Package and smoke (${{ matrix.os }})
+    if: *check-source
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
@@ -274,8 +285,10 @@ jobs:
       - name: Cache Rust builds
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
-          prefix-key: v1-rust-no-target
-          cache-targets: false
+          prefix-key: v2-rust-baseline
+          key: ${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.mise.toml') }}
+          env-vars: CARGO CC CFLAGS CXX CMAKE RUST LIBGHOSTTY
+          cache-targets: true
 
       - name: Package crates
         run: mise run package
@@ -364,6 +377,7 @@ jobs:
 
   dependencies:
     name: Dependency check (${{ matrix.name }})
+    if: *check-source
     runs-on: ubuntu-latest
     continue-on-error: ${{ matrix.allow-failure }}
     permissions:
@@ -411,8 +425,10 @@ jobs:
       - name: Cache Rust builds
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
-          prefix-key: v1-rust-no-target
-          cache-targets: false
+          prefix-key: v2-rust-baseline
+          key: ${{ matrix.name }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.mise.toml') }}
+          env-vars: CARGO CC CFLAGS CXX CMAKE RUST LIBGHOSTTY
+          cache-targets: true
 
       - name: Install cargo maintenance tools
         uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22
@@ -426,13 +442,16 @@ jobs:
   required:
     name: Required
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     needs:
       - lint
       - test
       - package
       - dependencies
       - zizmor
-    if: ${{ always() }}
+    if: >-
+      ${{ always() && (github.event_name != 'push' || !(startsWith(github.event.head_commit.message, 'chore: release') || contains(github.event.head_commit.message, '): release'))) }}
     steps:
       - name: Check required jobs
         env:
@@ -447,8 +466,21 @@ jobs:
           echo "$NEEDS_JSON"
           test "$HAS_FAILED_JOB" = "false"
 
+      - name: Verify release includes current main
+        if: startsWith(github.head_ref, 'release-plz-')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          status="$(gh api "repos/$GITHUB_REPOSITORY/compare/main...$RELEASE_HEAD" --jq .status)"
+          if [ "$status" != "ahead" ]; then
+            echo "::error::Release PR is stale; wait for release-plz to refresh it from current main."
+            exit 1
+          fi
+
   zizmor:
     name: GitHub Actions security
+    if: *check-source
     runs-on: ubuntu-latest
     permissions:
       contents: read
