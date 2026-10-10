@@ -8,7 +8,7 @@ Give your coding agent a Betamax tape and it can run your TUI, inspect screensho
 cells, and replay interactions after each change. Keep the tape for CI, then slow the recording down
 for a PR or documentation.
 
-In [ratatui-diff's sticky-header PR](https://github.com/joshka/ratatui-diff/pull/26) , scrolling
+In [ratatui-diff's sticky-header PR](https://github.com/joshka/ratatui-diff/pull/26), scrolling
 used to remove the file path and change counts. The new option keeps them above the source:
 
 ```rust
@@ -34,9 +34,8 @@ cells, and eight individual down-scrolls.
   alt="After: the file path and change counts stay above the scrolling source"
   width="1340" height="680" loading="lazy" />
 
-The review recording plays both builds in sequence, including split view. For folding, the baseline
-uses Enter; the new build clicks the pinned header. Scroll input is delivered at 300 ms per line,
-with 2.5-second checkpoint holds.
+The review recording plays both builds in sequence, including split view. Scroll input is delivered
+at 300 ms per line, with 2.5-second checkpoint holds.
 
 <details>
   <summary>Play the paced before/after comparison</summary>
@@ -80,11 +79,11 @@ get started.
 ## Assert the bug, then the fix
 
 Check out the starting revision, build the example, and run the tape. Keep its PNGs and state JSON
-for comparison with the new build. After eight scrolls, the baseline checks `AssertAbsent
-"src/routes.txt"`. With sticky headers, the tape checks the path's cells and green addition count.
+for comparison with the new build. After eight scrolls, the baseline checks
+`AssertAbsent "src/routes.txt"`. With sticky headers, the tape checks the path's cells and green
+addition count.
 This excerpt is from the
-[acceptance tape](https://github.com/joshka/ratatui-diff/blob/67277bcf668e76784587246c618c62e6d2ee1221/examples/terminal-ux-sticky.tape)
-:
+[acceptance tape](https://github.com/joshka/ratatui-diff/blob/67277bcf668e76784587246c618c62e6d2ee1221/examples/terminal-ux-sticky.tape):
 
 ```text
 Type@100ms "jjjjjjjj"
@@ -132,13 +131,12 @@ NT COLUMNS]"
 
 The usage line wraps at the tape's 92-column terminal width. The launch command included
 `--sticky-headers`, but the viewer had not added that flag to its argument parser. The agent read
-the error in JSON and the failure PNG, corrected argument handling, and reran the tape. Changing the
-expected header text would have hidden the launch failure.
+the error in JSON and the failure PNG, corrected argument handling, and reran the tape.
 
 :::caution[Check the application before changing expectations]
 
 Check that the application launched and reached the intended state before changing an expected
-value. A matching assertion against a usage error does not test your widget.
+value. Changing the expected header text would have hidden this launch failure.
 
 :::
 
@@ -170,7 +168,8 @@ The failure files are in the
 | end        | Unfold and jump to the end     | `Type`, `End`, `AssertText`, `AssertCells`                         |
 
 The tape saves PNG/JSON checkpoints for the visible states and JSON for the two smallest viewports.
-`Caption` labels the images and GIF without changing terminal cells.
+`Caption` labels the images and GIF without changing terminal cells. The baseline has no pinned
+header to click, so its version of the tape folds with Enter.
 
 ## Inspect state JSON
 
@@ -286,4 +285,4 @@ keeps the captures and failure output. The
 has build and replay commands.
 
 Not covered yet: a [compiled Rust/Insta example](https://github.com/joshka/betamax/issues/181) and
-[shared pacing profiles](https://github.com/joshka/betamax/issues/182) .
+[shared pacing profiles](https://github.com/joshka/betamax/issues/182).
