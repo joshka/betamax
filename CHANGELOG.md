@@ -5,6 +5,12 @@ versions and identify the core version shipped in the release lockfile.
 
 ## [Unreleased]
 
+## [0.1.23](https://github.com/joshka/betamax/compare/betamax-v0.1.22...betamax-v0.1.23) - 2026-10-10
+
+### Other
+
+- Reduce CI and release turnaround time ([#178](https://github.com/joshka/betamax/pull/178))
+
 ## [0.1.22](https://github.com/joshka/betamax/compare/betamax-v0.1.21...betamax-v0.1.22) - 2026-10-10
 
 ### Other
