@@ -252,16 +252,18 @@ Put the matched PNGs and GIF in the PR, next to the Rust option that enables the
 
 The [PR](https://github.com/joshka/ratatui-diff/pull/26) includes the Rust option, before/after
 PNGs, and the paced GIF. Its terminal CI job uses
-[the Betamax GitHub Action](https://github.com/joshka/betamax-action) and uploads diagnostics on
-failure.
+[Betamax Terminal Previews](https://github.com/marketplace/actions/betamax-terminal-previews)
+and uploads diagnostics on failure.
 
-These steps are trimmed from the
+These steps are adapted from the
 [feature's CI workflow](https://github.com/joshka/ratatui-diff/blob/67277bcf668e76784587246c618c62e6d2ee1221/.github/workflows/ci.yml).
+The action reference below uses the published `v1` release line; see the
+[GitHub Action guide](/betamax/testing/github-action/) for version pinning and the separate reporter.
 The viewer is built and its executable path set earlier in the job:
 
 ```yaml
 - name: Sticky-header acceptance and review gallery
-  uses: joshka/betamax-action@4f9e3b05a390d0bb16e72af92e3995541a532c79
+  uses: joshka/betamax-action@v1
   env:
     BETAMAX_FAILURE_DIR: media/terminal-ux/sticky/failures
   with:
