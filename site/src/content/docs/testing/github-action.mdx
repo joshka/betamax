@@ -3,12 +3,24 @@ title: GitHub Action
 description: Record terminal previews in GitHub Actions and share them in pull request comments.
 ---
 
-Use [joshka/betamax-action][action] to run tapes in CI and upload recordings, an HTML gallery,
+Use [Betamax Terminal Previews][marketplace] to run tapes in CI and upload recordings, an HTML gallery,
 and diagnostic logs. The render job links the gallery in its summary. Add the separate
 `joshka/betamax-action/report` action to create or update one pull request comment with gallery links.
 
 The actions support GitHub.com and Ubuntu 24.04 GitHub-hosted runners on x64 and ARM64.
-The examples pin a commit because the action has no stable `v1` tag yet.
+The examples use `@v1`, which tracks compatible action releases. Full-version tags such as
+[`v1.0.0`][release] stay fixed. The action version is separate from the Betamax CLI version.
+See the [source repository][action] for the implementation and release history.
+
+For an immutable dependency, replace `@v1` in both workflows with the full release commit SHA.
+For `v1.0.0`, use:
+
+```yaml
+# Renderer (in the read-only PR workflow):
+- uses: joshka/betamax-action@bc6fa6bfb5e20dd342b588601f4e1a945661d5fe # v1.0.0
+# Reporter (in the separate trusted workflow):
+- uses: joshka/betamax-action/report@bc6fa6bfb5e20dd342b588601f4e1a945661d5fe # v1.0.0
+```
 
 ## Render tapes on pull requests
 
@@ -33,13 +45,13 @@ jobs:
         with:
           persist-credentials: false
       # Install your application's toolchain and build it here.
-      - uses: joshka/betamax-action@4f9e3b05a390d0bb16e72af92e3995541a532c79
+      - uses: joshka/betamax-action@v1
         with:
           tapes: demos/**/*.tape
           formats: gif,png
 ```
 
-The action downloads a checksum-verified Betamax release and installs fonts and ffmpeg by default.
+The action downloads checksum-verified Betamax CLI **0.1.22** and installs fonts and ffmpeg by default.
 It adds output directives for the requested formats without changing your checked-in tapes.
 Build your application in an earlier step to keep build time outside each tape's timeout.
 
@@ -89,7 +101,7 @@ jobs:
       actions: read
       pull-requests: write
     steps:
-      - uses: joshka/betamax-action/report@4f9e3b05a390d0bb16e72af92e3995541a532c79
+      - uses: joshka/betamax-action/report@v1
         with:
           workflow: betamax.yml
 ```
@@ -115,6 +127,7 @@ Common render inputs are listed below. See the [action reference][inputs] for th
 | `timeout-seconds`   | `120`       | Per-tape timeout, from 1 to 1800 seconds.                               |
 | `retention-days`    | `14`        | Artifact retention, capped by repository policy.                        |
 | `extra-outputs`     | Empty       | Newline-separated globs for checkpoints or existing media.              |
+| `version`           | `0.1.22`    | Betamax CLI release; separate from the action tag.                      |
 | `binary`            | Empty       | Use a local Betamax executable instead of downloading a release.        |
 | `comment-key`       | `betamax`   | Shared identifier for render artifacts and the report comment.          |
 | `variant`           | `default`   | Unique identifier for each render job in a matrix.                      |
@@ -127,13 +140,19 @@ To collect screenshot checkpoints, set `extra-outputs` to their paths, such as
 collected. Each render invocation accepts up to 20 tapes and 20 media files, with at most 10 MiB per
 file and 40 MiB of media total.
 
+To select another CLI release, set `version`. If it has no bundled checksum, also supply its release
+archive SHA-256 through `sha256`.
+
 If you build Betamax itself before the action, set `binary: target/debug/betamax`. The path must name
 an executable inside `working-directory` with no symlink components. It overrides `version` and
 `sha256`; dependency installation remains enabled unless `install-dependencies: false` is set.
 
 ### Inline images and videos
 
-The report action also supports `mode: attachments` for inline media. This requires a separate
+Native inline attachments are optional and best effort. They use an undocumented GitHub upload
+endpoint that may change; an individual upload failure leaves an artifact link and a warning.
+
+The report action supports `mode: attachments` for inline media. This requires a separate
 repository-scoped user token, passed only to the reporter through `attachment-token`. Store it in an
 environment restricted to the trusted default branch and select that environment on the report job.
 Follow the [attachment setup guide][attachments] for token provisioning and branch rules before
@@ -155,6 +174,8 @@ already published attempt.
 Inspect the recordings as well as the job status. A successful tape can still show an application
 error; keep [terminal assertions](/betamax/testing/terminal-testing/) alongside the previews.
 
+[marketplace]: https://github.com/marketplace/actions/betamax-terminal-previews
+[release]: https://github.com/joshka/betamax-action/releases/tag/v1.0.0
 [action]: https://github.com/joshka/betamax-action
 [inputs]: https://github.com/joshka/betamax-action#rendering-inputs
 [attachments]: https://github.com/joshka/betamax-action/blob/main/docs/attachments.md
