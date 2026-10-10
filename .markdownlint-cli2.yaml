@@ -15,6 +15,7 @@ config:
       - CardGrid
       - code
       - div
+      - details
       - footer
       - h1
       - h2
@@ -29,6 +30,7 @@ config:
       - small
       - span
       - strong
+      - summary
       - svg
       - table
       - tbody

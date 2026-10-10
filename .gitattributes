@@ -3,3 +3,6 @@ site/public/assets/betamax-hero-quick-start.gif filter=lfs diff=lfs merge=lfs -t
 site/public/assets/betamax-captions.gif filter=lfs diff=lfs merge=lfs -text
 site/public/assets/betamax-keyboard-overlay.gif filter=lfs diff=lfs merge=lfs -text
 site/public/assets/betamax-keyboard-overlay.png filter=lfs diff=lfs merge=lfs -text
+site/public/assets/sticky-headers/before-scrolled.png filter=lfs diff=lfs merge=lfs -text
+site/public/assets/sticky-headers/after-scrolled.png filter=lfs diff=lfs merge=lfs -text
+site/public/assets/sticky-headers/comparison.gif filter=lfs diff=lfs merge=lfs -text
