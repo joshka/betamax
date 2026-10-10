@@ -1,0 +1,160 @@
+---
+title: GitHub Action
+description: Record terminal previews in GitHub Actions and share them in pull request comments.
+---
+
+Use [joshka/betamax-action][action] to run tapes in CI and upload recordings, an HTML gallery,
+and diagnostic logs. The render job links the gallery in its summary. Add the separate
+`joshka/betamax-action/report` action to create or update one pull request comment with gallery links.
+
+The actions support GitHub.com and Ubuntu 24.04 GitHub-hosted runners on x64 and ARM64.
+The examples pin a commit because the action has no stable `v1` tag yet.
+
+## Render tapes on pull requests
+
+Save this as `.github/workflows/betamax.yml`. Replace `demos/**/*.tape` with your tape paths and
+add any toolchain installation and application build steps before the render action.
+
+```yaml
+name: Betamax
+on: pull_request
+permissions: {}
+concurrency:
+  group: betamax-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Install your application's toolchain and build it here.
+      - uses: joshka/betamax-action@4f9e3b05a390d0bb16e72af92e3995541a532c79
+        with:
+          tapes: demos/**/*.tape
+          formats: gif,png
+```
+
+The action downloads a checksum-verified Betamax release and installs fonts and ffmpeg by default.
+It adds output directives for the requested formats without changing your checked-in tapes.
+Build your application in an earlier step to keep build time outside each tape's timeout.
+
+Tapes execute shell commands with the render job's privileges. Use a fresh runner with read-only
+permissions and no secrets throughout this job, including steps after rendering.
+
+### Run commands from the checkout
+
+The tape shell starts in the runner user's home directory by default. The action sets
+`BETAMAX_WORKING_DIRECTORY` to the checkout root, or the directory selected by `working-directory`.
+Before running project-relative commands, change directory inside your tape:
+
+```text
+Hide
+Type@0ms "cd \"$BETAMAX_WORKING_DIRECTORY\""
+Enter
+Show
+```
+
+Then add the commands, waits, and captures for your application. See
+[Tape files](/betamax/authoring/tape-files/) for authoring guidance.
+
+## Add a pull request comment
+
+Save this as `.github/workflows/betamax-report.yml` on your default branch. The trigger selects
+the render workflow's **name** (`Betamax`); the `workflow` input selects its **filename**
+(`betamax.yml`). Reporting only becomes active once this workflow is on the default branch.
+
+```yaml
+name: Betamax report
+on:
+  workflow_run:
+    workflows: [Betamax]
+    types: [completed]
+permissions: {}
+concurrency:
+  group:
+    betamax-report-${{ github.event.workflow_run.head_repository.id }}-${{
+    github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+jobs:
+  report:
+    if: github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      pull-requests: write
+    steps:
+      - uses: joshka/betamax-action/report@4f9e3b05a390d0bb16e72af92e3995541a532c79
+        with:
+          workflow: betamax.yml
+```
+
+Keep reporting on a fresh runner without checking out PR code or restoring PR caches. Its write
+permission is used to update the comment; rendering remains in the separate read-only job.
+The default artifact-link mode uses `GITHUB_TOKEN` and requires no additional secret.
+
+New commits update the same comment. The reporter skips closed PRs, superseded heads, and older run
+attempts. Fork PRs can receive comments subject to the repository's contributor-workflow approval
+policy. Gallery downloads require GitHub sign-in and repository access. Artifacts expire, so use
+[release assets or a web host](/betamax/authoring/generated-media/) for permanent documentation media.
+
+## Configure captures
+
+Common render inputs are listed below. See the [action reference][inputs] for the full contract.
+
+| Input               | Default     | Purpose                                                                 |
+| ------------------- | ----------- | ----------------------------------------------------------------------- |
+| `tapes`             | `**/*.tape` | Newline-separated paths or globs; prefix exclusions with `!`.           |
+| `working-directory` | `.`         | Base directory for tape discovery and output paths inside the checkout. |
+| `formats`           | `gif,png`   | Comma-separated `gif`, `png`, `webp`, `mp4`, or `webm`.                 |
+| `timeout-seconds`   | `120`       | Per-tape timeout, from 1 to 1800 seconds.                               |
+| `retention-days`    | `14`        | Artifact retention, capped by repository policy.                        |
+| `extra-outputs`     | Empty       | Newline-separated globs for checkpoints or existing media.              |
+| `binary`            | Empty       | Use a local Betamax executable instead of downloading a release.        |
+| `comment-key`       | `betamax`   | Shared identifier for render artifacts and the report comment.          |
+| `variant`           | `default`   | Unique identifier for each render job in a matrix.                      |
+
+For a matrix, give each render job a distinct `variant` and share one `comment-key`. One report job
+collects the variants after the workflow completes. Independent workflows should use different keys.
+
+To collect screenshot checkpoints, set `extra-outputs` to their paths, such as
+`target/review/**/*.png`. Use a fresh output directory because matching pre-existing files are also
+collected. Each render invocation accepts up to 20 tapes and 20 media files, with at most 10 MiB per
+file and 40 MiB of media total.
+
+If you build Betamax itself before the action, set `binary: target/debug/betamax`. The path must name
+an executable inside `working-directory` with no symlink components. It overrides `version` and
+`sha256`; dependency installation remains enabled unless `install-dependencies: false` is set.
+
+### Inline images and videos
+
+The report action also supports `mode: attachments` for inline media. This requires a separate
+repository-scoped user token, passed only to the reporter through `attachment-token`. Store it in an
+environment restricted to the trusted default branch and select that environment on the report job.
+Follow the [attachment setup guide][attachments] for token provisioning and branch rules before
+enabling this mode. Keep the reporter's `token` input at its default so the Actions bot owns the
+comment.
+
+## Diagnose failed previews
+
+If a tape fails or times out, the action continues with the remaining tapes and uploads available
+media and diagnostics before failing the step. Download the diagnostics artifact to inspect process
+logs. Setup or discovery errors stop rendering immediately.
+
+If no comment appears, check that the report workflow is on the default branch, the workflow name
+and filename match, and the reporter has both required permissions. If a gallery has expired, rerun
+the render workflow for the current PR head. For missing inline attachments, inspect report warnings
+and rerun rendering after correcting the issue; rerunning only the reporter does not retry an
+already published attempt.
+
+Inspect the recordings as well as the job status. A successful tape can still show an application
+error; keep [terminal assertions](/betamax/testing/terminal-testing/) alongside the previews.
+
+[action]: https://github.com/joshka/betamax-action
+[inputs]: https://github.com/joshka/betamax-action#rendering-inputs
+[attachments]: https://github.com/joshka/betamax-action/blob/main/docs/attachments.md

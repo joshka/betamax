@@ -59,6 +59,7 @@ export default defineConfig({
           items: [
             { label: 'Terminal testing', slug: 'testing/terminal-testing' },
             { label: 'Develop a TUI with visual feedback', slug: 'testing/visual-development' },
+            { label: 'GitHub Action', slug: 'testing/github-action' },
             { label: 'Feature field guide', slug: 'testing/feature-guide' },
             { label: 'State JSON', slug: 'testing/state-json' },
           ],
