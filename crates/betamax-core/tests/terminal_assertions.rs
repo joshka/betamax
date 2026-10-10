@@ -87,9 +87,19 @@ fn cell_mismatch_reports_coordinates_expected_actual_and_artifacts() {
 
 #[test]
 fn continuous_output_cannot_extend_assertion_settling_forever() {
+    for input in [r#"Type "o""#, r#"Type@50ms "o""#, r#"Type "o" Sleep 50ms"#] {
+        let started = std::time::Instant::now();
+        let error = run(&format!(r#"{input} AssertText "armed""#)).unwrap_err();
+        assert!(format!("{error:?}").contains("did not settle"));
+        assert!(started.elapsed() < std::time::Duration::from_secs(10));
+    }
+}
+
+#[test]
+fn continuous_output_cannot_extend_output_wait_forever() {
     let started = std::time::Instant::now();
-    let error = run(r#"Type "o" AssertText "armed""#).unwrap_err();
-    assert!(format!("{error:?}").contains("did not settle"));
+    let error = run(r#"Show Type "o" Wait+Screen@2s "never emitted""#).unwrap_err();
+    assert!(format!("{error:?}").contains("timed out waiting"));
     assert!(started.elapsed() < std::time::Duration::from_secs(10));
 }
 

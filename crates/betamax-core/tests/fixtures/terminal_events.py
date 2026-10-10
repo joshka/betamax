@@ -89,8 +89,6 @@ try:
                     sys.stdout.flush()
                 elif key == b"o":
                     emit("armed")
-                    # Let Type finish its short drain before the assertion starts settling.
-                    time.sleep(0.05)
                     # Keep the PTY readable even when a busy CI runner delays this process.
                     # Scheduled sleeps can accidentally exceed the assertion's quiet window.
                     deadline = time.monotonic() + 6
