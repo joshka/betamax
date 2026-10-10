@@ -380,12 +380,37 @@ fn log_pty_drain(message: &'static str, bytes: &[u8]) {
 mod tests {
     use super::*;
     use crate::ghostty::{
-        CaptureRequest, GhosttyFrameCapture, PixelSize, TerminalGrid, TerminalTheme, TextSettings,
+        CaptureRequest, GhosttyFrameCapture, GhosttySession, PixelSize, TerminalGrid,
+        TerminalTheme, TextSettings,
     };
     use crate::tape::Tape;
 
     #[test]
     fn checkpoint_consumes_queued_output_before_accepting_a_matching_screen() {
+        let (mut pty, mut terminal) = queued_output(b"TRANSIENT", b"\x1b[2J\x1b[HFINAL");
+
+        pty.settle_into(&mut terminal, Duration::from_secs(2))
+            .unwrap();
+
+        let screen = terminal.screen_text().unwrap();
+        assert!(screen.contains("FINAL"));
+        assert!(!screen.contains("TRANSIENT"));
+    }
+
+    #[test]
+    fn bounded_absence_checks_output_received_after_the_initial_screen() {
+        let (mut pty, mut terminal) = queued_output(b"armed", b"\r\nFORBIDDEN");
+        crate::assertion::check_absent(&mut terminal, "FORBIDDEN").unwrap();
+
+        let error = pty
+            .observe_absence(&mut terminal, "FORBIDDEN", Duration::from_secs(2))
+            .unwrap_err();
+
+        assert!(error.to_string().contains("to be absent"));
+        assert!(terminal.screen_text().unwrap().contains("FORBIDDEN"));
+    }
+
+    fn queued_output(initial: &[u8], output: &[u8]) -> (PtySession, GhosttySession) {
         let tape = Tape::parse(r#"Set Shell "/usr/bin/true""#).unwrap();
         let settings = Settings::from_tape(&tape).unwrap();
         let mut pty = PtySession::spawn(&settings).unwrap();
@@ -398,14 +423,8 @@ mod tests {
             theme: TerminalTheme::default(),
         };
         let mut terminal = GhosttyFrameCapture.open(request).unwrap();
-        terminal.write_vt(b"TRANSIENT");
-        sender.send(b"\x1b[2J\x1b[HFINAL".to_vec()).unwrap();
-
-        pty.settle_into(&mut terminal, Duration::from_secs(2))
-            .unwrap();
-
-        let screen = terminal.screen_text().unwrap();
-        assert!(screen.contains("FINAL"));
-        assert!(!screen.contains("TRANSIENT"));
+        terminal.write_vt(initial);
+        sender.send(output.to_vec()).unwrap();
+        (pty, terminal)
     }
 }

@@ -58,6 +58,10 @@ Use Rust unit, integration, and doc tests for library behavior. Add or update ta
 change affects tape syntax, settings, rendering, or output formats. Use `State <path>.json` and
 `Screenshot <path>` examples for terminal-testing behavior. Do not commit generated media outputs.
 
+For timing-sensitive runner tests, use controlled queued output to establish ordering. Do not
+assume a short producer sleep finishes within the terminal's quiet window on a busy CI runner.
+Keep real-PTY integration tests for tape behavior and failure diagnostics.
+
 ## Commit & Pull Request Guidelines
 
 Keep unrelated fixes in separate pull requests. Use imperative, concise commit or pull-request

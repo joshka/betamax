@@ -68,7 +68,7 @@ fn assertion_rejects_text_erased_in_the_same_output_burst() {
 }
 
 #[test]
-fn bounded_absence_fails_on_later_visible_output() {
+fn bounded_absence_rejects_forbidden_output() {
     let error = run(r#"Type "b" Wait+Screen "armed" AssertAbsent@500ms "FORBIDDEN""#).unwrap_err();
     let detail = format!("{error:?}");
     assert!(detail.contains("to be absent"), "{detail}");

@@ -93,9 +93,8 @@ try:
                         sys.stdout.write("\rbusy")
                         sys.stdout.flush()
                 elif key == b"b":
-                    emit("armed")
-                    time.sleep(0.25)
-                    emit("FORBIDDEN")
+                    sys.stdout.write("armed\r\nFORBIDDEN\r\n")
+                    sys.stdout.flush()
                 elif key == b"x":
                     sys.stdout.write("\x1b[?1006l")
                     emit("format x10")
