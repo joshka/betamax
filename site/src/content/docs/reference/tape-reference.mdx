@@ -204,8 +204,7 @@ AssertState baselines/ready.json
   supplied, match resolved `#RRGGBB` colors. Omitted colors are unconstrained. All attributes match
   exactly: omitted booleans mean false and omitted `underline` means `none`. Accepted attributes
   are those in [State JSON](../../testing/state-json/); unknown fields, invalid colors, and
-underline names fail
-  validation. The width must be positive.
+  underline names fail validation. The width must be positive.
 - `AssertAbsent <text>` checks absence at the settled checkpoint. `AssertAbsent@<duration> <text>`
   additionally observes the screen throughout that positive duration, checking after each PTY
   chunk and at the end. It fails immediately if the substring appears. This samples terminal state;
