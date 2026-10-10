@@ -59,7 +59,7 @@ fn asserts_unicode_cells_full_attributes_and_explicit_state_baseline() {
 }
 
 #[test]
-fn transient_positive_output_does_not_satisfy_checkpoint() {
+fn assertion_rejects_text_erased_in_the_same_output_burst() {
     let error = run(r#"Type "d" AssertText "TRANSIENT""#).unwrap_err();
     let detail = format!("{error:?}");
     assert!(detail.contains("expected visible text"), "{detail}");

@@ -375,3 +375,37 @@ fn log_pty_drain(message: &'static str, bytes: &[u8]) {
         message,
     );
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ghostty::{
+        CaptureRequest, GhosttyFrameCapture, PixelSize, TerminalGrid, TerminalTheme, TextSettings,
+    };
+    use crate::tape::Tape;
+
+    #[test]
+    fn checkpoint_consumes_queued_output_before_accepting_a_matching_screen() {
+        let tape = Tape::parse(r#"Set Shell "/usr/bin/true""#).unwrap();
+        let settings = Settings::from_tape(&tape).unwrap();
+        let mut pty = PtySession::spawn(&settings).unwrap();
+        let (sender, reader) = mpsc::channel();
+        pty.reader = reader;
+        let request = CaptureRequest {
+            canvas: PixelSize::new(400, 240),
+            grid: TerminalGrid::new(40, 15),
+            text: TextSettings::default(),
+            theme: TerminalTheme::default(),
+        };
+        let mut terminal = GhosttyFrameCapture.open(request).unwrap();
+        terminal.write_vt(b"TRANSIENT");
+        sender.send(b"\x1b[2J\x1b[HFINAL".to_vec()).unwrap();
+
+        pty.settle_into(&mut terminal, Duration::from_secs(2))
+            .unwrap();
+
+        let screen = terminal.screen_text().unwrap();
+        assert!(screen.contains("FINAL"));
+        assert!(!screen.contains("TRANSIENT"));
+    }
+}
