@@ -9,7 +9,8 @@ cells, and replay interactions after each change. You see the same captures in i
 Keep the tape for CI, then slow the recording down for a PR or documentation.
 
 In [ratatui-diff's sticky-header PR](https://github.com/joshka/ratatui-diff/pull/26),
-Scrolling used to remove the file path and change counts. The new option keeps them above the source:
+scrolling used to remove the file path and change counts. The new option keeps them above the
+source:
 
 ```rust
 let diff = Diff::new(&document).sticky_file_headers(true);
@@ -19,8 +20,9 @@ frame.render_stateful_widget(&diff, area, &mut state);
 
 ## Compare the same interaction
 
-Both captures use the same fixture, Aardvark Ink, JetBrains Mono, 92×25 terminal cells, and eight
-individual down-scrolls. The application runs in a real PTY; these are captured outputs, not mockups.
+Both captures use the same fixture, the Aardvark Ink theme, JetBrains Mono font, 92×25 terminal
+cells, and eight
+individual down-scrolls.
 
 **Before:** the file identity has scrolled away.
 
@@ -34,7 +36,8 @@ individual down-scrolls. The application runs in a real PTY; these are captured 
   alt="After: the file path and change counts stay above the scrolling source"
   width="1340" height="680" loading="lazy" />
 
-The review recording plays the baseline and implementation in sequence, including split view.
+The review recording plays both builds in sequence, including split view. For folding, the
+baseline uses Enter; the new build clicks the pinned header.
 Scroll input is delivered at 300 ms per line, with 2.5-second checkpoint holds.
 
 <details>
@@ -51,9 +54,9 @@ Scroll input is delivered at 300 ms per line, with 2.5-second checkpoint holds.
 | PNG checkpoints             | Layout, color, clipping, and alignment for human and agent inspection |
 | Cell and style assertions   | Specific observable behavior in the running terminal                  |
 | Screen/scrollback JSON      | Structured comparisons and failure investigation                      |
-| Fast replay and WIP GIF     | Frequent feedback and visible progress during development             |
+| Fast interaction GIF        | Frequent feedback and visible progress during development             |
 | Paced comparison GIF        | An interaction a PR reviewer can understand without chat history      |
-| Curated documentation media | Verified configuration-to-output examples that can be refreshed       |
+| Documentation images        | Verified configuration-to-output examples that can be refreshed       |
 
 Check the screenshots for spacing, contrast, clipping, and whether the interaction is readable.
 Use cell assertions for exact text, position, and styles. This viewer uses the alternate screen:
@@ -72,25 +75,22 @@ Finish with the passing tape and a short GIF showing scrolling in unified and sp
 ```
 
 Replace the feature and fixture with your own. Include the command to launch your application if
-it is not already documented. Ask the agent to use the [tape reference](../../authoring/tape-files/)
+it is not already documented. Ask the agent to use the [tape reference](../../reference/tape-reference/)
 when it needs syntax; Betamax derives its tape format from VHS, so familiar commands such as
 `Type`, `Sleep`, and `Screenshot` are often enough to get started.
 
 ## Capture the baseline before editing
 
-Build the starting revision and preserve the executable outside a disposable workspace. Record
-the source revision, tool version, fixture, geometry, theme, font, and executable checksum. Run a
-deterministic tape, save named PNG/JSON checkpoints, and inspect them before deciding what to change.
+Check out the starting revision, build the example, and run the tape. Keep its PNGs and state JSON
+for comparison with the new build. Here, `AssertAbsent "src/routes.txt"` passed after eight scrolls
+while the source remained visible. You could see the missing header in the baseline captures.
 
-Here, `AssertAbsent "src/routes.txt"` passed after eight scrolls while the source remained visible.
-That provided a concrete starting problem. The agent showed the baseline images and recording
-in progress updates, so the user could inspect the starting behavior before implementation.
+## Assert the bug, then the fix
 
-## Implement, replay, and inspect
-
-After a meaningful change, replay the fast scenario and retain a fresh output directory. Assertions
-should wait for observable output; presentation pauses serve the viewer rather than replacing
-synchronization. A checkpoint from the [canonical tape](https://github.com/joshka/ratatui-diff/blob/67277bcf668e76784587246c618c62e6d2ee1221/examples/terminal-ux-sticky.tape):
+After eight scrolls, the baseline checks `AssertAbsent "src/routes.txt"`. With sticky headers,
+the tape checks the path's cells and the green addition count. This excerpt is from the
+[acceptance
+tape](https://github.com/joshka/ratatui-diff/blob/67277bcf668e76784587246c618c62e6d2ee1221/examples/terminal-ux-sticky.tape):
 
 ```text
 Type@100ms "jjjjjjjj"
@@ -102,13 +102,33 @@ Screenshot media/terminal-ux/sticky/scrolled.png
 State media/terminal-ux/sticky/scrolled.json
 ```
 
-Coordinates are zero-based terminal cells, excluding image padding and captions. The assertions
-check the current path and addition-count style without snapshotting unrelated footer text.
+`AssertCells 2 3` starts at column 2, row 3. `AssertStyle 21 3 2` checks two cells starting at
+column 21, row 3: `+9`. The header prefix occupies columns 2–20. Coordinates are zero-based and
+exclude image padding and captions; width is a cell count.
+
+Assertions check a settled screen without waiting for their condition to become true. For your
+own tapes, put `Wait+Screen` on text that appears after the input before asserting its cells.
 See [terminal testing](../terminal-testing/) for synchronization and assertion choices.
 
-### Inspect a failed run
+## Run it and read failures
 
-The first candidate timed out waiting for `src/routes.txt`. Its saved `actual.json` contained this
+Run the tape with a dedicated failure directory after building the example and setting
+`RATATUI_DIFF_VIEWER` to its executable:
+
+```sh
+BETAMAX_FAILURE_DIR=media/terminal-ux/sticky/failures betamax run examples/terminal-ux-sticky.tape
+```
+
+A parse failure stops before the application launches. One run used `Esc` instead of `Escape`:
+
+```text
+Error:   × line 56: unsupported tape command `Esc`
+```
+
+Correcting that command allowed replay to start. Runtime failures retain `diff.txt`, `actual.json`,
+`actual.png`, and `cells.json` when the backend provides cells, under a unique failure subdirectory.
+
+The first new build timed out waiting for `src/routes.txt`. Its saved `actual.json` contained this
 terminal output (excerpt):
 
 ```text
@@ -116,7 +136,8 @@ Error: "usage: viewer [--fixture NAME] [--aardvark-ink | --capture VARIANT | --m
 NT COLUMNS]"
 ```
 
-The launch command included `--sticky-headers`, but the viewer had not added that flag to its argument
+The usage line wraps at the tape's 92-column terminal width. The launch command included
+`--sticky-headers`, but the viewer had not added that flag to its argument
 parser. The agent read the error in JSON and the failure PNG, corrected argument handling, and
 reran the tape. Changing the expected header text would have hidden the launch failure.
 
@@ -130,32 +151,62 @@ checkpoint. Preserve the failed capture alongside the passing one.
 ```
 
 Betamax saved `diff.txt`, `actual.json`, `actual.png`, and `cells.json` for this failure. These are
-in the [evidence archive](https://github.com/joshka/ratatui-diff/releases/tag/sticky-headers-evidence-20261010).
-The failed source was corrected before being snapshotted; the archive retains the terminal output
-and diagnostics, but cannot reproduce that exact executable.
+in the [evidence
+archive](https://github.com/joshka/ratatui-diff/releases/tag/sticky-headers-evidence-20261010).
+:::caution[Check the application before changing expectations]
 
-## Compare structured terminal output
+Check that the application launched and reached the intended state before changing an expected
+value. A matching assertion against a usage error does not test your widget.
 
-Save [state JSON](../state-json/) at the same named checkpoints in baseline and candidate runs.
-The example's [comparison script](https://github.com/joshka/ratatui-diff/blob/67277bcf668e76784587246c618c62e6d2ee1221/scripts/compare-sticky-json.py)
+:::
+
+## What one tape can check
+
+| Checkpoint | Interaction                    | Commands used                                                      |
+| ---------- | ------------------------------ | ------------------------------------------------------------------ |
+| start      | Open the multi-file fixture    | `Wait+Screen`, `AssertCells`                                       |
+| scrolled   | Scroll eight rows              | `Type@100ms`, `AssertText`, `AssertCells`, `AssertStyle`           |
+| split      | Switch to split view           | `Type`, `AssertText`, `AssertCells`                                |
+| narrow     | Wrap and resize                | `Type`, `Resize`, `AssertCells`                                    |
+| boundary   | Search into another file       | `Type`, `Enter`, `Escape`, `AssertText`, `AssertCells`             |
+| folded     | Click the pinned file header   | `MouseMove`, `MouseDown`, `MouseUp`, `AssertCells`, `AssertAbsent` |
+| totals     | Fold all files and show totals | `Type`, `Home`, `AssertText`, `AssertAbsent`                       |
+| one-row    | Leave one content row          | `Resize`, `AssertText`, `AssertAbsent`, `State`                    |
+| zero-area  | Leave no content rows          | `Resize`, `AssertAbsent`, `State`                                  |
+| end        | Unfold and jump to the end     | `Type`, `End`, `AssertText`, `AssertCells`                         |
+
+The tape saves PNG/JSON checkpoints for the visible states and JSON for the two smallest viewports.
+`Caption` labels the images and GIF without changing terminal cells.
+
+## Inspect state JSON
+
+Save [state JSON](../state-json/) at the same named checkpoints in baseline and new build runs.
+The example's [comparison
+script](https://github.com/joshka/ratatui-diff/blob/67277bcf668e76784587246c618c62e6d2ee1221/scripts/compare-sticky-json.py)
 normalizes spans to effective styles, then checks that the baseline source appears one row lower
 with identical text and styles beneath the pinned header. It also checks file transitions, folding,
 totals, geometry, empty scrollback, and the final source line.
 
-Here is an excerpt from the successful `scrolled.json`. `header_row` below is extracted from
-`viewport[3]`; the other fields retain their original names and values:
+The header is row 3 in the successful `scrolled.json`. A trimmed excerpt follows; `…` marks
+omitted content, so this displayed excerpt is not parseable JSON:
 
-```json
+```text
 {
   "size": [92, 25],
-  "scrollback_rows": 0,
+  …
   "default_style": { "fg": "#b4bcca", "bg": "#0f141f" },
   "styles": [
     { "fg": "#52c4c0", "bold": true },
     { "fg": "#75cf84", "bold": true },
-    { "fg": "#e48383", "bold": true }
+    { "fg": "#e48383", "bold": true },
+    …
   ],
-  "header_row": ["  ", ["▾ src/routes.txt · ", 0], ["+9", 1], [" ", 0], ["−3", 2]]
+  …
+  "viewport": [
+    …
+    ["  ", ["▾ src/routes.txt · ", 0], ["+9", 1], [" ", 0], ["−3", 2]],
+    …
+  ]
 }
 ```
 
@@ -176,28 +227,19 @@ assert state["scrollback_rows"] == 0
 ```
 
 For this feature, the comparison script also expands each row into characters with effective styles
-and compares baseline row `y` with candidate row `y + 1`. That catches a header which overwrites
+and compares baseline row `y` with new build row `y + 1`. That catches a header which overwrites
 source text instead of reserving a row. Checking only that the path appears would miss that bug.
 
-Use Rust tests for library behavior such as source mapping and hit testing; use the tape to check
-what the host application displays. This example reads CLI-generated JSON. Betamax 0.1.22 has
-library runner and state APIs, but this example does not include a tested direct Insta integration.
+Use Rust tests for widget logic and the tape to check what the host application displays.
 
-## Share behavior, change presentation pace
+## Change the pace for review
 
-A [small scenario-specific adapter](https://github.com/joshka/ratatui-diff/blob/67277bcf668e76784587246c618c62e6d2ee1221/scripts/sticky-headers.py)
-derives baseline expectations, output destinations, captions, and checkpoint holds from the
-acceptance tape. It does not maintain another scrolling sequence.
-
-The WIP recording delivers each scroll at 100 ms with 800 ms holds; the review version uses 300 ms
-and 2.5 seconds. Both reach the same checkpoints. Encoded GIF frames were inspected independently
-of terminal assertions. The baseline folds by keyboard; the candidate clicks the newly pinned
-header. That intentional input difference tests the new control.
-
-Betamax 0.1.22 does not supply named scenario/checkpoint profiles for this use. The adapter keeps
-this example's input sequence in one place.
-
-## Prepare PR and documentation captures
+Josh saw the first GIF jump eight lines and asked for line-by-line scrolling. Changing
+`Type "jjjjjjjj"` to `Type@100ms "jjjjjjjj"` made each scroll visible. Development recordings
+use 100 ms per line and 800 ms holds; review recordings use 300 ms and 2.5-second holds.
+A [small
+script](https://github.com/joshka/ratatui-diff/blob/67277bcf668e76784587246c618c62e6d2ee1221/scripts/sticky-headers.py)
+swaps timing and captions. Check the encoded GIF too: terminal assertions do not check frame timing.
 
 Once the assertions pass, ask for a slower recording of the same interaction:
 
@@ -208,18 +250,54 @@ after, and include unified and split views. Inspect the encoded GIF to confirm t
 Put the matched PNGs and GIF in the PR, next to the Rust option that enables the behavior.
 ```
 
-The [PR](https://github.com/joshka/ratatui-diff/pull/26) includes the Rust option, before/after PNGs,
+## CI and docs media
+
+The [PR](https://github.com/joshka/ratatui-diff/pull/26) includes the Rust option, before/after
+PNGs,
 and the paced GIF. Its terminal CI job uses
 [the Betamax GitHub Action](https://github.com/joshka/betamax-action)
-and uploads diagnostics on failure. Keep those artifacts available even when a tape exits unsuccessfully.
+and uploads diagnostics on failure. Keep those artifacts available even when a tape exits
+unsuccessfully.
+
+These steps are from the [feature's CI
+workflow](https://github.com/joshka/ratatui-diff/blob/67277bcf668e76784587246c618c62e6d2ee1221/.github/workflows/ci.yml).
+The viewer is built and its executable path set earlier in the job:
+
+```yaml
+- name: Sticky-header acceptance and review gallery
+  # Upstream has no tags; pin the inspected integration commit until it publishes a release.
+  uses: joshka/betamax-action@4f9e3b05a390d0bb16e72af92e3995541a532c79 # zizmor: ignore[stale-action-refs]
+  env:
+    BETAMAX_FAILURE_DIR: media/terminal-ux/sticky/failures
+  with:
+    version: 0.1.22
+    sha256: 497c0bbf6da724e90be49e48ade317d99567e4b03e4e86f03c0dac691ec6358f
+    tapes: examples/terminal-ux-sticky.tape
+    formats: png
+    extra-outputs: media/terminal-ux/sticky/*.png
+    comment-key: sticky-headers
+- name: Retain terminal checkpoints and failure diagnostics
+  if: ${{ always() }}
+  uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+  with:
+    name: terminal-acceptance
+    path: media/terminal-ux/
+    if-no-files-found: warn
+    retention-days: 14
+```
 
 For documentation, place the configuration beside the captured result. Retain the fixture, tape,
 tool version, source revision, and generation command so someone can refresh the images. This
 page's curated PNGs and GIF use Git LFS; site CI checks that the built files contain image bytes.
 See [generated media storage](../../authoring/generated-media/) for storage options.
 
-The [evidence release](https://github.com/joshka/ratatui-diff/releases/tag/sticky-headers-evidence-20261010)
+The [evidence
+release](https://github.com/joshka/ratatui-diff/releases/tag/sticky-headers-evidence-20261010)
 keeps the tapes, JSON, logs, captures, and executable checksums after CI artifacts expire and local
-workspaces are removed. The [source walkthrough](https://github.com/joshka/ratatui-diff/blob/67277bcf668e76784587246c618c62e6d2ee1221/docs/sticky-headers-walkthrough.md)
-has the build and replay commands. The captures cover an ASCII multi-file fixture in one theme and
+workspaces are removed. The [source
+walkthrough](https://github.com/joshka/ratatui-diff/blob/67277bcf668e76784587246c618c62e6d2ee1221/docs/sticky-headers-walkthrough.md)
+has the build and replay commands. The captures cover a multi-file fixture in one theme and
 font; add your own Unicode, resize, or mouse scenarios when those behaviors matter to your change.
+
+Not covered yet: a [compiled Rust/Insta example](https://github.com/joshka/betamax/issues/181) and
+[shared pacing profiles](https://github.com/joshka/betamax/issues/182).

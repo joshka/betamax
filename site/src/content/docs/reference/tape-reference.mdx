@@ -78,7 +78,8 @@ width and height first, then padding, font size, letter spacing, and line height
 columns and rows. Extremely small dimensions are clamped to at least one row and one column.
 
 Font size, margins, and frame decoration affect the space available to the application. When testing
-modal placement, centering, wrapping, or split panes, start with the default `FontSize` and `Margin`.
+modal placement, centering, wrapping, or split panes, start with the default `FontSize` and
+`Margin`.
 Increase `Width` or `Height` if the application needs more space.
 
 `Set KeyboardOverlay Input` draws input labels on generated PNG, GIF, video,
@@ -177,6 +178,53 @@ and it is useful when the tape should make the target obvious.
 
 Waits against all visible viewport text. Use this for command output, full-screen TUIs, status
 lines, or any situation where cursor position should not matter.
+
+### Checkpoint assertions
+
+Assertions check the visible terminal after at least 100 ms of PTY quiet. Settling is bounded by
+`WaitTimeout` and fails if output stays busy. Use `Wait+Screen` to synchronize with an observable
+application result first; assertions check the settled checkpoint, and do not wait until their
+condition becomes true. A transient matching frame cannot satisfy a later assertion.
+
+```text
+Wait+Screen@5s "ready"
+AssertText "ready"
+AssertCells 4 2 '["1", "5", "0", "0"]'
+AssertStyle 4 2 4 '{"fg":"#7ecf91","bold":true}'
+AssertAbsent@500ms "error"
+AssertState baselines/ready.json
+```
+
+- `AssertText <text>` requires a literal visible-screen substring.
+- `AssertCells <column> <row> <JSON>` matches an exact horizontal range. Supply one JSON string per
+  physical cell, including spaces for blanks and wide-character continuations. For example,
+  `'["界", " ", "é"]'` occupies three cells; the combining mark stays with `e`. Coordinates are
+  zero-based and exclude all presentation decoration. Ranges outside the live grid fail.
+- `AssertStyle <column> <row> <width> <JSON>` checks every cell in the range. `fg` and `bg`, when
+  supplied, match resolved `#RRGGBB` colors. Omitted colors are unconstrained. All attributes match
+  exactly: omitted booleans mean false and omitted `underline` means `none`. Accepted attributes
+  are those in [State JSON](../../testing/state-json/); unknown fields, invalid colors, and
+underline names fail
+  validation. The width must be positive.
+- `AssertAbsent <text>` checks absence at the settled checkpoint. `AssertAbsent@<duration> <text>`
+  additionally observes the screen throughout that positive duration, checking after each PTY
+  chunk and at the end. It fails immediately if the substring appears. This samples terminal state;
+  text emitted and erased within one PTY chunk is not observable. The observation begins after
+  settling, and does not make a claim about later output.
+- `AssertState <baseline.json>` compares the captured state with an existing explicit baseline.
+  Dimensions, cursor, metadata, text, styles, and compact spans all participate. No fields are
+  ignored, including title, working directory, scrollback, and style-table order. The JSON
+  representation of omitted underline and explicit `none` is treated as equivalent.
+  Capture baselines with `State`, inspect their text/styles and corresponding screenshot, and
+  approve changes explicitly. Assertions never create or replace baselines automatically.
+
+Failures identify the command number and expected/actual text, cells, or styles. The runner writes
+`actual.json`, `actual.png`, `cells.json` (when the backend provides cells), and `diff.txt` under a
+unique `target/betamax-failures/` directory. Set `BETAMAX_FAILURE_DIR` to choose another artifact
+root. Wait, input, and other runtime failures retain the same diagnostics. Media stays local or in
+CI artifacts; no pixel golden comparison is performed. Custom backends can implement the optional
+`viewport_cells` method for cell/style assertions; text and baseline assertions use existing
+methods.
 
 ### `Hide`
 
