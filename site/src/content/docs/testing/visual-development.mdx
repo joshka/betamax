@@ -8,6 +8,13 @@ Give your coding agent a Betamax tape and it can run your TUI, inspect screensho
 cells, and replay interactions after each change. Keep the tape for CI, then slow the recording down
 for a PR or documentation.
 
+The agent posted these baseline captures and JSON findings in a progress update before implementing
+the sticky header. You can inspect the output and steer the work while it is running.
+
+<img src={`${import.meta.env.BASE_URL}/assets/sticky-headers/progress-update.png`}
+  alt="Codex update with three diff captures, JSON findings, and a proposed sticky-header API"
+  width="2084" height="1912" loading="lazy" />
+
 In [ratatui-diff's sticky-header PR](https://github.com/joshka/ratatui-diff/pull/26), scrolling
 used to remove the file path and change counts. The new option keeps them above the source:
 
