@@ -300,11 +300,32 @@ Configure a trusted publisher for each published crate:
 - workflow: `release-plz.yml`
 - environment: `release`
 
-The workflow has two jobs. `release-plz-release` publishes crate versions that exist on `main` but
+`release-plz-release` publishes crate versions that exist on `main` but
 are not yet on crates.io, then creates GitHub releases and tags. It installs the repo's mise tools
 because package verification builds `libghostty-vt-sys`, which requires Zig 0.15.2.
 `release-plz-pr` opens or updates the release PR that prepares the next version and changelog
-entry.
+entry. It checks out current `main` after acquiring its serialized job slot, so queued pushes do
+not regenerate the PR from an older workflow revision. Configure `RELEASE_PLZ_TOKEN` with a
+personal access token that can update repository contents and pull requests. This token is used
+only for preparing the PR; its updates trigger normal CI and CodeQL checks automatically.
+Publishing and archive uploads continue to use the job-scoped `GITHUB_TOKEN`.
+To retry a refresh without publishing, dispatch the workflow with `operation=release-pr`:
+
+```sh
+gh workflow run release-plz.yml --repo joshka/betamax --field operation=release-pr
+```
+
+The release PR runs the full CI suite. Its final required check also verifies that the PR includes
+current `main`; a stale release must wait for release-plz's next refresh. After merging a release
+PR, the duplicate push-triggered CI and CodeQL jobs are skipped to leave runners available for
+publishing. Ordinary merges, pull requests, and scheduled CodeQL scans retain their checks.
+
+CI caches dependency build artifacts with an explicit baseline Ghostty CPU model. Cache keys
+include runner platform, architecture, Rust toolchains, Cargo manifests/lockfile, mise tooling, and
+native-build environment settings. Release builds use separate target-specific keys. The fresh
+installation smoke test still installs into an empty prefix, but reuses Cargo's dependency cache
+and target directory instead of downloading and rebuilding every dependency from scratch.
+The first run populates these caches; later compatible runs can restore them.
 
 Binary release assets are built by the `prepare-release-assets` and `release-assets` jobs in
 [`release-plz.yml`](../.github/workflows/release-plz.yml) after release-plz reports that the

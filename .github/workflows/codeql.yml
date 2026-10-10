@@ -21,6 +21,9 @@ permissions: {}
 jobs:
   analyze:
     name: Analyze Rust
+    # The release PR has already scanned the source being published.
+    if: >-
+      ${{ github.event_name != 'push' || !(startsWith(github.event.head_commit.message, 'chore: release') || contains(github.event.head_commit.message, '): release')) }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
