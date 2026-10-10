@@ -9,6 +9,8 @@ on:
       - "package.json"
       - "pnpm-lock.yaml"
       - "site/**"
+      - "scripts/check-visual-workflow-media.py"
+      - ".gitattributes"
   push:
     branches:
       - main
@@ -17,6 +19,8 @@ on:
       - "package.json"
       - "pnpm-lock.yaml"
       - "site/**"
+      - "scripts/check-visual-workflow-media.py"
+      - ".gitattributes"
   workflow_dispatch:
 
 concurrency:
@@ -49,6 +53,9 @@ jobs:
       - name: Check docs
         run: mise run docs-site-check
 
+      - name: Check worked-example source media
+        run: python3 scripts/check-visual-workflow-media.py site/public
+
       - name: Build docs
         run: mise run docs-site-build
 
@@ -58,7 +65,11 @@ jobs:
           file site/dist/assets/betamax-hero-terminal.png | grep -F "PNG image data"
           file site/dist/assets/betamax-hero-quick-start.gif | grep -F "GIF image data"
           grep -F "<table>" site/dist/reference/vhs-differences/index.html
-          ! grep -F "<p>| Area" site/dist/reference/vhs-differences/index.html
+          if grep -F "<p>| Area" site/dist/reference/vhs-differences/index.html; then
+            echo 'Expected a rendered comparison table, found Markdown prose' >&2
+            exit 1
+          fi
+          python3 scripts/check-visual-workflow-media.py site/dist
 
       - name: Upload Pages artifact
         if: ${{ github.event_name != 'pull_request' }}
