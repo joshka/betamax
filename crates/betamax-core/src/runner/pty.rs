@@ -207,6 +207,11 @@ impl PtySession {
             }
             let remaining_idle = idle.saturating_sub(last_output.elapsed());
             if remaining_idle.is_zero() {
+                // A delayed runner is not evidence of quiet if output is already buffered.
+                if self.read_once_into(terminal, Duration::ZERO)? {
+                    last_output = Instant::now();
+                    continue;
+                }
                 return Ok(());
             }
             let wait = remaining_idle.min(timeout.saturating_sub(started.elapsed()));
@@ -289,10 +294,10 @@ impl PtySession {
         while started.elapsed() < duration {
             let remaining = duration.saturating_sub(started.elapsed());
             let wait = remaining.min(capture_interval);
-            self.drain_into(terminal, wait)?;
-            if capture.visible {
-                let captured_at = Instant::now();
-                let elapsed = captured_at.saturating_duration_since(last_capture_at);
+            self.read_once_into(terminal, wait)?;
+            let captured_at = Instant::now();
+            let elapsed = captured_at.saturating_duration_since(last_capture_at);
+            if capture.visible && (elapsed >= capture_interval || started.elapsed() >= duration) {
                 let frame_delay = settings.playback_delay(elapsed);
                 append_visible_frame(
                     capture,
@@ -302,7 +307,9 @@ impl PtySession {
                 last_capture_at = captured_at;
             }
         }
-        self.drain_into(terminal, POST_DURATION_IDLE)?;
+        // Input pacing must not wait for the child to stop producing output. Leave buffered
+        // chunks for the next command, whose wait or assertion owns its own deadline.
+        self.read_once_into(terminal, POST_DURATION_IDLE)?;
         Ok(())
     }
 
@@ -323,10 +330,13 @@ impl PtySession {
         let capture_interval = settings.capture_interval();
         let mut last_capture_at = started;
         while started.elapsed() < timeout {
-            self.drain_into(terminal, capture_interval)?;
-            if capture.visible {
-                let captured_at = Instant::now();
-                let elapsed = captured_at.saturating_duration_since(last_capture_at);
+            let wait = capture_interval.min(timeout.saturating_sub(started.elapsed()));
+            self.read_once_into(terminal, wait)?;
+            let text = wait_target_text(terminal, target)?;
+            let matches = wait_pattern_matches(pattern, &text)?;
+            let captured_at = Instant::now();
+            let elapsed = captured_at.saturating_duration_since(last_capture_at);
+            if capture.visible && (elapsed >= capture_interval || matches) {
                 let frame_delay = settings.playback_delay(elapsed);
                 append_visible_frame(
                     capture,
@@ -335,8 +345,7 @@ impl PtySession {
                 );
                 last_capture_at = captured_at;
             }
-            let text = wait_target_text(terminal, target)?;
-            if wait_pattern_matches(pattern, &text)? {
+            if matches {
                 return Ok(());
             }
         }
