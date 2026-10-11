@@ -87,7 +87,7 @@ GitHub and crates.io without storing generated media in the source tree.
 
 ## Tape example
 
-```text
+```tape
 Output examples/output/basic.gif
 
 Set Shell "bash"

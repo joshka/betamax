@@ -1,6 +1,7 @@
 import { defineConfig } from 'astro/config';
 import mdx from '@astrojs/mdx';
 import starlight from '@astrojs/starlight';
+import tapeGrammar from './src/grammars/tape.tmLanguage.json' with { type: 'json' };
 
 const base = '/betamax';
 const canonicalBasePathScript = [
@@ -17,6 +18,11 @@ export default defineConfig({
       title: 'Betamax',
       description: 'Rust-first terminal captures, GIFs, screenshots, and terminal snapshots.',
       customCss: ['./src/styles/custom.css'],
+      expressiveCode: {
+        shiki: {
+          langs: [tapeGrammar],
+        },
+      },
       routeMiddleware: './src/starlightRouteData.ts',
       head: [
         {

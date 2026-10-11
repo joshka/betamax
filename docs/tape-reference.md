@@ -200,7 +200,7 @@ important part.
 Mouse coordinates are zero-based terminal cells: column `0`, row `0` is the top-left cell.
 They exclude font padding, margins, window bars, and captions. The pointer starts at `(0, 0)`.
 
-```text
+```tape
 MouseMove 42 8
 MouseDown Left
 MouseMove 46 8
@@ -236,7 +236,7 @@ Resize the live terminal grid and PTY in cells. Both dimensions must be integers
 The child receives its normal resize notification; follow the command with an output wait to
 verify redraw rather than assuming a timing delay is sufficient.
 
-```text
+```tape
 Resize 50 16
 Wait+Screen@5s "narrow layout"
 State target/narrow.json
@@ -262,7 +262,7 @@ Assertions check the visible terminal after at least 100 ms of PTY quiet. Settli
 application result first; assertions check the settled checkpoint, and do not wait until their
 condition becomes true. A transient matching frame cannot satisfy a later assertion.
 
-```text
+```tape
 Wait+Screen@5s "ready"
 AssertText "ready"
 AssertCells 4 2 '["1", "5", "0", "0"]'
@@ -361,7 +361,7 @@ suffix, which sleeps after each key press, and an optional repeat count token af
 
 Examples:
 
-```text
+```tape
 Enter
 Enter@250ms
 Down 3

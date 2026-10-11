@@ -134,7 +134,7 @@ keys such as arrows, tab, delete, and interrupt.
 Key commands send terminal key sequences to the PTY. They accept an optional `@duration` suffix and
 an optional repeat count:
 
-```text
+```tape
 Enter
 Enter@250ms
 Down 3
@@ -186,7 +186,7 @@ Assertions check the visible terminal after at least 100 ms of PTY quiet. Settli
 application result first; assertions check the settled checkpoint, and do not wait until their
 condition becomes true. A transient matching frame cannot satisfy a later assertion.
 
-```text
+```tape
 Wait+Screen@5s "ready"
 AssertText "ready"
 AssertCells 4 2 '["1", "5", "0", "0"]'

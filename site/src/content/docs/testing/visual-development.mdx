@@ -80,7 +80,7 @@ Run the tape against the starting revision first and keep its PNGs and state JSO
 After eight scrolls, the baseline asserts `AssertAbsent "src/routes.txt"`. With sticky headers, the
 same checkpoint asserts the header's cells and the green addition count:
 
-```text
+```tape
 Type@100ms "jjjjjjjj"
 # Wait for a hunk header that only scrolling reveals.
 Wait+Screen "@@ -41,7 +45,9 @@"

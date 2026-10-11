@@ -72,7 +72,7 @@ sudo apt-get install ffmpeg
 
 Tape files describe the terminal session to run and the artifacts to write:
 
-```text
+```tape
 Output examples/output/basic.gif
 Output examples/output/basic.png
 Output examples/output/basic.state.json

@@ -12,7 +12,7 @@ These overlays appear in recordings and screenshots without changing the termina
 visual frames. Captions render on GIF, PNG, MP4, WebM, frame directory, and `Screenshot` outputs.
 They do not appear in state JSON, affect waits, or write to the PTY.
 
-```text
+```tape
 Caption "Step 1: prepare the review frame"
 Hide
 Type "my-app --demo"
@@ -42,7 +42,7 @@ Use `Caption ""` before later frames that should not have a caption.
 input is queued and linger briefly after the input is typed, so a review GIF can show the action
 near the terminal change it caused.
 
-```text
+```tape
 Set KeyboardOverlay Input
 Set KeyboardOverlayLocation CaptionRow
 

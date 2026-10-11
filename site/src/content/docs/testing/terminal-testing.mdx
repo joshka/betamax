@@ -6,7 +6,7 @@ description: Use Betamax tapes as snapshot-style tests for terminal programs.
 Test an interactive terminal program by running it in a tape, waiting for expected output, and
 saving state JSON for assertions.
 
-```text
+```tape
 Output target/snapshots/app.gif
 
 Type "my-app --demo"
@@ -37,7 +37,7 @@ Good assertions include:
 
 Use waits as synchronization points:
 
-```text
+```tape
 Type "my-tui --scripted"
 Enter
 Wait+Screen "Loaded 12 rows"
@@ -46,13 +46,13 @@ Wait+Screen "Loaded 12 rows"
 Prefer `Wait+Screen` for TUIs because cursor location may move as the program draws. Use regex waits
 for dynamic output:
 
-```text
+```tape
 Wait+Screen "/Loaded [0-9]+ rows/"
 ```
 
 Use `Env` to make application behavior deterministic:
 
-```text
+```tape
 Env NO_COLOR 1
 Env TZ UTC
 Env BETAMAX_TEST 1
@@ -65,7 +65,7 @@ Use `Set CursorBlink false` when animation frame differences do not matter to th
 After an action, use `Wait`, `Wait+Line`, or `Wait+Screen` to check the expected text before
 continuing. Add `Sleep` if viewers need time to read the recording.
 
-```text
+```tape
 Type "my-tui --scripted"
 Enter
 Wait+Screen "Loaded 12 rows"
