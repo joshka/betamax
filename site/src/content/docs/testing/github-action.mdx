@@ -60,9 +60,13 @@ permissions and no secrets throughout this job, including steps after rendering.
 
 ### Run commands from the checkout
 
-The tape shell starts in the runner user's home directory by default. The action sets
-`BETAMAX_WORKING_DIRECTORY` to the checkout root, or the directory selected by `working-directory`.
-Before running project-relative commands, change directory inside your tape:
+The tape shell starts in the directory Betamax runs from. The action runs Betamax from the
+checkout root, or the directory selected by `working-directory`, so project-relative commands work
+without extra setup. The action also sets `BETAMAX_WORKING_DIRECTORY` to that directory for tapes
+that change directory and need to return.
+
+Betamax CLI 0.1.22 and earlier start the tape shell in the home directory instead. For those
+versions, change directory at the start of your tape:
 
 ```tape
 Hide
