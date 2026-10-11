@@ -72,7 +72,7 @@
   background: transparent;
 }
 
-:root:not([data-theme="light"]) body:has(.betamax-hero) .social-icons a::after {
+body:has(.betamax-hero) .social-icons a::after {
   content: "GitHub";
   margin-inline-start: 0.45rem;
   color: var(--sl-color-gray-2);
@@ -113,7 +113,7 @@
   height: 1.1rem;
 }
 
-:root:not([data-theme="light"]) .site-title {
+.site-title {
   gap: 0.55rem;
   color: var(--sl-color-gray-1);
   font-family: var(--sl-font-system);
@@ -122,7 +122,7 @@
   letter-spacing: 0;
 }
 
-:root:not([data-theme="light"]) .site-title::before {
+.site-title::before {
   content: "";
   display: block;
   flex: none;
@@ -222,11 +222,19 @@ main:has(.betamax-hero) > .content-panel:first-child {
   position: relative;
 }
 
-:root[data-theme="light"] .betamax-hero {
+:root[data-theme="light"] main:has(.betamax-hero) {
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.75), transparent 32%),
-    linear-gradient(180deg, rgba(255, 218, 188, 0.82), rgba(226, 210, 181, 0.5));
-  box-shadow: 0 24px 65px rgba(76, 55, 39, 0.22);
+    radial-gradient(
+      ellipse 46rem 30rem at 72% 22rem,
+      rgba(240, 125, 56, 0.16),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 40rem 26rem at 18% 10rem,
+      rgba(255, 255, 255, 0.7),
+      transparent 70%
+    ),
+    linear-gradient(180deg, #fbeedb 0%, #fff7e8 38rem);
 }
 
 .betamax-kicker {
@@ -251,17 +259,19 @@ main:has(.betamax-hero) > .content-panel:first-child {
   filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.55));
 }
 
-:root[data-theme="light"] .betamax-hero h1 {
-  background: linear-gradient(
-    180deg,
-    #fff 4%,
-    #b4a37f 38%,
-    #5a493c 52%,
-    #e6c07f 92%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  text-shadow: 0 12px 28px rgba(84, 57, 35, 0.24);
+/* The lockup PNG is matted for dark backgrounds; light mode swaps in a
+   version rebuilt with dark letters and no black fringe. */
+.betamax-hero h1 .betamax-logo-light {
+  display: none;
+}
+
+:root[data-theme="light"] .betamax-hero h1 img {
+  display: none;
+}
+
+:root[data-theme="light"] .betamax-hero h1 .betamax-logo-light {
+  display: block;
+  filter: drop-shadow(0 3px 6px rgba(92, 52, 24, 0.18));
 }
 
 @media (min-width: 90rem) {
@@ -414,6 +424,30 @@ main:has(.betamax-hero) > .content-panel:first-child {
   filter: drop-shadow(0 1.5rem 1.7rem rgba(0, 0, 0, 0.6));
 }
 
+:root[data-theme="light"] .betamax-demo {
+  filter: drop-shadow(0 1.6rem 1.6rem rgba(92, 52, 24, 0.28))
+    drop-shadow(0 0.3rem 0.4rem rgba(60, 35, 20, 0.25));
+}
+
+/* The tape PNG carries a dark shadow around the cassette; clip it to the
+   cassette body so it sits cleanly on the light background. */
+:root[data-theme="light"] .betamax-demo img {
+  /* Body edges measured in the 472x330 PNG: x 19-460, y 2-308. */
+  clip-path: inset(0.6% 2.4% 6.5% 3.9% round 12px);
+  filter: none;
+}
+
+:root[data-theme="light"] .betamax-demo::before {
+  /* Flipped, so the clipped bottom edge lands on the cassette's base. */
+  top: 87%;
+  clip-path: inset(0.6% 2.4% 6.5% 3.9% round 12px);
+  opacity: 0.18;
+}
+
+:root[data-theme="light"] .betamax-demo::after {
+  opacity: 0.5;
+}
+
 .betamax-terminal-demo {
   position: relative;
   left: 50%;
@@ -449,6 +483,10 @@ main:has(.betamax-hero) > .content-panel:first-child {
   filter: drop-shadow(0 1.4rem 2.2rem rgba(0, 0, 0, 0.72));
 }
 
+:root[data-theme="light"] .betamax-terminal-frame {
+  filter: drop-shadow(0 1.4rem 2rem rgba(92, 52, 24, 0.22));
+}
+
 .betamax-terminal-screen {
   position: absolute;
   z-index: 2;
@@ -458,6 +496,9 @@ main:has(.betamax-hero) > .content-panel:first-child {
   height: 60.2%;
   object-fit: cover;
   border-radius: 7% / 5%;
+  /* Fill the sliver between the recording and the bezel with the
+     recording's background, so the page never shows through. */
+  box-shadow: 0 0 0 1rem #0c0a08;
   filter: brightness(0.94) contrast(1.04) saturate(1.06);
   pointer-events: none;
 }
@@ -609,6 +650,19 @@ main:has(.betamax-hero) > .content-panel:first-child {
 .feature-grid .bm-chipset kbd.hot {
   color: var(--sl-color-text-accent);
   font-weight: 700;
+}
+
+:root[data-theme="light"] .feature-grid .bm-chipset {
+  background: #fff7e8;
+}
+
+:root[data-theme="light"] .feature-grid .bm-chipset kbd {
+  color: var(--sl-color-gray-3);
+}
+
+:root[data-theme="light"] .feature-grid .bm-chipset kbd.hot {
+  color: #fff7e8;
+  background: var(--sl-color-accent);
 }
 
 :root[data-theme="light"] .feature-grid h2 {
