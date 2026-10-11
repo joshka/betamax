@@ -27,7 +27,7 @@ Most tapes divide into three parts:
 
 <div class="bm-manual-code">
 
-```text
+```tape
 Output examples/output/basic.gif
 Require printf
 
@@ -70,7 +70,7 @@ newlines, regex characters, ANSI escapes, or shell syntax.
 
 <div class="bm-manual-code">
 
-```text
+```tape
 Type "printf 'hello from betamax\n'"
 Wait+Screen "hello from betamax"
 Wait+Screen "/item-[0-9]+/"
@@ -104,7 +104,7 @@ records until expected terminal text exists or the timeout expires.
 
 <div class="bm-manual-code bm-compact-code">
 
-```text
+```tape
 Type "cargo test --quiet"
 Enter
 Wait+Screen "test result:"
@@ -136,7 +136,7 @@ reading time, or when the application provides no text or prompt to wait for.
 
 <div class="bm-manual-code">
 
-```text
+```tape
 Type "my-app --demo"
 Enter
 Wait+Screen "Ready"
@@ -174,7 +174,7 @@ Use a separate tape for a demo that needs larger text.
 
 <div class="bm-manual-code bm-compact-code">
 
-```text
+```tape
 Set Width 1600
 Set Height 900
 Wait+Screen "Preview"
@@ -197,7 +197,7 @@ terminal state, and can be waited on.
 
 <div class="bm-manual-code bm-compact-code">
 
-```text
+```tape
 Hide
 Type "cargo build --quiet"
 Enter
@@ -230,7 +230,7 @@ their position in the tape.
 
 <div class="bm-manual-code bm-compact-code">
 
-```text
+```tape
 Wait+Screen "Saved profile"
 Screenshot target/snapshots/profile.png
 State target/snapshots/profile.state.json
@@ -260,7 +260,7 @@ prompt rather than host-specific prompts such as `bash-5.3$`.
 
 <div class="bm-manual-code bm-compact-code">
 
-```text
+```tape
 Set Shell "bash"
 Set Shell "zsh -f"
 Set Shell "fish --private"

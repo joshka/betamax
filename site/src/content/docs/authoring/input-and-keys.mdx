@@ -12,7 +12,7 @@ the user would enter, and use key commands for navigation, editing, shortcuts, a
 Unicode scalar at a time. The default delay comes from `Set TypingSpeed`, and a command can override
 that delay with an `@duration` suffix.
 
-```text
+```tape
 Set TypingSpeed 30ms
 
 Type "printf 'hello from betamax\n'"
@@ -31,7 +31,7 @@ text; use key commands when the input should be a terminal control key.
 Key commands send encoded key sequences through the terminal. They can include modifiers, an
 optional duration, and an optional repeat count.
 
-```text
+```tape
 Type "abcdef"
 Left 3
 Backspace
@@ -55,7 +55,7 @@ The `examples/keys.tape` example is a compact smoke test for editing and termina
 types text, moves the cursor, deletes characters, submits the edited line, interrupts a command
 with `Ctrl+C`, and waits for the shell prompt before continuing.
 
-```text
+```tape
 Type "abcdef"
 Left 3
 Backspace
@@ -78,7 +78,7 @@ Use [`KeyboardOverlay`](../presentation-overlays/#keyboard-overlays) when genera
 show the input that caused a terminal change. The overlay is useful for review GIFs and screenshots
 because arrow keys, shortcuts, and interrupts are otherwise invisible.
 
-```text
+```tape
 Set KeyboardOverlay Input
 Set KeyboardOverlayLocation BottomRight
 

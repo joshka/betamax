@@ -49,7 +49,7 @@ debug failures.
 For review, pair a GIF or video with a screenshot so readers can inspect a frame without pausing
 the animation. Name the screenshot after the state it shows and capture it after a wait:
 
-```text
+```tape
 Wait+Screen "Profile saved"
 State target/snapshots/profile-saved.json
 Screenshot target/review/profile-saved.png
@@ -106,7 +106,7 @@ sudo apt-get install ffmpeg
 Use [`Require ffmpeg`](../../reference/tape-reference/#require-program) if the tape should fail
 before doing any other work:
 
-```text
+```tape
 Output examples/output/demo.mp4
 Require ffmpeg
 ```
@@ -116,7 +116,7 @@ Require ffmpeg
 Checkpoint outputs happen in the middle of a run. They are the right tool for tests and for
 documenting multi-step workflows.
 
-```text
+```tape
 Type "my-app --demo"
 Enter
 Wait+Screen "Ready"
@@ -142,7 +142,7 @@ with right-aligned keyboard overlay chips, Betamax truncates it with `...` inste
 Caption glyphs are clipped to their reserved width as a final guard for font fallback and unusually
 wide characters.
 
-```text
+```tape
 Caption "Step 1: prepare the review frame"
 Hide
 Type "my-app --demo"

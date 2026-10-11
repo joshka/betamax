@@ -1,0 +1,147 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "comment": "Betamax tape grammar. Derived from the vhs-analyzer VHS tape grammar, Copyright (c) 2026 DrEden33773, MIT License. See THIRD_PARTY.md.",
+  "name": "tape",
+  "displayName": "Betamax tape",
+  "scopeName": "source.tape",
+  "aliases": ["betamax", "vhs"],
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#set" },
+    { "include": "#env" },
+    { "include": "#wait" },
+    { "include": "#path-command" },
+    { "include": "#mouse" },
+    { "include": "#command" },
+    { "include": "#key" },
+    { "include": "#timing" },
+    { "include": "#strings" },
+    { "include": "#time" },
+    { "include": "#number" },
+    { "include": "#boolean" }
+  ],
+  "repository": {
+    "comment": {
+      "comment": "Only whole-line comments: `#` later in a line is ordinary text.",
+      "name": "comment.line.number-sign.tape",
+      "match": "^\\s*#.*$"
+    },
+    "set": {
+      "match": "\\b(Set)\\s+(?:(Shell|Width|Height|FontSize|FontFamily|LetterSpacing|LineHeight|Padding|Framerate|TypingSpeed|PlaybackSpeed|LoopOffset|Margin|MarginFill|WindowBar|WindowBarSize|BorderRadius|CursorBlink|KeyboardOverlay|KeyboardOverlayLocation|WaitTimeout|WaitPattern|Theme)|([A-Za-z_]\\w*))\\b(?:\\s+(Off|Keys|Input|All|CaptionRow|TopLeft|TopRight|BottomLeft|BottomRight)\\b)?",
+      "captures": {
+        "1": { "name": "keyword.control.command.tape" },
+        "2": { "name": "support.type.property-name.setting.tape" },
+        "3": { "name": "invalid.illegal.unknown-setting.tape" },
+        "4": { "name": "constant.language.setting-value.tape" }
+      }
+    },
+    "env": {
+      "match": "\\b(Env)\\s+([A-Za-z_]\\w*)",
+      "captures": {
+        "1": { "name": "keyword.control.command.tape" },
+        "2": { "name": "variable.other.environment.tape" }
+      }
+    },
+    "wait": {
+      "comment": "Slash-delimited wait patterns are regexes; other wait patterns are plain text.",
+      "match": "\\b(Wait)(?:(\\+)(Line|Screen))?(?:(@)(\\S+))?(?=\\s|$)(?:\\s+(?:(\")(/(?:[^\"\\\\]|\\\\.)*/)(\")|(')(/[^']*/)(')|(/\\S*/)(?=\\s|$)))?",
+      "captures": {
+        "1": { "name": "keyword.control.command.tape" },
+        "2": { "name": "punctuation.separator.wait-target.tape" },
+        "3": { "name": "keyword.other.wait-target.tape" },
+        "4": { "name": "punctuation.definition.duration.tape" },
+        "5": { "patterns": [{ "include": "#time" }, { "include": "#number" }] },
+        "6": { "name": "string.regexp.tape punctuation.definition.string.begin.tape" },
+        "7": { "name": "string.regexp.tape" },
+        "8": { "name": "string.regexp.tape punctuation.definition.string.end.tape" },
+        "9": { "name": "string.regexp.tape punctuation.definition.string.begin.tape" },
+        "10": { "name": "string.regexp.tape" },
+        "11": { "name": "string.regexp.tape punctuation.definition.string.end.tape" },
+        "12": { "name": "string.regexp.tape" }
+      }
+    },
+    "path-command": {
+      "match": "\\b(Output|Screenshot|State|Source|AssertState|Require)\\b(?:\\s+([^\\s\"']+))?",
+      "captures": {
+        "1": { "name": "keyword.control.command.tape" },
+        "2": { "name": "string.unquoted.path.tape" }
+      }
+    },
+    "mouse": {
+      "match": "\\b((?:(?:Ctrl|Alt|Shift)\\+)*)(MouseMove|MouseDown|MouseUp|MouseScroll)\\b(?:\\s+(Left|Middle|Right|Up|Down)\\b)?",
+      "captures": {
+        "1": { "patterns": [{ "include": "#modifier" }] },
+        "2": { "name": "keyword.control.command.mouse.tape" },
+        "3": { "name": "constant.language.mouse-argument.tape" }
+      }
+    },
+    "command": {
+      "name": "keyword.control.command.tape",
+      "match": "\\b(?:Type|Sleep|Hide|Show|Copy|Paste|Caption|Resize|AssertText|AssertAbsent|AssertCells|AssertStyle)\\b"
+    },
+    "key": {
+      "comment": "Named keys with optional modifiers, or a modifier combination with a single-character key such as Ctrl+C.",
+      "patterns": [
+        {
+          "match": "(?<![\\w+])((?:(?:Ctrl|Alt|Shift)\\+)*)(Escape|Backspace|Delete|Insert|Down|Enter|Space|Tab|Left|Right|Up|PageUp|PageDown|Home|End|F(?:2[0-5]|1[0-9]|[1-9]))(?![\\w+])",
+          "captures": {
+            "1": { "patterns": [{ "include": "#modifier" }] },
+            "2": { "name": "entity.name.function.key.tape" }
+          }
+        },
+        {
+          "match": "(?<![\\w+])((?:(?:Ctrl|Alt|Shift)\\+)+)([^\\s@])(?=@|\\s|$)",
+          "captures": {
+            "1": { "patterns": [{ "include": "#modifier" }] },
+            "2": { "name": "entity.name.function.key.tape" }
+          }
+        }
+      ]
+    },
+    "modifier": {
+      "patterns": [
+        { "name": "entity.name.function.key.modifier.tape", "match": "Ctrl|Alt|Shift" },
+        { "name": "punctuation.separator.key.tape", "match": "\\+" }
+      ]
+    },
+    "timing": {
+      "match": "(@)(\\S+)",
+      "captures": {
+        "1": { "name": "punctuation.definition.duration.tape" },
+        "2": { "patterns": [{ "include": "#time" }, { "include": "#number" }] }
+      }
+    },
+    "strings": {
+      "comment": "Tokens use shell-style quoting: backslash escapes only apply inside double quotes.",
+      "patterns": [
+        {
+          "name": "string.quoted.double.tape",
+          "begin": "\"",
+          "end": "\"",
+          "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.tape" } },
+          "endCaptures": { "0": { "name": "punctuation.definition.string.end.tape" } },
+          "patterns": [{ "name": "constant.character.escape.tape", "match": "\\\\[\"\\\\$`]" }]
+        },
+        {
+          "name": "string.quoted.single.tape",
+          "begin": "'",
+          "end": "'",
+          "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.tape" } },
+          "endCaptures": { "0": { "name": "punctuation.definition.string.end.tape" } }
+        }
+      ]
+    },
+    "time": {
+      "name": "constant.numeric.duration.tape",
+      "match": "(?<![\\w.])(?:\\d+(?:\\.\\d+)?|\\.\\d+)(?:ms|s|m)\\b"
+    },
+    "number": {
+      "name": "constant.numeric.tape",
+      "match": "(?<![\\w.])(?:\\d+(?:\\.\\d+)?|\\.\\d+)%?(?![\\w.])"
+    },
+    "boolean": {
+      "name": "constant.language.boolean.tape",
+      "match": "\\b(?:true|false)\\b"
+    }
+  }
+}
