@@ -194,7 +194,7 @@ main:has(.betamax-hero) > .content-panel:first-child {
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
 }
 
-main:has(.betamax-hero) {
+:root:not([data-theme="light"]) main:has(.betamax-hero) {
   background:
     radial-gradient(
       circle at 67% 18%,
@@ -325,6 +325,7 @@ main:has(.betamax-hero) {
 
 :root[data-theme="light"] .betamax-button-primary {
   color: #fff7e8;
+  background: linear-gradient(180deg, #f07d38, #a8381a);
 }
 
 .betamax-demo {
@@ -610,6 +611,10 @@ main:has(.betamax-hero) {
   font-weight: 700;
 }
 
+:root[data-theme="light"] .feature-grid h2 {
+  color: #241a16;
+}
+
 :root[data-theme="light"] .feature-grid p {
   color: #4d3c31;
 }
@@ -641,6 +646,12 @@ main:has(.betamax-hero) {
   background:
     linear-gradient(135deg, rgba(241, 194, 139, 0.08), transparent 34%),
     rgba(15, 10, 7, 0.72);
+}
+
+:root[data-theme="light"] .next-panel {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.74), transparent 34%),
+    rgba(244, 231, 207, 0.78);
 }
 
 /* Curved stripe motif: wraps from top-right, around the corner, and runs
@@ -698,7 +709,13 @@ main:has(.betamax-hero) {
   }
 
   .next-panel a {
+    grid-template-columns: 1rem minmax(0, 1fr);
+    gap: 0.25rem 0.85rem;
     max-width: 100%;
+  }
+
+  .next-panel p {
+    grid-column: 2;
   }
 
   .next-panel::after {
@@ -713,8 +730,12 @@ main:has(.betamax-hero) {
     min-height: 12rem;
   }
 
+  .betamax-demo::after {
+    inset-inline: 0;
+  }
+
   .betamax-terminal-demo {
-    width: min(112vw, 54rem);
+    width: min(100vw, 54rem);
     margin-top: 0;
   }
 }
@@ -1493,6 +1514,11 @@ body::before {
   letter-spacing: 0;
   overflow-wrap: normal;
   text-wrap: balance;
+}
+
+:root[data-theme="light"] .bm-manual-copy > .sl-heading-wrapper > h2,
+:root[data-theme="light"] .bm-manual-copy > h2 {
+  color: var(--sl-color-white);
 }
 
 .bm-manual-copy > .sl-heading-wrapper > h2 {
