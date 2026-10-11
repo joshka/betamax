@@ -1360,6 +1360,46 @@ mod tests {
     }
 
     #[test]
+    fn caption_text_keeps_padding_inset_without_margin() {
+        let tape = Tape::parse(
+            r#"
+            Set Width 320
+            Set Height 120
+            Set Padding 20
+            Caption "BASELINE"
+            "#,
+        )
+        .unwrap();
+        let settings = Settings::from_tape(&tape).unwrap();
+        let frame = sized_test_frame(
+            settings.terminal_canvas_width(),
+            settings.terminal_canvas_height(),
+            [0, 0, 0, 255],
+        );
+
+        let captioned = settings
+            .decorate_frame_with_overlays(&frame, Some("BASELINE"), &[])
+            .unwrap();
+
+        let row_top = settings.terminal_canvas_height();
+        let fill = &captioned.pixels[row_top as usize * captioned.width as usize * 4..][..4];
+        let ink_columns = (0..captioned.width)
+            .filter(|&x| {
+                (row_top..captioned.height).any(|y| {
+                    let offset = (y as usize * captioned.width as usize + x as usize) * 4;
+                    &captioned.pixels[offset..offset + 4] != fill
+                })
+            })
+            .collect::<Vec<_>>();
+
+        assert!(
+            ink_columns.first().is_some_and(|&x| x >= 20),
+            "caption ink starts at {:?}, inside the 20 px padding",
+            ink_columns.first()
+        );
+    }
+
+    #[test]
     fn presentation_overlays_reserve_space_below_terminal_canvas() {
         let tape = Tape::parse(
             r#"

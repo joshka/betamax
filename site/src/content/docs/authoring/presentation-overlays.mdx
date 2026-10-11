@@ -73,6 +73,13 @@ defaults.
 terminal grid. Captions are left-aligned in that row and key chips are right-aligned, so overlays do
 not cover terminal content.
 
+Without `Margin`, captions and caption-row chips are inset from the image edges by `Padding`, so the
+caption lines up with the first terminal column. With `Margin`, they align with the terminal frame
+edge instead, inset by half of `BorderRadius`. To pull captions closer to the image edge without
+changing the terminal grid, add a small margin and reduce `Padding` by the same amount, such as
+`Set Margin 8` with `Set Padding 12` instead of `Set Padding 20`. See the
+[`Caption` reference](../../reference/tape-reference/#caption-text) for the full rules.
+
 Corner locations such as `BottomRight`, `BottomLeft`, `TopRight`, and `TopLeft` draw chips inside
 the terminal canvas with a small inset from the terminal edge. Corner overlays are useful when the
 terminal dimensions must stay unchanged, but they can cover terminal cells.
