@@ -26,6 +26,7 @@ image-webp = "0.2"
 glob = "0.3"
 interpolator = "0.5"
 indicatif = "0.18.4"
+indoc = "2"
 libghostty-vt = { version = "0.2.1", features = ["tracing"] }
 miette = "7"
 png = "0.18"

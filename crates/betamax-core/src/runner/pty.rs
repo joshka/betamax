@@ -68,6 +68,11 @@ impl PtySession {
         let shell = ShellLaunch::from_argv(&argv);
         argv = shell.argv;
         let mut command = CommandBuilder::from_argv(argv);
+        // portable-pty falls back to $HOME without an explicit cwd.
+        let cwd = std::env::current_dir()
+            .into_diagnostic()
+            .wrap_err("failed to read the current directory")?;
+        command.cwd(cwd);
         apply_terminal_environment(&mut command, shell.kind, &settings.env);
 
         let child = pair

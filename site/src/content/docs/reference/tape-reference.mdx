@@ -117,6 +117,8 @@ tools such as `git`, `rg`, `cargo`, or `ffmpeg`. The check runs before output fi
 Applies one setting from the table above. `Set` commands must appear before runtime commands because
 they affect shell startup, PTY size, capture timing, rendering, or output decoration.
 
+The shell starts in the directory where `betamax` was run, not the tape file's directory.
+
 ### `Env <key> <value>`
 
 Adds or overrides an environment variable for the spawned shell. Betamax applies its terminal
