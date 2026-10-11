@@ -103,6 +103,8 @@ const KEYBOARD_OVERLAY_TYPE_MAX_CHARS: usize = 26;
 const KEYBOARD_OVERLAY_CHIP_ALPHA: u8 = 235;
 /// Radius used for rounded keyboard overlay keycap corners.
 const KEYBOARD_OVERLAY_CHIP_CORNER_RADIUS: u32 = 3;
+/// Minimum horizontal presentation-row inset without a margin, relative to caption font size.
+const PRESENTATION_OVERLAY_MIN_INSET_SCALE: f32 = 0.5;
 /// Gap between caption text and right-aligned keyboard chips.
 const PRESENTATION_OVERLAY_GAP: u32 = 16;
 
@@ -726,7 +728,7 @@ impl Settings {
                     .saturating_sub(self.presentation_overlay_height().min(self.height)),
                 right_x: self
                     .presentation_overlay_right_x()
-                    .saturating_sub(self.presentation_overlay_optical_inset_x()),
+                    .saturating_sub(self.presentation_overlay_inset_x()),
                 bottom_y: self.height.saturating_sub(margin),
                 inset_x: 0,
                 inset_y: 0,
@@ -774,16 +776,27 @@ impl Settings {
         }
     }
 
-    /// Left edge for captions after optical compensation for rounded terminal corners.
+    /// Left edge for caption text after the presentation-row inset.
     fn caption_overlay_left_x(&self) -> u32 {
         self.presentation_overlay_left_x()
-            .saturating_add(self.presentation_overlay_optical_inset_x())
+            .saturating_add(self.presentation_overlay_inset_x())
             .min(self.presentation_overlay_right_x())
     }
 
-    /// Horizontal optical inset applied to presentation overlays near rounded terminal corners.
-    fn presentation_overlay_optical_inset_x(&self) -> u32 {
-        self.style.border_radius / 2
+    /// Horizontal inset applied to both ends of the presentation row.
+    ///
+    /// With a margin, the presentation row sits below a visible frame, so content aligns with the
+    /// frame edge plus an optical inset of half the `BorderRadius`. Without a margin, the row spans
+    /// the full image width, so content uses the terminal `Padding` and lines up with terminal
+    /// column 0, keeping at least half the caption font size so text never touches the image edge.
+    fn presentation_overlay_inset_x(&self) -> u32 {
+        let optical_inset = self.style.border_radius / 2;
+        if self.effective_margin() > 0 {
+            return optical_inset;
+        }
+        let min_inset =
+            (self.caption_font_size() * PRESENTATION_OVERLAY_MIN_INSET_SCALE).ceil() as u32;
+        self.text.padding.max(optical_inset).max(min_inset)
     }
 
     /// Return the keyboard overlay label for a visible input command, if enabled.
@@ -1987,6 +2000,62 @@ mod tests {
         assert_eq!(settings.caption_overlay_left_x(), 20);
         assert_eq!(settings.keyboard_overlay_anchor().right_x, 300);
         assert_eq!(layout.text_x, 20);
+    }
+
+    #[test]
+    fn presentation_overlay_without_margin_uses_terminal_padding() {
+        let tape = Tape::parse(
+            r#"
+            Set Width 320
+            Set Height 200
+            Set Padding 20
+            Set KeyboardOverlay Input
+            Caption "Long caption"
+            Type "echo done"
+            "#,
+        )
+        .unwrap();
+        let settings = Settings::from_tape(&tape).unwrap();
+
+        assert_eq!(settings.caption_overlay_left_x(), 20);
+        assert_eq!(settings.caption_layout(0).unwrap().text_x, 20);
+        assert_eq!(settings.keyboard_overlay_anchor().right_x, 300);
+    }
+
+    #[test]
+    fn presentation_overlay_without_margin_or_padding_keeps_minimum_inset() {
+        let tape = Tape::parse(
+            r#"
+            Set Width 320
+            Set Height 200
+            Set FontSize 20
+            Set Padding 0
+            Caption "Long caption"
+            "#,
+        )
+        .unwrap();
+        let settings = Settings::from_tape(&tape).unwrap();
+
+        // Half of the 18 px caption font (0.9 x FontSize 20).
+        assert_eq!(settings.caption_overlay_left_x(), 9);
+    }
+
+    #[test]
+    fn presentation_overlay_with_margin_ignores_terminal_padding() {
+        let tape = Tape::parse(
+            r#"
+            Set Width 320
+            Set Height 200
+            Set Margin 16
+            Set Padding 32
+            Set BorderRadius 12
+            Caption "Long caption"
+            "#,
+        )
+        .unwrap();
+        let settings = Settings::from_tape(&tape).unwrap();
+
+        assert_eq!(settings.caption_overlay_left_x(), 22);
     }
 
     #[test]

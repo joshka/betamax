@@ -88,9 +88,9 @@ the input is typed, so review GIFs show the action near the terminal change it c
 is presentation-only: it does not change PTY input bytes, waits, state JSON, or final output
 dimensions. `KeyboardOverlayLocation CaptionRow` reserves a bottom presentation row before deriving
 the terminal grid so chips do not cover terminal content. Corner locations such as `BottomRight`
-draw chips inside the terminal canvas with a small inset from the terminal edge. Presentation
-overlays use a small optical inset based on half of `BorderRadius` near rounded terminal corners,
-so caption and chip edges feel aligned with the rounded frame.
+draw chips inside the terminal canvas with a small inset from the terminal edge. Caption-row
+overlays are inset by `Padding` when the tape has no margin, or by half of `BorderRadius` from the
+terminal frame edge when it has one; see [`Caption`](#caption-text) for details and workarounds.
 
 Keyboard overlay modes are:
 
@@ -252,13 +252,29 @@ on the next visual frame Betamax renders, such as a frame captured during a late
 typing, key press, `Show`, final-frame output, or `Screenshot`. Add `Sleep` after a caption-only
 change when an animation should dwell on the new caption without changing terminal content.
 
-Betamax renders captions below the terminal canvas, left-aligned with the terminal frame edge.
+Betamax renders captions left-aligned below the terminal canvas. Their horizontal inset depends on
+whether the tape sets `Margin`:
+
+- Without a margin, the presentation row spans the full image width. Caption text starts `Padding`
+  pixels from the left edge, in line with the first terminal column, and caption-row keyboard chips
+  keep the same inset from the right edge. With `Padding 0`, the inset is half the caption font
+  size so text never touches the image edge.
+- With a margin, the presentation row sits below the framed terminal. Captions and chips align with
+  the terminal frame edge and ignore `Padding`. Both are inset by half of `BorderRadius`, so their
+  edges feel aligned with rounded corners.
+
+To place captions closer to the image edge than the terminal text, add a margin and reduce
+`Padding` by the same amount. For example, replacing `Set Padding 20` with `Set Margin 8` and
+`Set Padding 12` keeps terminal text and the grid where they were and moves the caption to 8 pixels
+from the edge. The margin is drawn in `MarginFill`, the same color as the presentation row, so the
+terminal gains a thin frame in that color. Lowering `Padding` alone also moves the caption, but
+changes the terminal grid size.
+
 Captions are single-line presentation text: if a caption does not fit beside right-aligned keyboard
 chips, Betamax truncates it with `...` instead of wrapping. Caption glyphs are clipped to their
 reserved width as a final guard for font fallback and unusually wide characters. If the caption or
 keyboard overlay needs more room, increase the tape height or reduce presentation chrome such as
-margin and window bar size. Keyboard chips reserve caption space using their visible width, and
-caption and chip edges are optically inset by half of the rounded-corner radius.
+margin and window bar size. Keyboard chips reserve caption space using their visible width.
 
 ### `Screenshot <path>.png`
 
