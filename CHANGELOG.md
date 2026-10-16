@@ -5,6 +5,15 @@ versions and identify the core version shipped in the release lockfile.
 
 ## [Unreleased]
 
+## [0.1.23](https://github.com/joshka/betamax/compare/betamax-v0.1.22...betamax-v0.1.23) - 2026-10-16
+
+### Other
+
+- Highlight tape examples in the docs site ([#187](https://github.com/joshka/betamax/pull/187))
+- Inset captions by Padding when there is no margin ([#190](https://github.com/joshka/betamax/pull/190))
+- Start the tape shell in the current directory ([#189](https://github.com/joshka/betamax/pull/189))
+- Reduce CI and release turnaround time ([#178](https://github.com/joshka/betamax/pull/178))
+
 ## [0.1.22](https://github.com/joshka/betamax/compare/betamax-v0.1.21...betamax-v0.1.22) - 2026-10-10
 
 ### Other
