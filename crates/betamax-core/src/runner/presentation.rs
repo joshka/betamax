@@ -190,8 +190,9 @@ impl Presentation {
             frame,
             &self.backdrop,
             &self.bar_overlay,
-            self.theme.background,
-        );
+            &self.theme,
+            &self.text,
+        )?;
         let active_caption = caption.filter(|caption| !caption.trim().is_empty());
         let keyboard_avoid_width = if self.keyboard_overlay.visible(keyboard_overlay_labels)
             && self.keyboard_overlay.location == KeyboardOverlayLocation::CaptionRow

@@ -105,10 +105,14 @@ requirement to preserve these exact files when a better boundary becomes clear.
 - [`border.rs`](../crates/betamax-core/src/runner/border.rs): inset outline configuration, automatic
   contrast, numeric interpretation, coverage composition policy, and border tests. Window chrome
   delegates drawing; canvas supplies shared rounded coverage and opaque pixel mixing.
+- [`window_title.rs`](../crates/betamax-core/src/runner/window_title.rs): static title configuration,
+  typography, automatic color contrast, single-line text policy, cached rasterization, and title
+  behavior tests. Window chrome resolves button clearance before applying the rounded mask.
 - [`margin.rs`](../crates/betamax-core/src/runner/margin.rs): fill parsing, gradient projection and
   sampling, dithering, and backdrop rendering.
 - [`caption.rs`](../crates/betamax-core/src/runner/caption.rs): caption text semantics, typography,
-  height requirements, shaping, truncation, and drawing.
+  height requirements, and the single-line shaping, truncation, and drawing mechanism reused by
+  window titles.
 - [`keyboard_overlay.rs`](../crates/betamax-core/src/runner/keyboard_overlay.rs): HUD configuration,
   input eligibility, and recorded-time event lifetime. Its `labels` child owns readable input
   intent; its `chips` child owns chip measurement, wrapping, and drawing.

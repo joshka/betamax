@@ -54,6 +54,8 @@ Common settings:
 | `WindowBar`               | `Rings`, `RingsRight`, `Colorful`, or etc. | empty / disabled | Any non-empty value enables the bar.        |
 | `WindowBarSize`           | number                                     | `30`             | Bar height in pixels when enabled.          |
 | `WindowBarColor`          | `#rrggbb` string                           | theme background | Invalid colors fall back to theme bg.       |
+| `WindowTitle`             | string                                     | empty / disabled | Static centered window bar title.           |
+| `WindowTitleColor`        | `auto` or `#rrggbb` string                 | auto             | Invalid colors use automatic contrast.      |
 | `BorderRadius`            | number                                     | `0`              | Rounded-corner mask radius in pixels.       |
 | `WindowBorder`            | number                                     | `0`              | Inset width in pixels; zero disables.       |
 | `WindowBorderColor`       | string                                     | `auto`           | Auto contrast or explicit `#rrggbb`.        |
@@ -179,6 +181,32 @@ Set WindowBarColor "#0f101a"
 Set Theme '{"name":"Night","background":"#151723"}'
 Set BorderRadius 11
 ```
+
+### Window title
+
+```tape
+Set WindowBar Colorful
+Set WindowTitle "jk — log"
+Set WindowTitleColor auto
+```
+
+`WindowTitle` defaults to an empty string and is ignored when `WindowBar` is empty. The static
+single-line title is centered across the whole bar, with equal space reserved at both ends to avoid
+buttons in left and `Right` modes, with a gap of two button radii. Long titles truncate with `…`;
+extremely narrow bars clip the ellipsis or omit the title when no space remains. Line breaks become
+spaces.
+
+The title uses `FontFamily` at 40% of `WindowBarSize` (12 pixels for the default 30-pixel bar).
+`WindowTitleColor` defaults to `auto`; omitted, empty, or invalid values also use automatic color.
+Automatic color starts with 65% theme foreground and 35% effective window-bar color, mixing sRGB
+channels. It increases the foreground share in one-percent steps until the text color reaches at
+least 4.5:1 contrast against the bar. If the theme foreground cannot reach that contrast, it chooses
+black or white, whichever contrasts more. This uses an explicit `WindowBarColor` when configured.
+The ratio describes the text color before glyph antialiasing.
+
+An explicit `#rrggbb` title color bypasses automatic contrast adjustment and survives `Set Theme`
+in either order, even when its contrast is low. Titles affect decorated media only; they do not
+change terminal state or follow the program's OSC window title.
 
 ## Commands
 
