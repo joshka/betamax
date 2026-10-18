@@ -122,6 +122,27 @@ to the active theme background. `betamax validate` checks tape syntax and comman
 not reject malformed fill strings. Radial gradients and image fills are not yet supported. See
 `examples/margin-gradient.tape` for a complete example.
 
+### Window shadow
+
+`Shadow` draws a black outer shadow behind the rounded terminal window. `ShadowBlur` is the CSS
+blur radius, so its standard deviation is half the value; the default `28` therefore uses sigma
+`14`, matching lazyagents' `-blur 0x28` at 2× and then downsampling. `ShadowOffset` is a signed
+vertical displacement, and `ShadowOpacity` is clamped to `0..1`.
+
+```tape
+Set Margin 44
+Set Shadow true
+Set ShadowBlur 28
+Set ShadowOffset 9
+Set ShadowOpacity 0.55
+```
+
+The shadow is clipped to the output frame. `Margin 0` or `MarginFill ""` makes it a no-op, as does
+zero opacity. Allow a margin of at least about `ShadowBlur + abs(ShadowOffset)` to avoid obvious
+clipping: about `37` pixels with the defaults, or `Margin 44` for extra room. Increase the margin
+further if the faint tail is still visible at the edge. The shadow shows best on a gradient or on a
+backdrop lighter than near-black.
+
 ## Commands
 
 ### `Output <path>`

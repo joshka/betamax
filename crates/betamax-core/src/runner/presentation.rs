@@ -5,7 +5,7 @@
 
 use std::time::Duration;
 
-use super::canvas::Canvas;
+use super::canvas::{Canvas, PixelRect};
 use super::caption::{
     caption_font_size, caption_overlay_height, CaptionLayout, CaptionRenderer, CAPTION_LINE_HEIGHT,
     CAPTION_VERTICAL_PADDING,
@@ -77,6 +77,13 @@ impl Presentation {
             self.style.margin_fill.as_deref(),
             self.theme.background,
         )?;
+        let bounds = PixelRect {
+            x: self.style.effective_margin(),
+            y: self.style.effective_margin(),
+            width: self.terminal_canvas_width(),
+            height: self.terminal_canvas_height() + self.style.window_bar_height(),
+        };
+        self.style.prepare_backdrop(&mut self.backdrop, bounds);
         Ok(())
     }
 
