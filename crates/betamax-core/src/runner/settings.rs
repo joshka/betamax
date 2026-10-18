@@ -164,6 +164,9 @@ impl Settings {
             ("WindowBar", Value::String(window_bar)) => {
                 self.presentation.style.window_bar = window_bar.clone()
             }
+            ("WindowBarColor", Value::String(color)) => {
+                self.presentation.style.window_bar_color_override = Some(color.clone());
+            }
             ("WindowBarSize", Value::Number(window_bar_size)) => {
                 self.presentation.style.window_bar_size = *window_bar_size as u32;
             }
@@ -339,6 +342,7 @@ fn known_setting(key: &str) -> bool {
             | "Margin"
             | "MarginFill"
             | "WindowBar"
+            | "WindowBarColor"
             | "WindowBarSize"
             | "WindowBorder"
             | "WindowBorderColor"
@@ -360,8 +364,8 @@ fn known_setting(key: &str) -> bool {
 /// Return the expected tape value kind for a supported `Set` key.
 fn setting_expected_type(key: &str) -> &'static str {
     match key {
-        "Shell" | "FontFamily" | "MarginFill" | "WindowBar" | "WaitPattern" | "Theme"
-        | "WindowBorderColor" => "string",
+        "Shell" | "FontFamily" | "MarginFill" | "WindowBar" | "WindowBarColor" | "WaitPattern"
+        | "Theme" | "WindowBorderColor" => "string",
         "Width"
         | "Height"
         | "FontSize"

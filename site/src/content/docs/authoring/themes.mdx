@@ -54,17 +54,18 @@ size if needed. See [Presentation and layout proof](../tape-files/#presentation-
 
 These settings are applied after the raw terminal frame is rendered:
 
-| Setting         | Default          | Purpose                      |
-| --------------- | ---------------- | ---------------------------- |
-| `Margin`        | `0`              | Outer frame margin in pixels |
-| `MarginFill`    | theme background | Solid or linear backdrop     |
-| `WindowBar`     | empty / disabled | Synthetic window bar mode    |
-| `WindowBarSize` | `30`             | Window bar height in pixels  |
-| `BorderRadius`  | `0`              | Rounded-corner mask radius   |
-| `Shadow`        | `false`          | Enable a black window shadow |
-| `ShadowBlur`    | `28`             | CSS blur radius in pixels    |
-| `ShadowOffset`  | `9`              | Vertical offset in pixels    |
-| `ShadowOpacity` | `0.55`           | Shadow opacity, clamped 0..1 |
+| Setting          | Default          | Purpose                      |
+| ---------------- | ---------------- | ---------------------------- |
+| `Margin`         | `0`              | Outer frame margin in pixels |
+| `MarginFill`     | theme background | Solid or linear backdrop     |
+| `WindowBar`      | empty / disabled | Synthetic window bar mode    |
+| `WindowBarSize`  | `30`             | Window bar height in pixels  |
+| `WindowBarColor` | theme background | Window bar fill color        |
+| `BorderRadius`   | `0`              | Rounded-corner mask radius   |
+| `Shadow`         | `false`          | Enable a black window shadow |
+| `ShadowBlur`     | `28`             | CSS blur radius in pixels    |
+| `ShadowOffset`   | `9`              | Vertical offset in pixels    |
+| `ShadowOpacity`  | `0.55`           | Shadow opacity, clamped 0..1 |
 
 `WindowBar` currently treats any non-empty value as enabled. Modes ending in `Right`, such as
 `RingsRight` and `ColorfulRight`, place the window buttons on the right. Other non-empty values
@@ -75,6 +76,7 @@ Set Margin 12
 Set MarginFill "#111111"
 Set WindowBar Colorful
 Set WindowBarSize 34
+Set WindowBarColor "#0f101a"
 Set BorderRadius 8
 ```
 
@@ -114,6 +116,11 @@ Set ShadowBlur 28
 Set ShadowOffset 9
 Set ShadowOpacity 0.55
 ```
+
+`WindowBarColor` accepts a `#rrggbb` string and defaults to the theme background. An explicit
+color takes precedence even if `Set Theme` comes later. Invalid colors, including an empty string,
+fall back to the active theme background. The setting is ignored when the bar is disabled. It changes
+only the bar fill; `BorderRadius` rounds the window's outer corners.
 
 ## Timing and cursor styling
 

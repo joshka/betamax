@@ -48,6 +48,8 @@ pub(super) struct Presentation {
     pub(super) style: WindowStyle,
     /// Cached opaque margin canvas, prepared after all startup settings have been applied.
     backdrop: Canvas,
+    /// Cached bar fill and buttons, prepared with the backdrop after startup settings.
+    bar_overlay: Canvas,
     /// Whether the tape uses presentation captions.
     pub(super) caption_overlay: bool,
     /// Optional input-sequence overlay for review media.
@@ -63,6 +65,7 @@ impl Presentation {
             text: TextSettings::default(),
             style: WindowStyle::new(&theme),
             backdrop: Canvas::new(0, 0, theme.background)?,
+            bar_overlay: Canvas::transparent(0, 0)?,
             caption_overlay: false,
             keyboard_overlay: KeyboardOverlaySettings::default(),
             theme,
@@ -84,6 +87,9 @@ impl Presentation {
             height: self.terminal_canvas_height() + self.style.window_bar_height(),
         };
         self.style.prepare_backdrop(&mut self.backdrop, bounds);
+        self.bar_overlay =
+            self.style
+                .prepare_bar(self.width, self.height, self.theme.background)?;
         Ok(())
     }
 
@@ -179,8 +185,13 @@ impl Presentation {
         let bar_height = self.style.window_bar_height();
         let mut output = self.backdrop.clone();
         output.blit(frame, margin, margin + bar_height)?;
-        self.style
-            .draw(&mut output, frame, &self.backdrop, self.theme.background);
+        self.style.draw(
+            &mut output,
+            frame,
+            &self.backdrop,
+            &self.bar_overlay,
+            self.theme.background,
+        );
         let active_caption = caption.filter(|caption| !caption.trim().is_empty());
         let keyboard_avoid_width = if self.keyboard_overlay.visible(keyboard_overlay_labels)
             && self.keyboard_overlay.location == KeyboardOverlayLocation::CaptionRow
