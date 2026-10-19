@@ -54,6 +54,9 @@ Common settings:
 | `WindowBar`               | `Rings`, `RingsRight`, `Colorful`, or etc. | empty / disabled | Any non-empty value enables the bar.        |
 | `WindowBarSize`           | number                                     | `30`             | Bar height in pixels when enabled.          |
 | `BorderRadius`            | number                                     | `0`              | Rounded-corner mask radius in pixels.       |
+| `WindowBorder`            | number                                     | `0`              | Inset width in pixels; zero disables.       |
+| `WindowBorderColor`       | string                                     | `auto`           | Auto contrast or explicit `#rrggbb`.        |
+| `WindowBorderOpacity`     | number                                     | `0.15`           | Outline opacity, clamped to 0–1.            |
 
 Unknown settings and type mismatches are errors. For example, `Set Wdith 900` and
 `Set Width "wide"` fail before the shell starts instead of silently falling back to defaults.
@@ -88,6 +91,22 @@ For built-in shell names such as `bash`, `zsh`, and `fish`, Betamax starts a cle
 with startup files and history disabled where possible. Those shells use the VHS-style colored `>`
 prompt by default, so captures do not inherit prompts such as `bash-5.3$` from the host
 environment.
+
+### Window border
+
+`Set WindowBorder 1` enables a subtle inset outline around the terminal and window bar together.
+It follows `BorderRadius`, without a divider between the bar and terminal. The default width is
+zero (disabled); fractional widths truncate to integer pixels. Negative or non-finite widths and
+non-finite opacity values are errors. Opacity is clamped to 0–1; zero leaves rendering unchanged.
+
+`WindowBorderColor "auto"` (the default) selects white or black for contrast with the final theme
+background, using linear-sRGB relative luminance with a 0.179 threshold. Explicit `#rrggbb` colors
+survive subsequent theme changes. Invalid color strings are errors; `auto` resets an override.
+
+The outline paints over the window's edge pixels, including with zero margin or padding. It does
+not change output dimensions, terminal placement, PTY rows/columns, raw terminal frames, or state
+JSON. Captions and keyboard overlays draw afterward. Rounded edges blend against the backdrop at
+the same coordinates, including a shadow when available. Output remains opaque.
 
 ### Margin fill
 

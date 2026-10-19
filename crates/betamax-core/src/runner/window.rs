@@ -1,5 +1,6 @@
 //! Window chrome configuration, dimensions, button styling, and painting.
 
+use super::border::Border;
 use super::canvas::{rgb, Canvas, PixelRect};
 use super::margin::parse_hex_color;
 use super::shadow::Shadow;
@@ -38,6 +39,8 @@ pub(super) struct WindowStyle {
     pub(super) border_radius: u32,
     /// Static shadow configuration and painting policy.
     pub(super) shadow: Shadow,
+    /// Inset outline configuration and drawing policy.
+    pub(super) border: Border,
 }
 
 impl WindowStyle {
@@ -55,6 +58,7 @@ impl WindowStyle {
             window_bar_color: background,
             border_radius: 0,
             shadow: Shadow::default(),
+            border: Border::default(),
         }
     }
 
@@ -96,7 +100,20 @@ impl WindowStyle {
             output.fill_rect(margin, margin, terminal.width, bar_height, bar);
             self.draw_window_buttons(output);
         }
-        if self.border_radius > 0 {
+        if self.border.visible() {
+            self.border.draw(
+                output,
+                PixelRect {
+                    x: margin,
+                    y: margin,
+                    width: terminal.width,
+                    height: terminal.height + bar_height,
+                },
+                self.border_radius,
+                backdrop,
+                fallback,
+            );
+        } else if self.border_radius > 0 {
             output.apply_rounded_rect_mask(
                 margin,
                 margin,

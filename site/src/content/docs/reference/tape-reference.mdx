@@ -71,6 +71,9 @@ an error rather than a quiet fallback.
 | `WindowBar`               | string               | empty / disabled | Non-empty values draw a synthetic window bar                          |
 | `WindowBarSize`           | number               | `30`             | Window bar height in pixels                                           |
 | `BorderRadius`            | number               | `0`              | Rounded-corner mask radius in pixels                                  |
+| `WindowBorder`            | number               | `0`              | Inset outline width in integer pixels; zero disables.                 |
+| `WindowBorderColor`       | string               | `auto`           | Contrasting black/white or explicit `#rrggbb`.                        |
+| `WindowBorderOpacity`     | number               | `0.15`           | Outline opacity, clamped to 0–1.                                      |
 
 The terminal grid is derived after all settings are applied. Margin, window-bar decoration, and any
 presentation row needed for captions or `KeyboardOverlayLocation CaptionRow` are subtracted from
@@ -98,6 +101,22 @@ Keyboard overlay modes are:
 - `Keys`: explicit key commands only, such as `Ctrl+P`, `Down`, `Enter`, and `Escape`.
 - `Input`: key commands plus short typed input that reads like user intent.
 - `All`: every visible input event, including long `Type` commands summarized by character count.
+
+### Window border
+
+`Set WindowBorder 1` enables a subtle inset outline around the terminal and window bar together.
+It follows `BorderRadius`, without a divider between the bar and terminal. The default width is
+zero (disabled); fractional widths truncate to integer pixels. Negative or non-finite widths and
+non-finite opacity values are errors. Opacity is clamped to 0–1; zero leaves rendering unchanged.
+
+`WindowBorderColor "auto"` (the default) selects white or black for contrast with the final theme
+background, using linear-sRGB relative luminance with a 0.179 threshold. Explicit `#rrggbb` colors
+survive subsequent theme changes. Invalid color strings are errors; `auto` resets an override.
+
+The outline paints over the window's edge pixels, including with zero margin or padding. It does
+not change output dimensions, terminal placement, PTY rows/columns, raw terminal frames, or state
+JSON. Captions and keyboard overlays draw afterward. Rounded edges blend against the backdrop at
+the same coordinates, including a shadow when available. Output remains opaque.
 
 ### Margin fill
 

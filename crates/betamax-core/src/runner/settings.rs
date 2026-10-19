@@ -170,6 +170,15 @@ impl Settings {
             ("BorderRadius", Value::Number(border_radius)) => {
                 self.presentation.style.border_radius = *border_radius as u32;
             }
+            ("WindowBorder", Value::Number(width)) => {
+                self.presentation.style.border.set_width(*width)?;
+            }
+            ("WindowBorderColor", Value::String(color)) => {
+                self.presentation.style.border.set_color(color)?;
+            }
+            ("WindowBorderOpacity", Value::Number(opacity)) => {
+                self.presentation.style.border.set_opacity(*opacity)?;
+            }
             ("CursorBlink", Value::Bool(cursor_blink)) => self.cursor_blink = *cursor_blink,
             ("Shadow", Value::Bool(shadow)) => self.presentation.style.shadow.enabled = *shadow,
             ("ShadowBlur", Value::Number(blur)) => {
@@ -331,6 +340,9 @@ fn known_setting(key: &str) -> bool {
             | "MarginFill"
             | "WindowBar"
             | "WindowBarSize"
+            | "WindowBorder"
+            | "WindowBorderColor"
+            | "WindowBorderOpacity"
             | "BorderRadius"
             | "Shadow"
             | "ShadowBlur"
@@ -348,10 +360,25 @@ fn known_setting(key: &str) -> bool {
 /// Return the expected tape value kind for a supported `Set` key.
 fn setting_expected_type(key: &str) -> &'static str {
     match key {
-        "Shell" | "FontFamily" | "MarginFill" | "WindowBar" | "WaitPattern" | "Theme" => "string",
-        "Width" | "Height" | "FontSize" | "LetterSpacing" | "LineHeight" | "Padding"
-        | "Framerate" | "PlaybackSpeed" | "LoopOffset" | "Margin" | "WindowBarSize"
-        | "BorderRadius" | "ShadowBlur" | "ShadowOffset" | "ShadowOpacity" => "number",
+        "Shell" | "FontFamily" | "MarginFill" | "WindowBar" | "WaitPattern" | "Theme"
+        | "WindowBorderColor" => "string",
+        "Width"
+        | "Height"
+        | "FontSize"
+        | "LetterSpacing"
+        | "LineHeight"
+        | "Padding"
+        | "Framerate"
+        | "PlaybackSpeed"
+        | "LoopOffset"
+        | "Margin"
+        | "WindowBarSize"
+        | "WindowBorder"
+        | "WindowBorderOpacity"
+        | "BorderRadius"
+        | "ShadowBlur"
+        | "ShadowOffset"
+        | "ShadowOpacity" => "number",
         "TypingSpeed" => "duration",
         "CursorBlink" | "Shadow" => "bool",
         "KeyboardOverlay" => "Off, Keys, Input, or All",

@@ -41,6 +41,7 @@ use miette::{miette, Context};
 use crate::Result;
 
 mod artifacts;
+mod border;
 mod canvas;
 mod caption;
 mod capture;
