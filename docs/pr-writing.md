@@ -8,8 +8,9 @@ commands matter; an implementation inventory does not.
 ## Make the change easy to skim
 
 - Open with the problem and result in one or two sentences.
-- Show the new tape syntax or API usage near the top when users gain a new command or capability.
-  A short concrete example should make the change usable without following a specification link.
+- When a change adds a feature, show the tape or code that uses it near the top, followed by an
+  image of the result. The example should make the feature usable without following a
+  specification link, and the image should show what it produces without building the branch.
 - Put independent behavior changes in a few short bullets, starting with the useful fact.
 - Give evidence and validation distinct places. Use descriptive headings when they help navigation.
 - Keep image captions brief and adjacent to the image. Stack screenshots so terminal text stays
