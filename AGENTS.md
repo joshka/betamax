@@ -48,6 +48,14 @@ rustup toolchain install nightly --component rustfmt
 mise run fmt
 ```
 
+### Module ownership
+
+Before adding substantial Rust code, extending a feature, or creating or extracting modules, read
+[Module design](docs/module-design.md). Apply it to in-flight additions as well as refactors.
+Inspect the types, methods, helpers, and tests that would belong together before choosing a file.
+Review the destination's responsibilities and projected size; passing tests alone does not establish
+that the code belongs there. Keep the guide's ownership examples current when a boundary changes.
+
 Prefer small modules with clear ownership and documented non-obvious behavior. Public API docs
 should explain behavior, return values, edge cases, and examples where useful. Markdown is linted
 with `markdownlint-cli2`; wrap prose at 100 columns and keep tables aligned.
