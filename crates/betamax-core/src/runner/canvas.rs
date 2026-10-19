@@ -86,6 +86,32 @@ impl Canvas {
         ]);
     }
 
+    /// Replace one in-bounds pixel with a straight-alpha color; clear pixels store zero color.
+    pub(super) fn set_pixel_alpha(
+        &mut self,
+        x: u32,
+        y: u32,
+        color: libghostty_vt::style::RgbColor,
+        alpha: u8,
+    ) {
+        let offset = self.offset(x, y);
+        let pixel = if alpha == 0 {
+            [0; BYTES_PER_PIXEL]
+        } else {
+            [color.r, color.g, color.b, alpha]
+        };
+        self.pixels[offset..offset + BYTES_PER_PIXEL].copy_from_slice(&pixel);
+    }
+
+    /// Replace every pixel with one straight-alpha color.
+    pub(super) fn fill_alpha(&mut self, color: libghostty_vt::style::RgbColor, alpha: u8) {
+        for y in 0..self.height {
+            for x in 0..self.width {
+                self.set_pixel_alpha(x, y, color, alpha);
+            }
+        }
+    }
+
     /// Copy a frame into this frame at a pixel offset.
     ///
     /// The source is converted to RGBA first, so callers can pass either RGBA or BGRA frames.

@@ -28,7 +28,7 @@ fn parsed_gradient(value: &str) -> LinearGradient {
 fn margin_fill_parses_colors_and_gradient_destinations() {
     assert_eq!(
         parse_margin_fill(" #123aBc "),
-        Some(MarginFill::Solid(rgb(18, 58, 188)))
+        Some(MarginFill::Solid(FillColor::opaque(rgb(18, 58, 188))))
     );
     assert_eq!(
         parsed_gradient("linear(#232640, #0f101a)").direction,
@@ -54,14 +54,14 @@ fn margin_fill_parses_colors_and_gradient_destinations() {
         assert_eq!(
             gradient.stops[0],
             GradientStop {
-                color: rgb(35, 38, 64),
+                color: FillColor::opaque(rgb(35, 38, 64)),
                 position: 0.0
             }
         );
         assert_eq!(
             gradient.stops[1],
             GradientStop {
-                color: rgb(15, 16, 26),
+                color: FillColor::opaque(rgb(15, 16, 26)),
                 position: 1.0
             }
         );
@@ -76,21 +76,21 @@ fn linear_margin_fill_supports_angles_and_positioned_stops() {
         gradient.stops,
         vec![
             GradientStop {
-                color: rgb(77, 91, 158),
+                color: FillColor::opaque(rgb(77, 91, 158)),
                 position: 0.0
             },
             GradientStop {
-                color: rgb(35, 38, 64),
+                color: FillColor::opaque(rgb(35, 38, 64)),
                 position: 0.42
             },
             GradientStop {
-                color: rgb(15, 16, 26),
+                color: FillColor::opaque(rgb(15, 16, 26)),
                 position: 1.0
             },
         ]
     );
-    assert_eq!(gradient.color_at(0.42, 0.0), rgb(35, 38, 64));
-    assert_eq!(gradient.color_at(0.71, 0.0), rgb(25, 27, 45));
+    assert_eq!(gradient.color_at(0.42, 0.0).color, rgb(35, 38, 64));
+    assert_eq!(gradient.color_at(0.71, 0.0).color, rgb(25, 27, 45));
 }
 
 #[test]
@@ -333,13 +333,13 @@ fn pixel(frame: &Frame, x: u32, y: u32) -> [u8; 4] {
 fn transparent_margin_fill_clears_the_backdrop_around_an_opaque_window() {
     assert_eq!(
         parse_margin_fill(" Transparent "),
-        Some(MarginFill::Transparent)
+        Some(MarginFill::Solid(FillColor::CLEAR))
     );
     let tape =
         Tape::parse("Set Preset Framed\nSet Width 200\nSet Height 160\nSet MarginFill transparent")
             .unwrap();
     let settings = Settings::from_tape(&tape).unwrap();
-    assert!(settings.presentation.style.transparent_margin());
+    assert!(settings.presentation.style.margin_has_alpha());
     let frame = decorated(&settings, None);
     let alpha =
         |x: u32, y: u32| frame.pixels[(y as usize * frame.width as usize + x as usize) * 4 + 3];
@@ -371,7 +371,7 @@ fn coverage_against_a_clear_backdrop_fades_alpha_not_color() {
 fn opaque_margin_fills_keep_every_pixel_opaque() {
     let tape = Tape::parse("Set Preset Framed\nSet Width 200\nSet Height 160").unwrap();
     let settings = Settings::from_tape(&tape).unwrap();
-    assert!(!settings.presentation.style.transparent_margin());
+    assert!(!settings.presentation.style.margin_has_alpha());
     let frame = decorated(&settings, Some("caption"));
     assert!(frame
         .pixels
@@ -379,4 +379,59 @@ fn opaque_margin_fills_keep_every_pixel_opaque() {
         .0
         .iter()
         .all(|pixel| pixel[3] == 255));
+}
+
+#[test]
+fn margin_fill_accepts_css_ordered_alpha() {
+    assert_eq!(
+        parse_margin_fill("#0f101a80"),
+        Some(MarginFill::Solid(FillColor {
+            color: rgb(15, 16, 26),
+            alpha: 128
+        }))
+    );
+    assert_eq!(
+        parse_margin_fill("#12345600"),
+        Some(MarginFill::Solid(FillColor::CLEAR))
+    );
+    assert!(parse_margin_fill("#0f101aff").unwrap().is_opaque());
+    for invalid in ["#0f101a8", "#0f101agg", "#0f101a800"] {
+        assert_eq!(parse_margin_fill(invalid), None, "{invalid}");
+    }
+    let fade = parsed_gradient("linear(#4d5b9e, transparent)");
+    assert!(!MarginFill::Gradient(fade).is_opaque());
+}
+
+#[test]
+fn alpha_gradients_interpolate_premultiplied() {
+    let fade = parsed_gradient("linear(#ff0000ff, transparent)");
+    // Premultiplied blending keeps the hue while coverage falls, instead of darkening toward black.
+    assert_eq!(
+        fade.color_at(0.5, 0.0),
+        FillColor {
+            color: rgb(255, 0, 0),
+            alpha: 128
+        }
+    );
+    assert_eq!(fade.color_at(1.0, 0.0), FillColor::CLEAR);
+    let mixed = parsed_gradient("linear(#ff000080, #0000ff80)");
+    assert_eq!(
+        mixed.color_at(0.5, 0.0),
+        FillColor {
+            color: rgb(128, 0, 128),
+            alpha: 128
+        }
+    );
+}
+
+#[test]
+fn translucent_solid_fill_keeps_its_alpha_in_the_backdrop() {
+    let tape = Tape::parse(
+        "Set Preset Framed\nSet Width 200\nSet Height 160\nSet Shadow false\nSet MarginFill \"#0f101a80\"",
+    )
+    .unwrap();
+    let settings = Settings::from_tape(&tape).unwrap();
+    assert!(settings.presentation.style.margin_has_alpha());
+    let frame = decorated(&settings, None);
+    assert_eq!(frame.pixels[..4], [15, 16, 26, 128]);
 }

@@ -134,8 +134,9 @@ theme before or after an explicit fill preserves that fill. See
 [Margin fill](../../reference/tape-reference/#margin-fill) for the full syntax.
 
 `Set MarginFill transparent` leaves the backdrop clear, so the window and its shadow sit on any page
-background. See [Transparent margin](../../reference/tape-reference/#transparent-margin) for how
-each output format handles it.
+background. `#rrggbbaa` colors and stops add partial alpha. See
+[Transparent margin](../../reference/tape-reference/#transparent-margin) for how each output format
+handles it.
 
 `Shadow` is rendered over the full `MarginFill` backdrop after it has resolved its color or
 gradient. `ShadowBlur` follows CSS: sigma is half the blur radius, so the default `28` gives sigma

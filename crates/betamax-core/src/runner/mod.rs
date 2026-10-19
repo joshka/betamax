@@ -439,11 +439,10 @@ where
     /// appearing in GIF/video output.
     fn run_with_capture(&mut self, tape: &Tape, outputs: Outputs) -> Result<RunArtifacts> {
         let mut settings = Settings::from_tape(tape)?;
-        if settings.presentation.style.transparent_margin() {
+        if settings.presentation.style.margin_has_alpha() {
             if let Some(path) = outputs.mp4s.first() {
                 return Err(miette!(
-                    "MP4 cannot carry transparency for MarginFill transparent: {}; use PNG, WebP, \
-                     WebM, or GIF output",
+                    "MP4 cannot carry MarginFill transparency: {}; use PNG, WebP, WebM, or GIF output",
                     path.display()
                 )
                 .into());
@@ -1158,7 +1157,10 @@ mod tests {
             .run_artifacts(&tape)
             .unwrap_err()
             .to_string();
-        assert!(error.contains("MP4 cannot carry transparency"), "{error}");
+        assert!(
+            error.contains("MP4 cannot carry MarginFill transparency"),
+            "{error}"
+        );
     }
 
     #[test]

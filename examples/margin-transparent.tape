@@ -12,7 +12,7 @@ Set CursorBlink false
 Set WindowTitle "Betamax — transparent margin"
 
 Hide
-Type "printf 'Transparent margin fill\n\nThe page background shows through the margin.\n'"
+Type "printf 'Transparent margin\n\nThe page shows through.\n'"
 Enter
 Wait+Screen "shows through"
 Show

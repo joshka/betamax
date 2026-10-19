@@ -89,12 +89,12 @@ impl WindowStyle {
         }
     }
 
-    /// Whether the backdrop is left clear, so outputs need an alpha channel.
-    pub(super) fn transparent_margin(&self) -> bool {
+    /// Whether the backdrop has any alpha, so outputs need an alpha channel.
+    pub(super) fn margin_has_alpha(&self) -> bool {
         self.margin_fill
             .as_deref()
             .and_then(super::margin::parse_margin_fill)
-            == Some(super::margin::MarginFill::Transparent)
+            .is_some_and(|fill| !fill.is_opaque())
     }
 
     /// Height reserved above the terminal canvas for the synthetic window bar.
