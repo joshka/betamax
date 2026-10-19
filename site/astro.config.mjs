@@ -55,9 +55,10 @@ export default defineConfig({
             { label: 'Tape files', slug: 'authoring/tape-files' },
             { label: 'Input and keys', slug: 'authoring/input-and-keys' },
             { label: 'Outputs', slug: 'authoring/outputs' },
+            { label: 'Themes and layout', slug: 'authoring/themes' },
+            { label: 'Window styling', slug: 'authoring/window-styling' },
             { label: 'Presentation overlays', slug: 'authoring/presentation-overlays' },
             { label: 'Generated media storage', slug: 'authoring/generated-media' },
-            { label: 'Themes and styling', slug: 'authoring/themes' },
           ],
         },
         {

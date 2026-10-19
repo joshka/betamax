@@ -3,8 +3,17 @@ title: Presentation overlays
 description: Add captions and keyboard chips to visual terminal media.
 ---
 
+export const asset = (name) => `${import.meta.env.BASE_URL}/assets/presentation-overlays/${name}`;
+
 Add captions to explain a step and keyboard labels to show keys such as arrows or shortcuts.
 These overlays appear in recordings and screenshots without changing the terminal session.
+
+<video src={asset('overlays.webm')} poster={asset('overlays.png')} width="960" height="540"
+  autoplay loop muted playsinline
+  aria-label="A caption on the left of the row below the terminal, with key chips on the right" />
+
+This recording comes from [`overlays.tape`][overlays-src]: each `Caption` line labels a step, and
+`Set KeyboardOverlay Input` shows the typed command, `Enter`, and `Ctrl+C` as chips.
 
 ## Captions
 
@@ -84,6 +93,9 @@ Corner locations such as `BottomRight`, `BottomLeft`, `TopRight`, and `TopLeft` 
 the terminal canvas with a small inset from the terminal edge. Corner overlays are useful when the
 terminal dimensions must stay unchanged, but they can cover terminal cells.
 
+<img src={asset('overlay-top-right.png')} width="1040" height="560" loading="lazy"
+  alt="Key chips drawn inside the top-right corner of the terminal, over empty cells" />
+
 ## Layout tradeoffs
 
 Captions and caption-row keyboard chips reserve presentation space before the PTY size is computed.
@@ -97,6 +109,7 @@ room.
 
 ## Examples
 
+- [`overlays.tape`][overlays-src] shows captions and caption-row chips on the default preset.
 - [`captions.tape`][captions-src] shows caption-only annotation.
 - [`keyboard-overlay.tape`][keyboard-overlay-src] shows typed input and key presses as chips.
 - [`presentation-overlays.tape`][presentation-overlays-src] combines captions with caption-row
@@ -104,4 +117,5 @@ room.
 
 [captions-src]: https://github.com/joshka/betamax/blob/main/examples/captions.tape
 [keyboard-overlay-src]: https://github.com/joshka/betamax/blob/main/examples/keyboard-overlay.tape
+[overlays-src]: https://github.com/joshka/betamax/blob/main/examples/overlays.tape
 [presentation-overlays-src]: https://github.com/joshka/betamax/blob/main/examples/presentation-overlays.tape

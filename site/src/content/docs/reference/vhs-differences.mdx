@@ -50,6 +50,18 @@ for easy assertions plus compact styled spans for style-aware snapshot tests.
 See [Terminal testing](../../testing/terminal-testing/) and
 [State JSON](../../testing/state-json/) for that workflow.
 
+## Presentation defaults
+
+Betamax renders tapes with the `Framed` preset unless they select another: Aardvark Ink, 1200×720,
+22px text, zero terminal padding, and a rounded window with left dots, a gradient backdrop, an
+outline, and a shadow. Add `Set Preset Default-0.1` to restore Betamax 0.1 defaults, or
+`Set Preset Bare` to remove decoration while keeping the current sizing and typography. Neither
+makes rendered pixels identical to VHS. See [Presets](../tape-reference/#presets).
+
+Betamax also adds window styling settings that VHS tapes do not use: `Preset`, gradient and
+transparent `MarginFill` values, `WindowBarColor`, `WindowTitle`, `WindowTitleFromTerminal`,
+`WindowBorder`, and `Shadow`. See [Window styling](../../authoring/window-styling/).
+
 ## Video tradeoff
 
 MP4 and WebM use [ffmpeg][video-encoding], so video output requires it on `PATH`. Betamax handles

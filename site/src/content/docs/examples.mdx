@@ -18,24 +18,31 @@ also live under `site/public/assets` with Git LFS. See
 
 ## Example index
 
-| Tape                                                      | Demonstrates                                    | Useful docs                                                            |
-| --------------------------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------- |
-| [`quick-start.tape`][quick-start-src]                     | installing, help, `new`, and nested `run`       | [Quick start](../quick-start/)                                         |
-| [`basic.tape`][basic-src]                                 | typing, waits, theme, window bar, border radius | [Tape files](../authoring/tape-files/), [themes](../authoring/themes/) |
-| [`hide-show.tape`][hide-show-src]                         | hidden setup and hidden trailing cleanup        | [Hidden work](../authoring/tape-files/#hidden-work)                    |
-| [`waits.tape`][waits-src]                                 | line, screen, regex, and default prompt waits   | [Wait commands](../reference/tape-reference/#waitduration-regextext)   |
-| [`keys.tape`][keys-src]                                   | key commands, repeats, editing, and interrupt   | [Input and keys](../authoring/input-and-keys/)                         |
-| [keyboard-overlay][keyboard-overlay-src]                  | input labels over review media                  | [Presentation overlays](../authoring/presentation-overlays/)           |
-| [`clipboard-env.tape`][clipboard-env-src]                 | `Env`, `Copy`, and `Paste`                      | [Tape reference](../reference/tape-reference/#copy-text-and-paste)     |
-| [`captions.tape`][captions-src]                           | visual captions for review media                | [Presentation overlays](../authoring/presentation-overlays/)           |
-| [`presentation-overlays.tape`][presentation-overlays-src] | captions plus keyboard overlay layout           | [Presentation overlays](../authoring/presentation-overlays/)           |
-| [`outputs.tape`][outputs-src]                             | GIF, PNG, JSON, screenshot, state, frame dir    | [Outputs](../authoring/outputs/)                                       |
-| [`scrollback.tape`][scrollback-src]                       | scrollback-inclusive state JSON                 | [State JSON](../testing/state-json/)                                   |
-| [`text-styles.tape`][text-styles-src]                     | ANSI styles, truecolor, and styled state spans  | [State JSON](../testing/state-json/#styles-and-spans)                  |
-| [`layout.tape`][layout-src]                               | padding, margin, fill, window bar, radius       | [Themes and styling](../authoring/themes/)                             |
-| [`themes.tape`][themes-src]                               | copied Ghostty themes and palette mapping       | [Theme lookup](../authoring/themes/#theme-lookup)                      |
-| [`screenshot.tape`][screenshot-src]                       | screenshots and terminal state JSON             | [Checkpoints](../authoring/outputs/#checkpoints)                       |
-| [`video.tape`][video-src]                                 | GIF, MP4, and WebM from one capture             | [Video encoding](../authoring/outputs/#video-encoding)                 |
+| Tape                                                      | Demonstrates                                    | Useful docs                                                                     |
+| --------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------- |
+| [`quick-start.tape`][quick-start-src]                     | installing, help, `new`, and nested `run`       | [Quick start](../quick-start/)                                                  |
+| [`basic.tape`][basic-src]                                 | typing, waits, theme, window bar, border radius | [Tape files](../authoring/tape-files/), [styling](../authoring/window-styling/) |
+| [`hide-show.tape`][hide-show-src]                         | hidden setup and hidden trailing cleanup        | [Hidden work](../authoring/tape-files/#hidden-work)                             |
+| [`waits.tape`][waits-src]                                 | line, screen, regex, and default prompt waits   | [Wait commands](../reference/tape-reference/#waitduration-regextext)            |
+| [`keys.tape`][keys-src]                                   | key commands, repeats, editing, and interrupt   | [Input and keys](../authoring/input-and-keys/)                                  |
+| [keyboard-overlay][keyboard-overlay-src]                  | input labels over review media                  | [Presentation overlays](../authoring/presentation-overlays/)                    |
+| [`clipboard-env.tape`][clipboard-env-src]                 | `Env`, `Copy`, and `Paste`                      | [Tape reference](../reference/tape-reference/#copy-text-and-paste)              |
+| [`captions.tape`][captions-src]                           | visual captions for review media                | [Presentation overlays](../authoring/presentation-overlays/)                    |
+| [`presentation-overlays.tape`][presentation-overlays-src] | captions plus keyboard overlay layout           | [Presentation overlays](../authoring/presentation-overlays/)                    |
+| [`overlays.tape`][overlays-src]                           | captions and chips on the default preset        | [Presentation overlays](../authoring/presentation-overlays/)                    |
+| [`outputs.tape`][outputs-src]                             | GIF, PNG, JSON, screenshot, state, frame dir    | [Outputs](../authoring/outputs/)                                                |
+| [`scrollback.tape`][scrollback-src]                       | scrollback-inclusive state JSON                 | [State JSON](../testing/state-json/)                                            |
+| [`text-styles.tape`][text-styles-src]                     | ANSI styles, truecolor, and styled state spans  | [State JSON](../testing/state-json/#styles-and-spans)                           |
+| [`layout.tape`][layout-src]                               | padding, margin, fill, window bar, radius       | [Window styling](../authoring/window-styling/)                                  |
+| [`presets-framed.tape`][presets-src]                      | the same scene with each preset                 | [Presets](../authoring/window-styling/#presets)                                 |
+| [`margin-gradient.tape`][margin-gradient-src]             | linear gradient backdrop                        | [Margin and backdrop](../authoring/window-styling/#margin-and-backdrop)         |
+| [`margin-transparent.tape`][margin-transparent-src]       | transparent backdrop in PNG, WebP, and GIF      | [Transparency](../authoring/window-styling/#transparency)                       |
+| [`window-chrome.tape`][window-chrome-src]                 | bar color, title, border, corners, shadow       | [Window styling](../authoring/window-styling/)                                  |
+| [`window-title-from-app.tape`][window-title-from-app-src] | OSC titles from the app and the tape            | [Window titles](../authoring/window-styling/#window-titles)                     |
+| [`sp-night.tape`][sp-night-src]                           | bundled SP Night theme in a custom frame        | [SP Night themes](../authoring/themes/#sp-night-themes)                         |
+| [`themes.tape`][themes-src]                               | copied Ghostty themes and palette mapping       | [Theme lookup](../authoring/themes/#theme-lookup)                               |
+| [`screenshot.tape`][screenshot-src]                       | screenshots and terminal state JSON             | [Checkpoints](../authoring/outputs/#checkpoints)                                |
+| [`video.tape`][video-src]                                 | GIF, MP4, and WebM from one capture             | [Video encoding](../authoring/outputs/#video-encoding)                          |
 
 ## Preview GIFs
 
@@ -118,12 +125,19 @@ Use `examples/waits.tape` when debugging timing. It shows the three wait targets
 [keyboard-overlay-src]: https://github.com/joshka/betamax/blob/main/examples/keyboard-overlay.tape
 [keys-src]: https://github.com/joshka/betamax/blob/main/examples/keys.tape
 [layout-src]: https://github.com/joshka/betamax/blob/main/examples/layout.tape
+[margin-gradient-src]: https://github.com/joshka/betamax/blob/main/examples/margin-gradient.tape
+[margin-transparent-src]: https://github.com/joshka/betamax/blob/main/examples/margin-transparent.tape
 [outputs-src]: https://github.com/joshka/betamax/blob/main/examples/outputs.tape
+[overlays-src]: https://github.com/joshka/betamax/blob/main/examples/overlays.tape
 [presentation-overlays-src]: https://github.com/joshka/betamax/blob/main/examples/presentation-overlays.tape
+[presets-src]: https://github.com/joshka/betamax/blob/main/examples/presets-framed.tape
 [quick-start-src]: https://github.com/joshka/betamax/blob/main/examples/quick-start.tape
 [screenshot-src]: https://github.com/joshka/betamax/blob/main/examples/screenshot.tape
 [scrollback-src]: https://github.com/joshka/betamax/blob/main/examples/scrollback.tape
+[sp-night-src]: https://github.com/joshka/betamax/blob/main/examples/sp-night.tape
 [text-styles-src]: https://github.com/joshka/betamax/blob/main/examples/text-styles.tape
 [themes-src]: https://github.com/joshka/betamax/blob/main/examples/themes.tape
 [video-src]: https://github.com/joshka/betamax/blob/main/examples/video.tape
 [waits-src]: https://github.com/joshka/betamax/blob/main/examples/waits.tape
+[window-chrome-src]: https://github.com/joshka/betamax/blob/main/examples/window-chrome.tape
+[window-title-from-app-src]: https://github.com/joshka/betamax/blob/main/examples/window-title-from-app.tape

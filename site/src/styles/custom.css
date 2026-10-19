@@ -2039,3 +2039,40 @@ body::before {
     font-size: clamp(2.25rem, 12vw, 3.25rem);
   }
 }
+
+.bm-figure-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.bm-figure-grid figure {
+  margin: 0;
+}
+
+.bm-figure-grid img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 5 / 3;
+  object-fit: contain;
+  object-position: top;
+}
+
+.bm-figure-grid figcaption {
+  margin-block-start: 0.35rem;
+  font-size: var(--sl-text-sm);
+  color: var(--sl-color-gray-2);
+}
+
+@media (max-width: 50rem) {
+  .bm-figure-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sl-markdown-content video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
