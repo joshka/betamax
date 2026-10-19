@@ -170,6 +170,12 @@ impl Settings {
             ("WindowBarSize", Value::Number(window_bar_size)) => {
                 self.presentation.style.window_bar_size = *window_bar_size as u32;
             }
+            ("WindowTitle", Value::String(title)) => {
+                self.presentation.style.window_title.text = title.clone();
+            }
+            ("WindowTitleColor", Value::String(color)) => {
+                self.presentation.style.window_title.color = color.clone();
+            }
             ("BorderRadius", Value::Number(border_radius)) => {
                 self.presentation.style.border_radius = *border_radius as u32;
             }
@@ -347,6 +353,8 @@ fn known_setting(key: &str) -> bool {
             | "WindowBorder"
             | "WindowBorderColor"
             | "WindowBorderOpacity"
+            | "WindowTitle"
+            | "WindowTitleColor"
             | "BorderRadius"
             | "Shadow"
             | "ShadowBlur"
@@ -365,7 +373,7 @@ fn known_setting(key: &str) -> bool {
 fn setting_expected_type(key: &str) -> &'static str {
     match key {
         "Shell" | "FontFamily" | "MarginFill" | "WindowBar" | "WindowBarColor" | "WaitPattern"
-        | "Theme" | "WindowBorderColor" => "string",
+        | "Theme" | "WindowBorderColor" | "WindowTitle" | "WindowTitleColor" => "string",
         "Width"
         | "Height"
         | "FontSize"

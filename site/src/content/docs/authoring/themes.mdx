@@ -54,18 +54,20 @@ size if needed. See [Presentation and layout proof](../tape-files/#presentation-
 
 These settings are applied after the raw terminal frame is rendered:
 
-| Setting          | Default          | Purpose                      |
-| ---------------- | ---------------- | ---------------------------- |
-| `Margin`         | `0`              | Outer frame margin in pixels |
-| `MarginFill`     | theme background | Solid or linear backdrop     |
-| `WindowBar`      | empty / disabled | Synthetic window bar mode    |
-| `WindowBarSize`  | `30`             | Window bar height in pixels  |
-| `WindowBarColor` | theme background | Window bar fill color        |
-| `BorderRadius`   | `0`              | Rounded-corner mask radius   |
-| `Shadow`         | `false`          | Enable a black window shadow |
-| `ShadowBlur`     | `28`             | CSS blur radius in pixels    |
-| `ShadowOffset`   | `9`              | Vertical offset in pixels    |
-| `ShadowOpacity`  | `0.55`           | Shadow opacity, clamped 0..1 |
+| Setting            | Default          | Purpose                      |
+| ------------------ | ---------------- | ---------------------------- |
+| `Margin`           | `0`              | Outer frame margin in pixels |
+| `MarginFill`       | theme background | Solid or linear backdrop     |
+| `WindowBar`        | empty / disabled | Synthetic window bar mode    |
+| `WindowBarSize`    | `30`             | Window bar height in pixels  |
+| `WindowBarColor`   | theme background | Window bar fill color        |
+| `WindowTitle`      | empty / disabled | Centered static title        |
+| `WindowTitleColor` | auto             | Theme-derived title contrast |
+| `BorderRadius`     | `0`              | Rounded-corner mask radius   |
+| `Shadow`           | `false`          | Enable a black window shadow |
+| `ShadowBlur`       | `28`             | CSS blur radius in pixels    |
+| `ShadowOffset`     | `9`              | Vertical offset in pixels    |
+| `ShadowOpacity`    | `0.55`           | Shadow opacity, clamped 0..1 |
 
 `WindowBar` currently treats any non-empty value as enabled. Modes ending in `Right`, such as
 `RingsRight` and `ColorfulRight`, place the window buttons on the right. Other non-empty values
@@ -77,6 +79,8 @@ Set MarginFill "#111111"
 Set WindowBar Colorful
 Set WindowBarSize 34
 Set WindowBarColor "#0f101a"
+Set WindowTitle "jk — log"
+Set WindowTitleColor auto
 Set BorderRadius 8
 ```
 
@@ -121,6 +125,19 @@ Set ShadowOpacity 0.55
 color takes precedence even if `Set Theme` comes later. Invalid colors, including an empty string,
 fall back to the active theme background. The setting is ignored when the bar is disabled. It changes
 only the bar fill; `BorderRadius` rounds the window's outer corners.
+
+The title uses `FontFamily` at 40% of the bar height and stays centered while reserving equal space
+for buttons on either side, with a gap of two button radii. Long text truncates with `…`, and line
+breaks become spaces. Empty `WindowTitle` disables the title; an empty `WindowBar` hides it. Omitted
+or invalid title colors use `auto`, which starts at 65% theme foreground mixed with 35% effective
+bar color in sRGB. The foreground share increases in one-percent steps until contrast against the
+bar reaches 4.5:1. If the theme foreground cannot reach that ratio, black or white supplies the
+stronger contrast. An explicit `WindowBarColor` participates in the calculation. The ratio describes
+the text color before glyph antialiasing.
+
+Explicit `#rrggbb` title colors bypass contrast adjustment and survive later `Set Theme` commands,
+even when their contrast is low. Only static titles are supported; the program's OSC window title
+does not change the bar.
 
 ## Timing and cursor styling
 

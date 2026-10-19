@@ -1,4 +1,4 @@
-//! Caption text semantics, typography, shaping, clipping, and drawing.
+//! Caption semantics and typography, plus single-line text rendering shared with window titles.
 
 use cosmic_text::{
     Attrs, Buffer, Color, Family, FontSystem, Metrics, Shaping, SwashCache, Weight, Wrap,
@@ -41,7 +41,14 @@ impl CaptionLayout {
     }
 }
 
-/// Text renderer for caption overlays.
+/// Appearance and placement for a shaped single line.
+pub(super) struct LineStyle<'a> {
+    pub(super) weight: Weight,
+    pub(super) ellipsis: &'a str,
+    pub(super) centered: bool,
+}
+
+/// Shared single-line renderer for captions and window titles.
 ///
 /// This owns `cosmic_text`'s mutable shaping and raster caches. The renderer is kept outside
 /// `Settings` so decoration remains a pure operation from caller input to media frame, while
@@ -74,14 +81,45 @@ impl CaptionRenderer {
         text_settings: &TextSettings,
         color: libghostty_vt::style::RgbColor,
     ) {
+        self.draw_line(
+            target,
+            caption,
+            layout,
+            text_settings,
+            color,
+            LineStyle {
+                weight: Weight::BOLD,
+                ellipsis: "...",
+                centered: false,
+            },
+        );
+    }
+
+    /// Shape, fit, and rasterize one line using caller-owned typography and placement.
+    pub(super) fn draw_line(
+        &mut self,
+        target: &mut Canvas,
+        caption: &str,
+        mut layout: CaptionLayout,
+        text_settings: &TextSettings,
+        color: libghostty_vt::style::RgbColor,
+        style: LineStyle<'_>,
+    ) {
         let family = text_settings
             .font_family
             .as_deref()
             .map(Family::Name)
             .unwrap_or(Family::Monospace);
-        let attrs = Attrs::new().family(family).weight(Weight::BOLD);
+        let attrs = Attrs::new().family(family).weight(style.weight);
         let metrics = Metrics::new(layout.font_size, layout.line_height);
-        let caption = self.truncate_caption(caption, layout, metrics, &attrs);
+        let caption = self.truncate_text(caption, layout, metrics, &attrs, style.ellipsis);
+        if style.centered {
+            let width = self
+                .caption_text_width(&caption, layout, metrics, &attrs)
+                .ceil() as u32;
+            layout.text_x += layout.text_width.saturating_sub(width) / 2;
+            layout.text_width = width.min(layout.text_width);
+        }
 
         let mut buffer = Buffer::new(&mut self.font_system, metrics);
         let mut buffer = buffer.borrow_with(&mut self.font_system);
@@ -108,20 +146,19 @@ impl CaptionRenderer {
     }
 
     /// Truncate caption text with the same shaping stack used for drawing.
-    fn truncate_caption(
+    pub(super) fn truncate_text(
         &mut self,
         caption: &str,
         layout: CaptionLayout,
         metrics: Metrics,
         attrs: &Attrs<'_>,
+        ellipsis: &str,
     ) -> String {
-        const ELLIPSIS: &str = "...";
-
         if self.caption_text_width(caption, layout, metrics, attrs) <= layout.text_width as f32 {
             return caption.to_string();
         }
-        if self.caption_text_width(ELLIPSIS, layout, metrics, attrs) > layout.text_width as f32 {
-            return ELLIPSIS.to_string();
+        if self.caption_text_width(ellipsis, layout, metrics, attrs) > layout.text_width as f32 {
+            return ellipsis.to_string();
         }
 
         let char_ends = caption
@@ -132,7 +169,7 @@ impl CaptionRenderer {
         let mut high = char_ends.len();
         while low < high {
             let mid = (low + high).div_ceil(2);
-            let candidate = format!("{}{}", &caption[..char_ends[mid - 1]], ELLIPSIS);
+            let candidate = format!("{}{}", &caption[..char_ends[mid - 1]], ellipsis);
             if self.caption_text_width(&candidate, layout, metrics, attrs)
                 <= layout.text_width as f32
             {
@@ -143,13 +180,13 @@ impl CaptionRenderer {
         }
 
         if low == 0 {
-            return ELLIPSIS.to_string();
+            return ellipsis.to_string();
         }
-        format!("{}{}", &caption[..char_ends[low - 1]], ELLIPSIS)
+        format!("{}{}", &caption[..char_ends[low - 1]], ellipsis)
     }
 
     /// Measure a single caption line after font fallback and shaping.
-    fn caption_text_width(
+    pub(super) fn caption_text_width(
         &mut self,
         caption: &str,
         layout: CaptionLayout,
@@ -211,7 +248,7 @@ mod tests {
         let attrs = Attrs::new().family(Family::Monospace).weight(Weight::BOLD);
         let caption = "The bottom terminal row remains visible beside the key chips";
 
-        let truncated = renderer.truncate_caption(caption, layout, metrics, &attrs);
+        let truncated = renderer.truncate_text(caption, layout, metrics, &attrs, "...");
 
         assert!(truncated.ends_with("..."));
         assert!(truncated.len() < caption.len());
@@ -236,7 +273,7 @@ mod tests {
         let attrs = Attrs::new().family(Family::Monospace).weight(Weight::BOLD);
 
         assert_eq!(
-            renderer.truncate_caption("overflow", layout, metrics, &attrs),
+            renderer.truncate_text("overflow", layout, metrics, &attrs, "..."),
             "..."
         );
     }

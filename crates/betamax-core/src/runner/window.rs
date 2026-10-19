@@ -4,7 +4,8 @@ use super::border::Border;
 use super::canvas::{rgb, Canvas, PixelRect};
 use super::margin::parse_hex_color;
 use super::shadow::Shadow;
-use crate::ghostty::TerminalTheme;
+use super::window_title::WindowTitle;
+use crate::ghostty::{TerminalTheme, TextSettings};
 use crate::media::Frame;
 use crate::Result;
 
@@ -19,6 +20,9 @@ const MIN_WINDOW_BUTTON_RADIUS: u32 = 2;
 
 /// Spacing between synthetic window buttons as a multiple of radius.
 const WINDOW_BUTTON_GAP_RADIUS_MULTIPLIER: u32 = 3;
+
+/// Clear space between title ink and the button cluster, in button radii.
+const WINDOW_TITLE_BUTTON_GAP_RADII: u32 = 2;
 
 /// VHS-style frame decoration around the raw terminal capture.
 ///
@@ -38,6 +42,8 @@ pub(super) struct WindowStyle {
     pub(super) window_bar_color: String,
     /// Explicit bar color, preserved across subsequent theme settings.
     pub(super) window_bar_color_override: Option<String>,
+    /// Static title configuration and its prepared pixels.
+    pub(super) window_title: WindowTitle,
     /// Radius for masking the captured terminal plus window bar.
     pub(super) border_radius: u32,
     /// Static shadow configuration and painting policy.
@@ -60,6 +66,7 @@ impl WindowStyle {
             window_bar_size: DEFAULT_WINDOW_BAR_SIZE,
             window_bar_color: background,
             window_bar_color_override: None,
+            window_title: WindowTitle::default(),
             border_radius: 0,
             shadow: Shadow::default(),
             border: Border::default(),
@@ -109,11 +116,7 @@ impl WindowStyle {
                 .saturating_add(1),
         );
         let mut overlay = Canvas::transparent(width, height)?;
-        let color = self
-            .window_bar_color_override
-            .as_deref()
-            .unwrap_or(&self.window_bar_color);
-        let color = parse_hex_color(color).unwrap_or(fallback);
+        let color = self.bar_color(fallback);
         overlay.fill_rect(
             margin,
             margin,
@@ -132,12 +135,23 @@ impl WindowStyle {
         terminal: &Frame,
         backdrop: &Canvas,
         bar_overlay: &Canvas,
-        fallback: libghostty_vt::style::RgbColor,
-    ) {
+        theme: &TerminalTheme,
+        text: &TextSettings,
+    ) -> Result<()> {
         let margin = self.effective_margin();
         let bar_height = self.window_bar_height();
+        let bar = self.bar_color(theme.background);
         if bar_height > 0 {
             output.copy_opaque_pixels(bar_overlay);
+            let buttons = WindowButtons::new(
+                output.width,
+                margin + bar_height / 2,
+                bar_height,
+                &self.window_bar,
+            );
+            let title_bounds = self.title_bounds(output.width, &buttons);
+            self.window_title
+                .draw(output, title_bounds, text, theme, bar)?;
         }
         if self.border.visible() {
             self.border.draw(
@@ -150,7 +164,7 @@ impl WindowStyle {
                 },
                 self.border_radius,
                 backdrop,
-                fallback,
+                theme.background,
             );
         } else if self.border_radius > 0 {
             output.apply_rounded_rect_mask(
@@ -162,6 +176,41 @@ impl WindowStyle {
                 backdrop,
             );
         }
+        Ok(())
+    }
+
+    /// Resolve explicit and theme-derived bar colors consistently for bar and title pixels.
+    fn bar_color(
+        &self,
+        fallback: libghostty_vt::style::RgbColor,
+    ) -> libghostty_vt::style::RgbColor {
+        let color = self
+            .window_bar_color_override
+            .as_deref()
+            .unwrap_or(&self.window_bar_color);
+        parse_hex_color(color).unwrap_or(fallback)
+    }
+
+    /// Resolve symmetric title clearance from the actual output-space button extent.
+    fn title_bounds(&self, output_width: u32, buttons: &WindowButtons) -> PixelRect {
+        let margin = self.effective_margin();
+        let bounds = buttons.horizontal_bounds();
+        let occupied_width = if self.window_bar.ends_with("Right") {
+            output_width
+                .saturating_sub(margin)
+                .saturating_sub(bounds.start)
+        } else {
+            bounds.end.saturating_sub(margin)
+        };
+        let inset = occupied_width.saturating_add(buttons.radius * WINDOW_TITLE_BUTTON_GAP_RADII);
+        PixelRect {
+            x: margin + inset,
+            y: margin,
+            width: output_width
+                .saturating_sub(margin.saturating_mul(2))
+                .saturating_sub(inset.saturating_mul(2)),
+            height: self.window_bar_height(),
+        }
     }
 
     /// Draw macOS-style window buttons.
@@ -170,24 +219,56 @@ impl WindowStyle {
     /// place the buttons on the right; all other values place them on the left.
     fn draw_window_buttons(&self, output: &mut Canvas) {
         let bar_height = self.window_bar_height();
-        let cx = self.effective_margin() + bar_height / 2;
-        let cy = cx;
-        let radius = (bar_height / WINDOW_BUTTON_RADIUS_DIVISOR).max(MIN_WINDOW_BUTTON_RADIUS);
-        let gap = radius * WINDOW_BUTTON_GAP_RADIUS_MULTIPLIER;
-        let right = self.window_bar.ends_with("Right");
-        let start_x = if right {
-            output.width.saturating_sub(cx + gap * 2)
-        } else {
-            cx
-        };
+        let cy = self.effective_margin() + bar_height / 2;
+        let buttons = WindowButtons::new(output.width, cy, bar_height, &self.window_bar);
         let colors = [
             rgb(0xff, 0x5f, 0x57),
             rgb(0xff, 0xbd, 0x2e),
             rgb(0x28, 0xc8, 0x40),
         ];
         for (index, color) in colors.into_iter().enumerate() {
-            output.fill_circle(start_x + gap * index as u32, cy, radius, color);
+            output.fill_circle(
+                buttons.first_x + buttons.step * index as u32,
+                cy,
+                buttons.radius,
+                color,
+            );
         }
+    }
+}
+
+/// Horizontal button geometry shared by drawing and title clearance.
+struct WindowButtons {
+    first_x: u32,
+    step: u32,
+    radius: u32,
+}
+
+impl WindowButtons {
+    fn new(output_width: u32, edge_center: u32, bar_height: u32, mode: &str) -> Self {
+        let radius = (bar_height / WINDOW_BUTTON_RADIUS_DIVISOR).max(MIN_WINDOW_BUTTON_RADIUS);
+        let step = radius * WINDOW_BUTTON_GAP_RADIUS_MULTIPLIER;
+        let first_x = if mode.ends_with("Right") {
+            output_width.saturating_sub(edge_center + step * 2)
+        } else {
+            edge_center
+        };
+        Self {
+            first_x,
+            step,
+            radius,
+        }
+    }
+
+    /// Full horizontal pixel extent, including the outermost circle pixels.
+    fn horizontal_bounds(&self) -> std::ops::Range<u32> {
+        let left = self.first_x.saturating_sub(self.radius);
+        let right = self
+            .first_x
+            .saturating_add(self.step * 2)
+            .saturating_add(self.radius)
+            .saturating_add(1);
+        left..right
     }
 }
 

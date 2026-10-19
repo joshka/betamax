@@ -202,3 +202,59 @@ fn pixel(frame: &Frame, x: u32, y: u32) -> [u8; 4] {
     let offset = ((y * frame.width + x) * 4) as usize;
     frame.pixels[offset..offset + 4].try_into().unwrap()
 }
+
+#[test]
+fn title_composes_with_other_window_effects_and_caption() {
+    let base = r##"
+        Set Width 360
+        Set Height 240
+        Set Padding 8
+        Set Margin 30
+        Set MarginFill "linear(to: bottom-right, #4d5b9e, #232640, #0f101a)"
+        Set Shadow true
+        Set ShadowBlur 14
+        Set ShadowOffset 4
+        Set WindowBar RingsRight
+        Set WindowBarColor "#0f101a"
+        Set BorderRadius 11
+        Set WindowBorder 2
+    "##;
+    let plain =
+        Settings::from_tape(&Tape::parse(&format!("{base}\nCaption Caption")).unwrap()).unwrap();
+    let titled = Settings::from_tape(
+        &Tape::parse(&format!("{base}\nSet WindowTitle Title\nCaption Caption")).unwrap(),
+    )
+    .unwrap();
+    let raw = Canvas::new(
+        plain.presentation.terminal_canvas_width(),
+        plain.presentation.terminal_canvas_height(),
+        super::super::canvas::rgb(1, 2, 3),
+    )
+    .unwrap()
+    .into_frame();
+    let before = plain
+        .presentation
+        .decorate_frame_with_overlays(&raw, Some("Caption"), &[])
+        .unwrap();
+    let after = titled
+        .presentation
+        .decorate_frame_with_overlays(&raw, Some("Caption"), &[])
+        .unwrap();
+    assert_eq!((plain.columns, plain.rows), (titled.columns, titled.rows));
+    let mut changed = 0;
+    for y in 0..240 {
+        for x in 0..360 {
+            let offset = (y * 360 + x) * 4;
+            let before_pixel = &before.pixels[offset..offset + 4];
+            let after_pixel = &after.pixels[offset..offset + 4];
+            if before_pixel != after_pixel {
+                changed += 1;
+                assert!((30..60).contains(&y));
+                assert!((90..270).contains(&x));
+            }
+            assert_eq!(after_pixel[3], 255);
+        }
+    }
+    assert!(changed > 0);
+    assert_ne!(&after.pixels[..4], &after.pixels[after.pixels.len() - 4..]);
+}

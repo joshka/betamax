@@ -46,35 +46,37 @@ percentages become numbers in `0.0..=1.0`, then numbers, booleans, durations, an
 are attempted in that order. Known settings reject the wrong value kind, so `Set Width "wide"` is
 an error rather than a quiet fallback.
 
-| Setting                   | Value kind           | Default          | Behavior                                                              |
-| ------------------------- | -------------------- | ---------------- | --------------------------------------------------------------------- |
-| `Shell`                   | string               | `$SHELL` or `sh` | Shell command and optional arguments; split with shell-like rules     |
-| `Theme`                   | string               | `Aardvark Blue`  | Theme name loaded from user Ghostty themes or bundled themes          |
-| `FontFamily`              | string               | `JetBrains Mono` | Preferred font family passed to the renderer                          |
-| `FontSize`                | number               | `22`             | Font size in pixels                                                   |
-| `LetterSpacing`           | number               | `1`              | Extra pixels between terminal cells                                   |
-| `LineHeight`              | number               | `1`              | Multiplier applied to the font size                                   |
-| `Width`                   | number               | `1200`           | Final output width in pixels                                          |
-| `Height`                  | number               | `600`            | Final output height in pixels                                         |
-| `Padding`                 | number               | `60`             | Inner padding between the terminal cells and terminal canvas edge     |
-| `Framerate`               | number               | `50`             | Capture cadence in frames per second                                  |
-| `TypingSpeed`             | duration             | `50ms`           | Delay between characters typed by `Type`                              |
-| `PlaybackSpeed`           | number               | `1.0`            | Output playback multiplier; does not speed up command execution       |
-| `LoopOffset`              | number or percentage | `0.0`            | Rotates animated output frames to move the loop boundary              |
-| `CursorBlink`             | bool                 | `true`           | Simulates cursor blink in captured frames                             |
-| KeyboardOverlay           | enum                 | `Off`            | Shows recent input chips in media                                     |
-| KeyboardOverlayLocation   | enum                 | `CaptionRow`     | Places keyboard overlay chips                                         |
-| `WaitTimeout`             | duration or number   | `15s`            | Default timeout for wait commands; bare numbers are seconds           |
-| `WaitPattern`             | regex string         | `>$`             | Regex used by bare `Wait`                                             |
-| `Margin`                  | number               | `0`              | Outer decoration margin in pixels                                     |
-| `MarginFill`              | string               | theme background | Solid color or linear gradient backdrop.                              |
-| `WindowBar`               | string               | empty / disabled | Non-empty values draw a synthetic window bar                          |
-| `WindowBarSize`           | number               | `30`             | Window bar height in pixels                                           |
-| `WindowBarColor`          | `#rrggbb` string     | theme background | Bar fill; explicit values take precedence over Theme                  |
-| `BorderRadius`            | number               | `0`              | Rounded-corner mask radius in pixels                                  |
-| `WindowBorder`            | number               | `0`              | Inset outline width in integer pixels; zero disables.                 |
-| `WindowBorderColor`       | string               | `auto`           | Contrasting black/white or explicit `#rrggbb`.                        |
-| `WindowBorderOpacity`     | number               | `0.15`           | Outline opacity, clamped to 0–1.                                      |
+| Setting                   | Value kind                 | Default          | Behavior                                                              |
+| ------------------------- | -------------------------- | ---------------- | --------------------------------------------------------------------- |
+| `Shell`                   | string                     | `$SHELL` or `sh` | Shell command and optional arguments; split with shell-like rules     |
+| `Theme`                   | string                     | `Aardvark Blue`  | Theme name loaded from user Ghostty themes or bundled themes          |
+| `FontFamily`              | string                     | `JetBrains Mono` | Preferred font family passed to the renderer                          |
+| `FontSize`                | number                     | `22`             | Font size in pixels                                                   |
+| `LetterSpacing`           | number                     | `1`              | Extra pixels between terminal cells                                   |
+| `LineHeight`              | number                     | `1`              | Multiplier applied to the font size                                   |
+| `Width`                   | number                     | `1200`           | Final output width in pixels                                          |
+| `Height`                  | number                     | `600`            | Final output height in pixels                                         |
+| `Padding`                 | number                     | `60`             | Inner padding between the terminal cells and terminal canvas edge     |
+| `Framerate`               | number                     | `50`             | Capture cadence in frames per second                                  |
+| `TypingSpeed`             | duration                   | `50ms`           | Delay between characters typed by `Type`                              |
+| `PlaybackSpeed`           | number                     | `1.0`            | Output playback multiplier; does not speed up command execution       |
+| `LoopOffset`              | number or percentage       | `0.0`            | Rotates animated output frames to move the loop boundary              |
+| `CursorBlink`             | bool                       | `true`           | Simulates cursor blink in captured frames                             |
+| KeyboardOverlay           | enum                       | `Off`            | Shows recent input chips in media                                     |
+| KeyboardOverlayLocation   | enum                       | `CaptionRow`     | Places keyboard overlay chips                                         |
+| `WaitTimeout`             | duration or number         | `15s`            | Default timeout for wait commands; bare numbers are seconds           |
+| `WaitPattern`             | regex string               | `>$`             | Regex used by bare `Wait`                                             |
+| `Margin`                  | number                     | `0`              | Outer decoration margin in pixels                                     |
+| `MarginFill`              | string                     | theme background | Solid color or linear gradient backdrop.                              |
+| `WindowBar`               | string                     | empty / disabled | Non-empty values draw a synthetic window bar                          |
+| `WindowBarSize`           | number                     | `30`             | Window bar height in pixels                                           |
+| `WindowBarColor`          | `#rrggbb` string           | theme background | Bar fill; explicit values take precedence over Theme                  |
+| `WindowTitle`             | string                     | empty / disabled | Static centered window bar title                                      |
+| `WindowTitleColor`        | `auto` or `#rrggbb` string | auto             | Invalid colors use automatic contrast                                 |
+| `BorderRadius`            | number                     | `0`              | Rounded-corner mask radius in pixels                                  |
+| `WindowBorder`            | number                     | `0`              | Inset outline width in integer pixels; zero disables.                 |
+| `WindowBorderColor`       | string                     | `auto`           | Contrasting black/white or explicit `#rrggbb`.                        |
+| `WindowBorderOpacity`     | number                     | `0.15`           | Outline opacity, clamped to 0–1.                                      |
 
 The terminal grid is derived after all settings are applied. Margin, window-bar decoration, and any
 presentation row needed for captions or `KeyboardOverlayLocation CaptionRow` are subtracted from
@@ -189,6 +191,32 @@ Set WindowBarColor "#0f101a"
 Set Theme '{"name":"Night","background":"#151723"}'
 Set BorderRadius 11
 ```
+
+### Window title
+
+```tape
+Set WindowBar Colorful
+Set WindowTitle "jk — log"
+Set WindowTitleColor auto
+```
+
+`WindowTitle` defaults to an empty string and is ignored when `WindowBar` is empty. The static
+single-line title is centered across the whole bar, with equal space reserved at both ends to avoid
+buttons in left and `Right` modes, with a gap of two button radii. Long titles truncate with `…`;
+extremely narrow bars clip the ellipsis or omit the title when no space remains. Line breaks become
+spaces.
+
+The title uses `FontFamily` at 40% of `WindowBarSize` (12 pixels for the default 30-pixel bar).
+`WindowTitleColor` defaults to `auto`; omitted, empty, or invalid values also use automatic color.
+Automatic color starts with 65% theme foreground and 35% effective window-bar color, mixing sRGB
+channels. It increases the foreground share in one-percent steps until the text color reaches at
+least 4.5:1 contrast against the bar. If the theme foreground cannot reach that contrast, it chooses
+black or white, whichever contrasts more. This uses an explicit `WindowBarColor` when configured.
+The ratio describes the text color before glyph antialiasing.
+
+An explicit `#rrggbb` title color bypasses automatic contrast adjustment and survives `Set Theme`
+in either order, even when its contrast is low. Titles affect decorated media only; they do not
+change terminal state or follow the program's OSC window title.
 
 ## Command reference
 
