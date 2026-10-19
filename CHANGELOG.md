@@ -5,6 +5,31 @@ versions and identify the core version shipped in the release lockfile.
 
 ## [Unreleased]
 
+## [0.2.0](https://github.com/joshka/betamax/compare/betamax-v0.1.22...betamax-v0.2.0) - 2026-10-19
+
+### Other
+
+- Support transparent and alpha margin fills ([#207](https://github.com/joshka/betamax/pull/207))
+- Add presentation presets and framed defaults ([#206](https://github.com/joshka/betamax/pull/206))
+- Highlight tape examples in the docs site ([#187](https://github.com/joshka/betamax/pull/187))
+- Back GIF captions with a plate over transparent margins ([#222](https://github.com/joshka/betamax/pull/222))
+- Keep GIF colors stable across frames ([#220](https://github.com/joshka/betamax/pull/220))
+- Derive the framed gradient from the theme background's hue ([#216](https://github.com/joshka/betamax/pull/216))
+- Keep captions steady when keyboard chips appear ([#214](https://github.com/joshka/betamax/pull/214))
+- Bundle the SP Night Ghostty themes ([#204](https://github.com/joshka/betamax/pull/204))
+- Render continuous window corners and smooth dots ([#203](https://github.com/joshka/betamax/pull/203))
+- Capture app-driven window titles ([#202](https://github.com/joshka/betamax/pull/202))
+- Render static titles in window bars ([#201](https://github.com/joshka/betamax/pull/201))
+- Add configurable window bar color ([#200](https://github.com/joshka/betamax/pull/200))
+- Add configurable window borders ([#198](https://github.com/joshka/betamax/pull/198))
+- Add configurable window drop shadows ([#196](https://github.com/joshka/betamax/pull/196))
+- Group runner presentation by feature ([#195](https://github.com/joshka/betamax/pull/195))
+- Add configurable margin gradients ([#194](https://github.com/joshka/betamax/pull/194))
+- Extract coherent frame decoration modules ([#193](https://github.com/joshka/betamax/pull/193))
+- Inset captions by Padding when there is no margin ([#190](https://github.com/joshka/betamax/pull/190))
+- Start the tape shell in the current directory ([#189](https://github.com/joshka/betamax/pull/189))
+- Reduce CI and release turnaround time ([#178](https://github.com/joshka/betamax/pull/178))
+
 ## [0.1.22](https://github.com/joshka/betamax/compare/betamax-v0.1.21...betamax-v0.1.22) - 2026-10-10
 
 ### Other
