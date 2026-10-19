@@ -166,7 +166,7 @@ impl WindowStyle {
     }
 
     /// Resolve explicit and theme-derived bar colors consistently for bar and title pixels.
-    fn bar_color(
+    pub(super) fn bar_color(
         &self,
         fallback: libghostty_vt::style::RgbColor,
     ) -> libghostty_vt::style::RgbColor {
@@ -275,7 +275,7 @@ mod tests {
             r##"
             Set Width 160
             Set Height 120
-            Set Padding 0
+            Set Padding 12
             Set Margin 8
             Set MarginFill "#445566"
             Set WindowBar Rings

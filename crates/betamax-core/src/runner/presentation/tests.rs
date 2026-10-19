@@ -258,3 +258,53 @@ fn title_composes_with_other_window_effects_and_caption() {
     assert!(changed > 0);
     assert_ne!(&after.pixels[..4], &after.pixels[after.pixels.len() - 4..]);
 }
+
+#[test]
+fn decoration_preserves_every_terminal_pixel_and_grid_with_zero_padding() {
+    for bar in ["", "Colorful"] {
+        let source = format!(
+            "Set Width 320\nSet Height 200\nSet Padding 0\nSet Margin 20\nSet WindowBar \"{bar}\""
+        );
+        let plain = Settings::from_tape(&Tape::parse(&source).unwrap()).unwrap();
+        let decorated = Settings::from_tape(
+            &Tape::parse(&format!(
+                "{source}\nSet BorderRadius 11\nSet WindowBorder 2\nSet WindowBorderOpacity 1"
+            ))
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            (plain.columns, plain.rows),
+            (decorated.columns, decorated.rows)
+        );
+        let raw = Canvas::new(
+            plain.presentation.terminal_canvas_width(),
+            plain.presentation.terminal_canvas_height(),
+            super::super::canvas::rgb(17, 203, 79),
+        )
+        .unwrap()
+        .into_frame();
+        let output = decorated
+            .presentation
+            .decorate_frame_with_overlays(&raw, None, &[])
+            .unwrap();
+        assert_eq!((output.width, output.height), (320, 200));
+        let top = 20 + decorated.presentation.style.window_bar_height();
+        for y in 0..raw.height {
+            let start = (((top + y) * output.width + 20) * 4) as usize;
+            let source = (y * raw.width * 4) as usize;
+            assert_eq!(
+                &output.pixels[start..start + raw.width as usize * 4],
+                &raw.pixels[source..source + raw.width as usize * 4],
+                "terminal row {y} changed with bar {bar}"
+            );
+        }
+    }
+}
+
+#[test]
+fn decoration_rejects_insufficient_margin_instead_of_cropping_cells() {
+    let tape = Tape::parse("Set Padding 0\nSet Margin 0\nSet BorderRadius 11").unwrap();
+    let error = Settings::from_tape(&tape).unwrap_err().to_string();
+    assert!(error.contains("increase Margin"), "{error}");
+}
