@@ -30,5 +30,6 @@ rm -rf "$work_dir" "$archive"
 mkdir -p "$work_dir" "$dist_dir"
 
 cp "$binary" "$work_dir/betamax"
-tar -C "$work_dir" -czf "$archive" betamax
+cp crates/betamax-core/THIRD_PARTY.md "$work_dir/THIRD_PARTY.md"
+tar -C "$work_dir" -czf "$archive" betamax THIRD_PARTY.md
 echo "$archive"

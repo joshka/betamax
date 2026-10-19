@@ -447,4 +447,61 @@ mod tests {
         assert_eq!(theme.foreground, rgb(0x8b, 0x94, 0x9e));
         assert_eq!(theme.palette[4], rgb(0x6c, 0xa4, 0xf8));
     }
+
+    #[test]
+    fn loads_bundled_sp_night_palettes() {
+        // Expected values from the official Ghostty port, not local user theme overrides.
+        for (name, background, foreground, cursor, palette) in [
+            (
+                "sp_night_noite",
+                "#151723",
+                "#d3d7eb",
+                "#f2984a",
+                [
+                    "#0f101a", "#ea5d5d", "#89d093", "#f5c66b", "#6e92de", "#b094e2", "#5dbec4",
+                    "#868999", "#707380", "#ff716f", "#9ce4a6", "#ffdc9c", "#80a5f2", "#c3a7f6",
+                    "#71d1d7", "#e7ebff",
+                ],
+            ),
+            (
+                "sp_night_garoa",
+                "#1c1e20",
+                "#c7cdd6",
+                "#e3a068",
+                [
+                    "#151719", "#d87676", "#9acaa2", "#e7cb8a", "#7993cb", "#af97d3", "#77babf",
+                    "#8d949f", "#767d88", "#ed8988", "#addeb5", "#fbdf9d", "#8ba6df", "#c2aae7",
+                    "#8acdd2", "#dae1ea",
+                ],
+            ),
+            (
+                "sp_night_jaragua",
+                "#0c100d",
+                "#d3dad5",
+                "#f2984a",
+                [
+                    "#050806", "#ea5d5d", "#79d488", "#f5c66b", "#6e92de", "#b094e2", "#60bfb8",
+                    "#868b87", "#707471", "#ff716f", "#8ce99b", "#ffdc9c", "#80a5f2", "#c3a7f6",
+                    "#73d2cb", "#e7eee9",
+                ],
+            ),
+        ] {
+            let (_, source) = BUNDLED_THEMES
+                .iter()
+                .find(|(theme_name, _)| *theme_name == name)
+                .expect("SP Night theme must be embedded");
+            let theme = TerminalTheme::from_ghostty_source(name, source).unwrap();
+
+            assert_eq!(theme.background_hex(), background, "{name}");
+            assert_eq!(hex_color(theme.foreground), foreground, "{name}");
+            assert_eq!(hex_color(theme.cursor), cursor, "{name}");
+            assert_eq!(
+                theme.palette.map(hex_color),
+                palette.map(String::from),
+                "{name}"
+            );
+            assert!(source.contains("Copyright (c) 2026 sp night"));
+            assert!(source.contains("Permission is hereby granted, free of charge"));
+        }
+    }
 }

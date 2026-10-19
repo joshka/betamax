@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: MIT
+# Source: https://github.com/sp-night/ghostty/blob/d430783e6305eabd4b167730419e791a14cd5c8e/themes/sp_night_noite
+# Bare hexadecimal colors are prefixed with # for Betamax compatibility.
+#
+# MIT License
+#
+# Copyright (c) 2026 sp night
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+# SP Night — Noite Paulista
+# A cidade às 3h. O escuro azul-violeta do tokyodark, e o poste de sódio queimando quente por cima.
+#
+# Generated from the SP Night palette — do not edit by hand.
+# https://github.com/sp-night/ghostty
+#
+# install: ~/.config/ghostty/themes/sp_night_noite
+# enable:  theme = sp_night_noite
+
+palette = 0=#0f101a
+palette = 1=#ea5d5d
+palette = 2=#89d093
+palette = 3=#f5c66b
+palette = 4=#6e92de
+palette = 5=#b094e2
+palette = 6=#5dbec4
+palette = 7=#868999
+palette = 8=#707380
+palette = 9=#ff716f
+palette = 10=#9ce4a6
+palette = 11=#ffdc9c
+palette = 12=#80a5f2
+palette = 13=#c3a7f6
+palette = 14=#71d1d7
+palette = 15=#e7ebff
+
+background = #151723
+foreground = #d3d7eb
+cursor-color = #f2984a
+cursor-text = #0f101a
+selection-background = #272937
+selection-foreground = #d3d7eb
+split-divider-color = #373943
+unfocused-split-fill = #0f101a
