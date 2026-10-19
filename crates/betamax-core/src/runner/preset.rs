@@ -2,6 +2,7 @@
 
 use miette::miette;
 
+use super::oklch::Oklch;
 use super::presentation::Presentation;
 use crate::ghostty::TerminalTheme;
 use crate::tape::{Command, Tape, Value};
@@ -98,20 +99,45 @@ impl Preset {
                 channel(bg.b)
             )
         };
-        let (top, bottom) = if dark {
-            (mix(255, 8), mix(0, 25))
-        } else {
-            (mix(0, 12), mix(0, 4))
-        };
+        // The bar and the inset backdrop keep the plain background mix; only the framed gradient
+        // follows the background's hue.
+        let surface = if dark { mix(0, 25) } else { mix(0, 4) };
         if presentation.style.margin_fill.is_none() {
             presentation.style.margin_fill = Some(if self == Self::Framed {
-                format!("linear({top}, {bottom})")
+                framed_gradient(bg, dark)
             } else {
-                bottom.clone()
+                surface.clone()
             });
         }
-        presentation.style.window_bar_color = bottom;
+        presentation.style.window_bar_color = surface;
     }
+}
+
+/// A backdrop gradient in the background's own hue, darker than the window so the window stands
+/// out. Both stops add a little chroma, capped so warm light themes stay subtle; neutral
+/// backgrounds stay neutral.
+fn framed_gradient(bg: libghostty_vt::style::RgbColor, dark: bool) -> String {
+    let base = Oklch::from_rgb(bg);
+    let bottom_lightness = if dark {
+        base.lightness * 0.70
+    } else {
+        base.lightness - 0.10
+    };
+    let top = Oklch {
+        lightness: base.lightness - 0.03,
+        chroma: (base.chroma * 1.6).min(0.05),
+        ..base
+    };
+    let bottom = Oklch {
+        lightness: bottom_lightness,
+        chroma: (base.chroma * 1.3).min(0.05),
+        ..base
+    };
+    let hex = |color: Oklch| {
+        let color = color.to_rgb();
+        format!("#{:02x}{:02x}{:02x}", color.r, color.g, color.b)
+    };
+    format!("linear({}, {})", hex(top), hex(bottom))
 }
 
 #[cfg(test)]
