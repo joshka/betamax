@@ -232,6 +232,83 @@ fn caption_row_keeps_the_gradient_behind_its_text() {
         .any(|y| (layout.text_x..160).any(|x| pixel(&frame, x, y) != pixel(&backdrop, x, y))));
 }
 
+#[test]
+fn transparent_margin_plates_the_caption_row_only_for_gif() {
+    let tape = Tape::parse(
+        r##"
+        Set Preset Framed
+        Set Width 320
+        Set Height 200
+        Set MarginFill transparent
+        Set Shadow false
+        Set KeyboardOverlay Keys
+        Set KeyboardOverlayLocation CaptionRow
+        Caption "Plate"
+    "##,
+    )
+    .unwrap();
+    let settings = Settings::from_tape(&tape).unwrap();
+    let presentation = &settings.presentation;
+    let terminal = Canvas::new(
+        presentation.terminal_canvas_width(),
+        presentation.terminal_canvas_height(),
+        presentation.theme.background,
+    )
+    .unwrap()
+    .into_frame();
+    let labels = ["Enter".to_owned()];
+    let shared = presentation
+        .decorate_frame_with_overlays(&terminal, Some("Plate"), &labels)
+        .unwrap();
+    let delay = Duration::from_millis(40);
+    let frames = [(shared.clone(), delay)];
+    let gif = presentation.gif_frames(&frames).unwrap();
+    let (gif_frame, gif_delay) = &gif[0];
+    assert_eq!(*gif_delay, delay);
+
+    let layout = presentation.caption_layout(0).unwrap();
+    let y = layout.text_y + layout.text_height / 2;
+    let bg = presentation.theme.background;
+    let between = presentation.width / 2;
+    // Alpha outputs keep the clear row; GIF gets an opaque theme plate behind caption and chips.
+    assert_eq!(pixel(&shared, between, y)[3], 0);
+    assert_eq!(pixel(gif_frame, between, y), [bg.r, bg.g, bg.b, 255]);
+    assert_eq!(pixel(gif_frame, 0, y)[3], 0);
+    // Opaque caption and chip pixels are drawn on top of the plate unchanged.
+    for (index, (shared, gif)) in shared
+        .pixels
+        .chunks(4)
+        .zip(gif_frame.pixels.chunks(4))
+        .enumerate()
+    {
+        if shared[3] == 255 {
+            assert_eq!(shared, gif, "pixel {index}");
+        }
+    }
+}
+
+#[test]
+fn opaque_margin_gif_frames_are_the_shared_frames() {
+    let tape = Tape::parse(
+        r##"
+        Set Preset Framed
+        Set Width 320
+        Set Height 200
+        Caption "Opaque"
+    "##,
+    )
+    .unwrap();
+    let settings = Settings::from_tape(&tape).unwrap();
+    let frame = Canvas::new(320, 200, settings.presentation.theme.background)
+        .unwrap()
+        .into_frame();
+    let frames = [(frame, Duration::from_millis(40))];
+    assert!(matches!(
+        settings.presentation.gif_frames(&frames).unwrap(),
+        std::borrow::Cow::Borrowed(_)
+    ));
+}
+
 fn pixel(frame: &Frame, x: u32, y: u32) -> [u8; 4] {
     let offset = ((y * frame.width + x) * 4) as usize;
     frame.pixels[offset..offset + 4].try_into().unwrap()
