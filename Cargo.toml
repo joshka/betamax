@@ -20,6 +20,7 @@ anyhow = "1.0.102"
 betamax-core = { path = "crates/betamax-core", version = "0.1.22" }
 clap = { version = "4.5.20", features = ["derive", "wrap_help"] }
 clap-stdin = "0.8"
+color_quant = "1.1"
 cosmic-text = "0.19"
 gif = "0.14"
 image-webp = "0.2"
