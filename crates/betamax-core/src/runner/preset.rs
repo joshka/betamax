@@ -57,7 +57,7 @@ impl Preset {
         presentation.theme = TerminalTheme::from_name("Aardvark Ink")?;
         presentation.style.window_bar_color = presentation.theme.background_hex();
         presentation.height = 720;
-        presentation.text.font_size = 24.0;
+        presentation.text.font_size = 22.0;
         presentation.text.letter_spacing = 0.0;
         presentation.text.padding = 0;
         presentation.style.window_title.follow_terminal = true;

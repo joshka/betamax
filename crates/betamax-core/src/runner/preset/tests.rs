@@ -16,9 +16,9 @@ fn implicit_and_explicit_framed_share_the_complete_baseline() {
         (default.columns, default.rows)
     );
     assert_eq!(implicit.presentation.style, explicit.presentation.style);
-    assert_eq!((implicit.columns, implicit.rows), (81, 26));
+    assert_eq!((implicit.columns, implicit.rows), (87, 28));
     assert_eq!(implicit.presentation.theme.name, "Aardvark Ink");
-    assert_eq!(implicit.presentation.text.font_size, 24.0);
+    assert_eq!(implicit.presentation.text.font_size, 22.0);
     assert_eq!(implicit.presentation.text.padding, 0);
     assert_eq!(
         (implicit.presentation.width, implicit.presentation.height),
@@ -55,7 +55,7 @@ fn presets_have_distinct_geometry_and_versioned_default_restores_old_defaults() 
         ),
         (0, 0)
     );
-    assert_eq!((bare.columns, bare.rows), (85, 30));
+    assert_eq!((bare.columns, bare.rows), (92, 32));
     let inset = settings("Set Preset Inset");
     assert_eq!(inset.presentation.style.margin, 16);
     assert!(inset.presentation.style.window_bar.is_empty());

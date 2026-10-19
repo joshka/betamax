@@ -34,7 +34,7 @@ Defaults below describe `Default`, which currently selects `Framed`. See [Preset
 | `Shell`                   | string                                                 | `$SHELL` or `sh` | Shell argv is split with shell-like rules.  |
 | `Theme`                   | theme name or inline JSON string                       | `Aardvark Ink`   | Theme names use Ghostty-style lookup.       |
 | `FontFamily`              | string                                                 | `JetBrains Mono` | Falls back through the font system.         |
-| `FontSize`                | number                                                 | `24`             | Pixels.                                     |
+| `FontSize`                | number                                                 | `22`             | Pixels.                                     |
 | `LetterSpacing`           | number                                                 | `0`              | Additional pixels between cells.            |
 | `LineHeight`              | number                                                 | `1`              | Multiplier applied to font size.            |
 | `Width`                   | number                                                 | `1200`           | Final output width in pixels.               |
@@ -127,7 +127,7 @@ those effects. To remove all decoration together, select `Bare`.
 | ------------------------------------- | -------------------- | --------------------- | --------------------- | --------------------- |
 | Width × Height                        | 1200×720             | 1200×720              | 1200×720              | 1200×600              |
 | Theme                                 | Aardvark Ink         | Aardvark Ink          | Aardvark Ink          | Aardvark Blue         |
-| FontSize / LetterSpacing / LineHeight | 24 / 0 / 1           | 24 / 0 / 1            | 24 / 0 / 1            | 22 / 1 / 1            |
+| FontSize / LetterSpacing / LineHeight | 22 / 0 / 1           | 22 / 0 / 1            | 22 / 0 / 1            | 22 / 1 / 1            |
 | FontFamily                            | JetBrains Mono       | JetBrains Mono        | JetBrains Mono        | JetBrains Mono        |
 | Padding                               | 0                    | 0                     | 0                     | 60                    |
 | Margin                                | 32                   | 0                     | 16                    | 0                     |
@@ -153,7 +153,7 @@ For dark themes, the backdrop runs from background mixed with 8% white to backgr
 12% black to 4% black, and the bar uses the latter. These defaults follow the final selected theme.
 An explicit `MarginFill` or `WindowBarColor` overrides the derived surface.
 
-At a displayed width of 800px, the 1200px source's 24px text appears approximately 16px tall.
+At a displayed width of 800px, the 1200px source's 22px text appears approximately 16px tall.
 Choose a smaller font or larger canvas for denser applications; output scaling is independent.
 
 For tapes migrating from Betamax 0.1 to the planned 0.2 defaults, add `Set Preset Default-0.1` in
