@@ -49,7 +49,7 @@ jobs:
         run: rustup toolchain install beta --component clippy
 
       - name: Install mise tools
-        uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
+        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
         with:
           install: true
 
@@ -113,7 +113,7 @@ jobs:
           toolchain: stable
 
       - name: Install mise tools
-        uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
+        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
         with:
           install: true
 
@@ -278,7 +278,7 @@ jobs:
         run: rustup toolchain install nightly --component rustfmt
 
       - name: Install mise tools
-        uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
+        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
         with:
           install: true
 
@@ -418,7 +418,7 @@ jobs:
         run: rustup toolchain install nightly
 
       - name: Install mise tools
-        uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
+        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
         with:
           install: true
 
@@ -431,7 +431,7 @@ jobs:
           cache-targets: true
 
       - name: Install cargo maintenance tools
-        uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22
+        uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2.87.26
         with:
           tool: ${{ matrix.tools }}
           fallback: none
