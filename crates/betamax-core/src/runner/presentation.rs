@@ -12,7 +12,7 @@ use super::caption::{
 };
 use super::keyboard_overlay::{
     draw_keyboard_overlay, keyboard_overlay_panel_width, HorizontalAnchor, KeyboardOverlayAnchor,
-    KeyboardOverlayLocation, KeyboardOverlaySettings, VerticalAnchor,
+    KeyboardOverlayLocation, KeyboardOverlayMode, KeyboardOverlaySettings, VerticalAnchor,
     KEYBOARD_OVERLAY_CORNER_INSET, KEYBOARD_OVERLAY_LINE_HEIGHT, KEYBOARD_OVERLAY_TEXT_OFFSET_Y,
 };
 use super::margin::margin_backdrop;
@@ -169,13 +169,18 @@ impl Presentation {
 
     /// Height reserved below the terminal canvas for presentation-only overlays.
     fn presentation_overlay_height(&self) -> u32 {
-        let keyboard_overlay_height =
-            if self.keyboard_overlay.location == KeyboardOverlayLocation::CaptionRow {
-                self.keyboard_overlay.keyboard_overlay_height()
-            } else {
-                0
-            };
+        let keyboard_overlay_height = if self.keyboard_overlay_in_caption_row() {
+            self.keyboard_overlay.keyboard_overlay_height()
+        } else {
+            0
+        };
         caption_overlay_height(self.caption_overlay, &self.text).max(keyboard_overlay_height)
+    }
+
+    /// Whether keyboard chips can appear in the presentation row beside captions.
+    fn keyboard_overlay_in_caption_row(&self) -> bool {
+        self.keyboard_overlay.mode != KeyboardOverlayMode::Off
+            && self.keyboard_overlay.location == KeyboardOverlayLocation::CaptionRow
     }
 
     /// Left edge for presentation content, aligned with the terminal frame.
@@ -340,7 +345,9 @@ impl Presentation {
         let centered_text_y = y
             .saturating_add(height.saturating_sub(caption_height) / 2)
             .saturating_add(vertical_padding);
-        let text_y = if avoid_right_width > 0 {
+        // Align with the keyboard chip row whenever the row can hold chips, so the caption does
+        // not shift vertically as labels appear and expire.
+        let text_y = if self.keyboard_overlay_in_caption_row() {
             let keyboard_anchor = self.keyboard_overlay_anchor();
             let keyboard_row_height = KEYBOARD_OVERLAY_LINE_HEIGHT.ceil() as u32;
             let keyboard_text_y = keyboard_anchor
