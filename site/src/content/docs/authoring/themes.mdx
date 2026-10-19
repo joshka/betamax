@@ -1,6 +1,6 @@
 ---
-title: Themes and styling
-description: Ghostty themes, window borders, padding, prompt defaults, and layout controls.
+title: Themes and layout
+description: Ghostty themes, fonts, dimensions, padding, timing, and cursor settings.
 ---
 
 Betamax uses Ghostty-style theme files to map terminal color indexes and named colors into rendered
@@ -20,18 +20,6 @@ Use the exact listed name in a tape:
 Set Theme "Aardvark Blue"
 ```
 
-## Presentation presets
-
-```tape
-Set Preset Default
-```
-
-`Default` currently selects `Framed`: a window on a gradient backdrop with left dots, a subtle
-outline, and a shadow. Select `Bare` for undecorated terminal content, or `Inset` for a compact
-rounded panel without a window bar or shadow. `Set Preset Default-0.1` restores Betamax's
-pre-preset 0.1 defaults when migrating existing tapes. Explicit Set values override a preset in
-either order. See [resolved preset settings](../../reference/tape-reference/#presets).
-
 ## Theme lookup
 
 Bundled themes make tapes portable across machines. User Ghostty themes make local experimentation
@@ -39,8 +27,9 @@ convenient. Because user themes are searched first, a local theme with the same 
 theme can change a recording on that machine. For reproducible project assets, prefer a bundled
 theme name and run examples in CI or a consistent environment.
 
-The default theme is `Aardvark Ink`. The `Default` preset currently selects `Framed`;
-`Default-0.1` restores the pre-preset settings, including `Aardvark Blue`.
+The default theme is `Aardvark Ink`. `Set Preset Default-0.1` restores the 0.1 default,
+`Aardvark Blue`. Framed and Inset derive their backdrop and window bar colors from the final theme;
+see [Window styling](../window-styling/).
 
 ## SP Night themes
 
@@ -70,110 +59,17 @@ These settings affect the final output frame and PTY grid:
 | `LetterSpacing` | `0`              | Extra pixels between terminal cells         |
 | `LineHeight`    | `1`              | Multiplier applied to font size             |
 
-Betamax derives PTY columns and rows from these values. Increasing padding or font size usually
-reduces the terminal grid size; increasing width or height usually increases it.
+Betamax derives PTY columns and rows from these values after subtracting the margin, window bar,
+and any caption row. Increasing padding or font size usually reduces the terminal grid size;
+increasing width or height usually increases it.
 
 When testing application layout, start with the default `FontSize` and `Margin`. Increase the canvas
 size if needed. See [Presentation and layout proof](../tape-files/#presentation-and-layout-proof).
 
-## Frame decoration
+## Window decoration
 
-These settings are applied after the raw terminal frame is rendered:
-
-| Setting                   | Default          | Purpose                      |
-| ------------------------- | ---------------- | ---------------------------- |
-| `Margin`                  | `32`             | Outer frame margin in pixels |
-| `MarginFill`              | theme gradient   | Solid, linear, or clear      |
-| `WindowBar`               | `Colorful`       | Synthetic window bar mode    |
-| `WindowBarSize`           | `30`             | Window bar height in pixels  |
-| `WindowBarColor`          | theme surface    | Window bar fill color        |
-| `WindowTitle`             | empty / disabled | Centered static title        |
-| `WindowTitleFromTerminal` | `true`           | Follow app OSC 0/2 titles    |
-| `WindowTitleColor`        | auto             | Theme-derived title contrast |
-| `BorderRadius`            | `11`             | Rounded-corner mask radius   |
-| `Shadow`                  | `true`           | Enable a black window shadow |
-| `ShadowBlur`              | `20`             | CSS blur radius in pixels    |
-| `ShadowOffset`            | `6`              | Vertical offset in pixels    |
-| `ShadowOpacity`           | `0.55`           | Shadow opacity, clamped 0..1 |
-
-`WindowBar` currently treats any non-empty value as enabled. Modes ending in `Right`, such as
-`RingsRight` and `ColorfulRight`, place the window buttons on the right. Other non-empty values
-place them on the left.
-
-```tape
-Set Margin 12
-Set MarginFill "#111111"
-Set WindowBar Colorful
-Set WindowBarSize 34
-Set WindowBarColor "#0f101a"
-Set WindowTitle "jk — log"
-Set WindowTitleColor auto
-Set BorderRadius 8
-```
-
-`MarginFill` also supports Betamax's owned `linear(...)` syntax:
-
-```tape
-Set MarginFill "linear(#232640, #0f101a)"
-Set MarginFill "linear(to: bottom-right, #232640, #0f101a)"
-Set MarginFill "linear(angle: 135deg, #4d5b9e 0%, #232640 42%, #0f101a 100%)"
-```
-
-Without a direction, the gradient runs from top to bottom. `to:` points from the first stop toward
-the last and accepts `top`, `top-right`, `right`, `bottom-right`, `bottom`, `bottom-left`, `left`,
-or `top-left`. `angle: <number>deg` points from the first stop toward the last, clockwise from
-upward. Use comma-separated stops, with an optional percentage on every stop. This is not a CSS
-parser; radial gradients and image fills are not supported yet.
-
-The gradient covers the full output, including rounded corners and the caption row, with rounded
-sRGB channel interpolation and fixed ordered dithering to soften GIF banding. A single `#rrggbb`
-color keeps a solid fill. Without `MarginFill`, the backdrop follows the final theme background;
-an empty string disables the margin. Invalid colors or gradients fall back to the active theme
-background. Fill strings are not checked by the syntax-only `betamax validate` command. Setting a
-theme before or after an explicit fill preserves that fill. See
-[Margin fill](../../reference/tape-reference/#margin-fill) for the full syntax.
-
-`Set MarginFill transparent` leaves the backdrop clear, so the window and its shadow sit on any page
-background. `#rrggbbaa` colors and stops add partial alpha. See
-[Transparent margin](../../reference/tape-reference/#transparent-margin) for how each output format
-handles it.
-
-`Shadow` is rendered over the full `MarginFill` backdrop after it has resolved its color or
-gradient. `ShadowBlur` follows CSS: sigma is half the blur radius, so the default `28` gives sigma
-`14`. For an unclipped result, use at least `ShadowBlur + abs(ShadowOffset)` pixels of margin
-(about `37` with the defaults); `Margin 44` leaves room for the tail. A gradient or backdrop
-lighter than near-black makes the shadow easier to see.
-
-```tape
-Set Margin 44
-Set MarginFill "linear(to: bottom-right, #4d5b9e 0%, #232640 42%, #0f101a 100%)"
-Set Shadow true
-Set ShadowBlur 28
-Set ShadowOffset 9
-Set ShadowOpacity 0.55
-```
-
-`WindowBarColor` accepts a `#rrggbb` string and defaults to the theme background. An explicit
-color takes precedence even if `Set Theme` comes later. Invalid colors, including an empty string,
-fall back to the active theme background. The setting is ignored when the bar is disabled. It changes
-only the bar fill; `BorderRadius` gives the window continuous outer corners, shared by its border
-and shadow. Window buttons use antialiased circular edges.
-
-The title uses `FontFamily` at 40% of the bar height and stays centered while reserving equal space
-for buttons on either side, with a gap of two button radii. Long text truncates with `…`, and line
-breaks become spaces. Empty `WindowTitle` disables the title; an empty `WindowBar` hides it. Omitted
-or invalid title colors use `auto`, which starts at 65% theme foreground mixed with 35% effective
-bar color in sRGB. The foreground share increases in one-percent steps until contrast against the
-bar reaches 4.5:1. If the theme foreground cannot reach that ratio, black or white supplies the
-stronger contrast. An explicit `WindowBarColor` participates in the calculation. The ratio describes
-the text color before glyph antialiasing.
-
-Explicit `#rrggbb` title colors bypass contrast adjustment and survive later `Set Theme` commands,
-even when their contrast is low. Enable `Set WindowTitleFromTerminal true` to let app OSC 0/2
-updates change the displayed title. Use runtime `WindowTitle "text"` to set it from the tape again;
-the latest tape or app assignment wins. Empty titles clear the bar. Fast visible bursts are kept
-with minimum frame holds, which can extend playback. Hidden updates become current without
-replaying hidden history on `Show`. See the [tape reference](../../reference/tape-reference/#following-app-titles).
+The window around the terminal is covered in [Window styling](../window-styling/): presets,
+margins, gradient and transparent fills, window bars and titles, borders, corners, and shadows.
 
 ## Timing and cursor styling
 

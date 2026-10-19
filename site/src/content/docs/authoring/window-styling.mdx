@@ -1,0 +1,238 @@
+---
+title: Window styling
+description: Presets, margins and fills, transparency, window bars, titles, borders, corners, and shadows.
+---
+
+export const asset = (name) => `${import.meta.env.BASE_URL}/assets/window-styling/${name}`;
+
+Betamax draws a synthetic window around the terminal: a backdrop margin, a window bar with an
+optional title, an outline, rounded corners, and a shadow. A preset picks all of these at once, and
+individual `Set` commands adjust them.
+
+Decoration changes generated images only. State JSON and the program under test see the same
+terminal. The margin, window bar, and caption row do take space from `Width` and `Height`, so more
+decoration leaves a smaller PTY grid.
+
+## Presets
+
+```tape
+Set Preset Framed
+```
+
+<div class="bm-figure-grid">
+  <figure>
+    <img src={asset('preset-framed.png')} width="1200" height="720" loading="lazy"
+      alt="Framed preset: window bar with dots and title, rounded window, gradient, shadow" />
+    <figcaption><code>Framed</code>: the default</figcaption>
+  </figure>
+  <figure>
+    <img src={asset('preset-inset.png')} width="1200" height="720" loading="lazy"
+      alt="Inset preset: rounded panel with an outline on a solid backdrop" />
+    <figcaption><code>Inset</code>: a compact panel</figcaption>
+  </figure>
+  <figure>
+    <img src={asset('preset-bare.png')} width="1200" height="720" loading="lazy"
+      alt="Bare preset: terminal content with no decoration" />
+    <figcaption><code>Bare</code>: terminal content only</figcaption>
+  </figure>
+  <figure>
+    <img src={asset('preset-default-0.1.png')} width="1200" height="600" loading="lazy"
+      alt="Default-0.1 preset: Aardvark Blue with 60px padding and no window" />
+    <figcaption><code>Default-0.1</code>: the 0.1 defaults</figcaption>
+  </figure>
+</div>
+
+| Preset        | Use it for                                                                       |
+| ------------- | -------------------------------------------------------------------------------- |
+| `Default`     | The current default, which is `Framed`. A later release may select another look. |
+| `Framed`      | README and release media: bar, rounded window, outline, gradient, and shadow.    |
+| `Inset`       | Docs and review images: a rounded, outlined panel on a solid surface.            |
+| `Bare`        | Undecorated terminal content with the same sizing and typography.                |
+| `Default-0.1` | Existing tapes that should keep Betamax 0.1 sizing, theme, and padding.          |
+
+Explicit `Set` values override the preset no matter which line comes first, so a tape can start
+from a preset and change one thing:
+
+```tape
+Set Preset Inset
+Set Theme "GitHub Light Default"
+Set BorderRadius 6
+```
+
+Framed and Inset derive their backdrop and bar colors from the final theme: a slightly lighter and
+darker version of a dark background, or two darker shades of a light one. Change the theme and the
+frame follows; set `MarginFill` or `WindowBarColor` to choose colors yourself. The
+[preset table](../../reference/tape-reference/#presets) lists every resolved value.
+
+## Margin and backdrop
+
+`Margin` is the space between the window and the image edge. `MarginFill` paints it with a color,
+a linear gradient, or nothing at all:
+
+```tape
+Set Margin 44
+Set MarginFill "#232640"
+Set MarginFill "linear(to: bottom-right, #4d5b9e 0%, #232640 42%, #0f101a 100%)"
+Set MarginFill transparent
+```
+
+<img src={asset('margin-gradient.png')} width="960" height="720" loading="lazy"
+  alt="A window and caption on a blue-to-black diagonal gradient backdrop" />
+
+Gradients are `linear(...)` with an optional direction and two or more stops. Without a direction
+they run top to bottom; `to: <side-or-corner>` and `angle: <n>deg` change that. Stops may carry
+percentages, and if one does, they all must. This is Betamax syntax, not CSS: no radial gradients
+or images. See [Margin fill](../../reference/tape-reference/#margin-fill) for the grammar.
+
+### Transparency
+
+`Set MarginFill transparent` leaves the backdrop clear, so the window and its shadow sit on whatever
+page shows the image. `#rrggbbaa` colors tint the page, and `transparent` works as a gradient stop:
+
+```tape
+Set MarginFill transparent
+Set MarginFill "#0f101a80"
+Set MarginFill "linear(to: bottom, #4d5b9e, transparent)"
+```
+
+This image has a transparent margin. Switch the site between light and dark to see the page behind
+it change:
+
+<img src={asset('margin-transparent.png')} width="960" height="540" loading="lazy"
+  alt="A framed window with a soft shadow and no backdrop, over the page background" />
+
+The window, bar, border, and terminal stay opaque. The shadow becomes translucent black, which
+darkens any page. PNG, `Screenshot`, PNG sequences, WebP, and WebM keep full alpha. GIF has only
+on/off transparency, so the soft shadow and antialiased corners drop out. MP4 has no alpha and is
+rejected before the shell starts. Captions keep their theme colors, so check them against the page
+they will sit on. See [Transparent margin](../../reference/tape-reference/#transparent-margin).
+
+## Window bar
+
+```tape
+Set WindowBar RingsRight
+Set WindowBarColor "#0f101a"
+```
+
+<div class="bm-figure-grid">
+  <figure>
+    <img src={asset('window-title.png')} width="720" height="360" loading="lazy"
+      alt="Window bar with dots on the left and a centered title" />
+    <figcaption><code>Colorful</code> with a <code>WindowTitle</code></figcaption>
+  </figure>
+  <figure>
+    <img src={asset('window-bar-color.png')} width="720" height="360" loading="lazy"
+      alt="Window bar with dots on the right and a darker bar color" />
+    <figcaption><code>RingsRight</code> with a darker <code>WindowBarColor</code></figcaption>
+  </figure>
+</div>
+
+Any non-empty `WindowBar` value draws red, yellow, and green dots on the left. Values ending in
+`Right`, such as `ColorfulRight` or `RingsRight`, put them on the right. `Set WindowBar ""` removes
+the bar and its title. `WindowBarSize` sets its height, `30` by default. `WindowBarColor` accepts
+`#rrggbb` and otherwise follows the preset's theme-derived surface.
+
+## Window titles
+
+```tape
+Set WindowTitle "jk — log"
+```
+
+The title is centered on the bar in `FontFamily` at 40% of the bar height. It never overlaps the
+dots, and long titles end with `…`. Its color is picked automatically for at least 4.5:1 contrast
+with the bar; set `WindowTitleColor "#rrggbb"` to choose one.
+
+Programs can set the title too. Like a real terminal, Betamax follows OSC 0 and OSC 2 title
+sequences, so a TUI that names its current view shows that name in the recording. A runtime
+`WindowTitle` command takes the title back, and whichever assignment came last wins:
+
+<img src={asset('window-title-from-app.gif')} width="720" height="280" loading="lazy"
+  alt="Window title changing as the app and the tape alternately set it" />
+
+```tape
+Set WindowTitle "title set by tape"
+
+Type "printf '\033]2;title set by app\007'"
+Enter
+Sleep 1s
+
+WindowTitle "title reset by tape"
+Sleep 1s
+```
+
+Set `WindowTitleFromTerminal false` to keep only the tape's title. Each title change keeps its own
+frame in the animation, even when the app changes it several times in one burst. State JSON always
+records the app's own title in `title`, independent of what the bar displays. See
+[Following app titles](../../reference/tape-reference/#following-app-titles).
+
+## Border, corners, and shadow
+
+<img src={asset('window-chrome.png')} width="1000" height="550" loading="lazy"
+  alt="A window with a custom bar color, title, outline, continuous corners, and shadow" />
+
+```tape
+Set BorderRadius 11
+Set WindowBorder 1
+Set WindowBorderOpacity 0.28
+Set Shadow true
+Set ShadowBlur 28
+Set ShadowOffset 9
+```
+
+- **Corners:** `BorderRadius` uses continuous corners that ease into the straight edges, like
+  macOS windows. The window, border, and shadow share the same shape. `0` keeps square corners.
+- **Border:** `WindowBorder` is a thin outline around the bar and terminal together, in pixels.
+  `WindowBorderColor` defaults to `auto`, which picks white or black against the theme background,
+  and `WindowBorderOpacity` defaults to `0.15`. `0` removes it.
+- **Shadow:** a soft black shadow below the window. `ShadowBlur` is a CSS-style blur radius,
+  `ShadowOffset` moves it down (or up, if negative), and `ShadowOpacity` sets its strength. It
+  needs a margin to show in: leave at least `ShadowBlur + ShadowOffset` pixels so it fades out
+  before the image edge. It shows best on a gradient or a backdrop lighter than black.
+
+Decoration never covers terminal cells. The window grows outward into the margin to make room for
+its border and corners; if the margin is too small, the tape fails at startup and asks for a larger
+`Margin` or smaller `BorderRadius`.
+
+## A complete look
+
+This tape uses the bundled SP Night theme with a custom gradient, bar color, and title. Start from
+a preset, then set the details:
+
+```tape
+Set Theme "sp_night_noite"
+Set Width 900
+Set Height 360
+Set Padding 24
+Set Margin 44
+Set MarginFill "linear(#232640, #0f101a)"
+Set WindowBarColor "#0f101a"
+Set WindowTitle "SP Night — Noite Paulista"
+```
+
+<img src={asset('sp-night.png')} width="900" height="360" loading="lazy"
+  alt="SP Night palette in a framed window on a dark blue gradient with a centered title" />
+
+## Examples
+
+Each tape renders one feature on its own:
+
+- [`presets-framed.tape`][presets-src], with `-inset`, `-bare`, and `-default-0.1` variants, renders
+  the same scene with each preset.
+- [`margin-gradient.tape`][margin-gradient-src] and
+  [`margin-transparent.tape`][margin-transparent-src] show backdrop fills.
+- [`window-bar-color.tape`][window-bar-color-src], [`window-title.tape`][window-title-src], and
+  [`window-title-from-app.tape`][window-title-from-app-src] show the bar and titles.
+- [`window-border.tape`][window-border-src], [`window-shadow.tape`][window-shadow-src], and
+  [`window-chrome.tape`][window-chrome-src] show the outline, shadow, and corners.
+- [`sp-night.tape`][sp-night-src] is the complete look above.
+
+[presets-src]: https://github.com/joshka/betamax/blob/main/examples/presets-framed.tape
+[margin-gradient-src]: https://github.com/joshka/betamax/blob/main/examples/margin-gradient.tape
+[margin-transparent-src]: https://github.com/joshka/betamax/blob/main/examples/margin-transparent.tape
+[window-bar-color-src]: https://github.com/joshka/betamax/blob/main/examples/window-bar-color.tape
+[window-title-src]: https://github.com/joshka/betamax/blob/main/examples/window-title.tape
+[window-title-from-app-src]: https://github.com/joshka/betamax/blob/main/examples/window-title-from-app.tape
+[window-border-src]: https://github.com/joshka/betamax/blob/main/examples/window-border.tape
+[window-shadow-src]: https://github.com/joshka/betamax/blob/main/examples/window-shadow.tape
+[window-chrome-src]: https://github.com/joshka/betamax/blob/main/examples/window-chrome.tape
+[sp-night-src]: https://github.com/joshka/betamax/blob/main/examples/sp-night.tape

@@ -15,7 +15,7 @@ Set Framerate 10
 Set CursorBlink false
 
 Hide
-Type "printf 'Gradient margin fill\n\nA backdrop shared by screenshots and animations.\n'"
+Type "clear; printf 'Gradient margin fill\n\nA backdrop shared by screenshots and animations.\n'"
 Enter
 Wait+Screen "A backdrop shared"
 Caption "A positioned gradient behind the window and caption"

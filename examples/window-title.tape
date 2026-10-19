@@ -15,7 +15,7 @@ Set BorderRadius 11
 Set CursorBlink false
 
 Hide
-Type "printf 'Window titles frame your terminal recordings.\n'"
+Type "clear; printf 'Window titles frame your terminal recordings.\n'"
 Enter
 Wait+Screen "Window titles frame"
 Show

@@ -16,6 +16,8 @@ config:
       - code
       - div
       - details
+      - figcaption
+      - figure
       - footer
       - h1
       - h2
@@ -39,5 +41,6 @@ config:
       - thead
       - tr
       - ul
+      - video
   MD024:
     siblings_only: true
