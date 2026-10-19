@@ -166,7 +166,7 @@ impl WindowStyle {
     }
 
     /// Resolve explicit and theme-derived bar colors consistently for bar and title pixels.
-    fn bar_color(
+    pub(super) fn bar_color(
         &self,
         fallback: libghostty_vt::style::RgbColor,
     ) -> libghostty_vt::style::RgbColor {
@@ -273,9 +273,10 @@ mod tests {
     fn bar_settings(commands: &str) -> Settings {
         let tape = Tape::parse(&format!(
             r##"
+            Set Preset Default-0.1
             Set Width 160
             Set Height 120
-            Set Padding 0
+            Set Padding 12
             Set Margin 8
             Set MarginFill "#445566"
             Set WindowBar Rings
@@ -345,7 +346,10 @@ mod tests {
     #[test]
     fn window_bar_color_rejects_non_string_values() {
         for (value, kind) in [("42", "number"), ("true", "bool"), ("1s", "duration")] {
-            let tape = Tape::parse(&format!("Set WindowBarColor {value}")).unwrap();
+            let tape = Tape::parse(&format!(
+                "Set Preset Default-0.1\nSet WindowBarColor {value}"
+            ))
+            .unwrap();
             let error = Settings::from_tape(&tape).unwrap_err().to_string();
             assert!(error.contains(&format!("Set WindowBarColor expects string, got {kind}")));
         }
@@ -491,6 +495,7 @@ mod tests {
     fn parses_frame_style_settings() {
         let tape = Tape::parse(
             r##"
+            Set Preset Default-0.1
             Set Margin 12
             Set MarginFill "#674EFF"
             Set WindowBar Colorful

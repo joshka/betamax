@@ -3,6 +3,8 @@
 Output target/features/layout-dark.gif
 Output target/features/layout-dark.png
 Require python3
+# Keep exact pixel fixtures independent of the implicit presentation style.
+Set Preset Default-0.1
 Set Shell "bash"
 Set Theme "Catppuccin Mocha"
 Set FontFamily "DejaVu Sans Mono"

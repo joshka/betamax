@@ -1,4 +1,6 @@
 # Unicode selection must retain source newlines while display lines wrap.
+# Fixed terminal coordinates use the pre-preset baseline.
+Set Preset Default-0.1
 Set Shell "bash"
 Set Width 1340
 Set Height 680

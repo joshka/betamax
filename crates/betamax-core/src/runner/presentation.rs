@@ -51,6 +51,8 @@ pub(super) struct Presentation {
     backdrop: Canvas,
     /// Cached bar fill and buttons, prepared with the backdrop after startup settings.
     bar_overlay: Canvas,
+    /// Cached shell fill, including decoration outside the terminal rectangle.
+    window_canvas: Canvas,
     /// Prepared continuous window and inset-border coverage.
     outline: Option<WindowOutline>,
     /// Whether the tape uses presentation captions.
@@ -60,7 +62,8 @@ pub(super) struct Presentation {
 }
 
 impl Presentation {
-    /// Construct the initial presentation before tape settings are applied.
+    /// Construct the 0.1 presentation baseline before presets and explicit tape settings are
+    /// applied.
     pub(super) fn new(theme: TerminalTheme) -> Result<Self> {
         Ok(Self {
             width: DEFAULT_WIDTH,
@@ -69,6 +72,7 @@ impl Presentation {
             style: WindowStyle::new(&theme),
             backdrop: Canvas::new(0, 0, theme.background)?,
             bar_overlay: Canvas::transparent(0, 0)?,
+            window_canvas: Canvas::transparent(0, 0)?,
             outline: None,
             caption_overlay: false,
             keyboard_overlay: KeyboardOverlaySettings::default(),
@@ -78,6 +82,11 @@ impl Presentation {
 
     /// Prepare the backdrop once after all startup settings have been applied.
     pub(super) fn prepare_backdrop(&mut self) -> Result<()> {
+        if self.terminal_canvas_width() == 0 || self.terminal_canvas_height() == 0 {
+            return Err(miette::miette!(
+                "Width and Height leave no terminal canvas; increase the dimensions or use Set Preset Bare"
+            ).into());
+        }
         self.backdrop = margin_backdrop(
             self.width,
             self.height,
@@ -90,12 +99,53 @@ impl Presentation {
             width: self.terminal_canvas_width(),
             height: self.terminal_canvas_height() + self.style.window_bar_height(),
         };
-        self.outline = Some(WindowOutline::new(
+        let padding = self.text.padding;
+        let content = PixelRect {
+            x: bounds.x.saturating_add(padding),
+            y: bounds
+                .y
+                .saturating_add(self.style.window_bar_height())
+                .saturating_add(padding),
+            width: self
+                .terminal_canvas_width()
+                .saturating_sub(padding.saturating_mul(2)),
+            height: self
+                .terminal_canvas_height()
+                .saturating_sub(padding.saturating_mul(2)),
+        };
+        let border_width = if self.style.border.visible() {
+            self.style.border.width
+        } else {
+            0
+        };
+        let outline = WindowOutline::containing(
             bounds,
+            content,
             self.style.border_radius,
-            self.style.border.width,
-        )?);
-        self.style.prepare_backdrop(&mut self.backdrop, bounds);
+            border_width,
+            self.style.effective_margin(),
+        )?;
+        self.style
+            .prepare_backdrop(&mut self.backdrop, outline.rect);
+        self.window_canvas = self.backdrop.clone();
+        let shell = outline.rect;
+        self.window_canvas.fill_rect(
+            shell.x,
+            shell.y,
+            shell.width,
+            shell.height,
+            self.theme.background,
+        );
+        if self.style.window_bar_height() > 0 {
+            self.window_canvas.fill_rect(
+                shell.x,
+                shell.y,
+                shell.width,
+                bounds.y + self.style.window_bar_height() - shell.y,
+                self.style.bar_color(self.theme.background),
+            );
+        }
+        self.outline = Some(outline);
         self.bar_overlay =
             self.style
                 .prepare_bar(self.width, self.height, self.theme.background)?;
@@ -207,7 +257,7 @@ impl Presentation {
     ) -> Result<Frame> {
         let margin = self.style.effective_margin();
         let bar_height = self.style.window_bar_height();
-        let mut output = self.backdrop.clone();
+        let mut output = self.window_canvas.clone();
         output.blit(frame, margin, margin + bar_height)?;
         self.style.draw(
             &mut output,

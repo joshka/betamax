@@ -2,6 +2,8 @@ Output examples/output/hide-show.gif
 
 Require printf
 
+# Preserve the curated website/README presentation on regeneration.
+Set Preset Default-0.1
 Set Shell "bash"
 Set Theme "GitHub Dark"
 Set FontSize 24

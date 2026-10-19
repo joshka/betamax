@@ -45,7 +45,8 @@ fn margin_fill_parses_colors_and_gradient_destinations() {
         ("top-left", 315.0),
     ] {
         let value = format!("linear(to: {destination}, #232640, #0f101a)");
-        let tape = Tape::parse(&format!("Set MarginFill '{value}'")).unwrap();
+        let tape =
+            Tape::parse(&format!("Set Preset Default-0.1\nSet MarginFill '{value}'")).unwrap();
         let settings = Settings::from_tape(&tape).unwrap();
         let gradient = parsed_gradient(settings.presentation.style.margin_fill.as_deref().unwrap());
         assert_eq!(gradient.direction, GradientDirection::Angle(direction));
@@ -137,7 +138,7 @@ fn invalid_margin_fills_fall_back_to_the_final_theme_background() {
     ] {
         assert!(parse_margin_fill(value).is_none(), "{value}");
         let tape = Tape::parse(&format!(
-            "Set Width 12\nSet Height 12\nSet Margin 2\nSet MarginFill '{value}'\nSet Theme '{{\"background\":\"#123456\"}}'"
+            "Set Preset Default-0.1\nSet Width 12\nSet Height 12\nSet Margin 2\nSet MarginFill '{value}'\nSet Theme '{{\"background\":\"#123456\"}}'"
         )).unwrap();
         let settings = Settings::from_tape(&tape).unwrap();
         assert_eq!(
@@ -151,7 +152,7 @@ fn invalid_margin_fills_fall_back_to_the_final_theme_background() {
 #[test]
 fn margin_fill_wrong_types_use_the_existing_setting_error() {
     for (value, kind) in [("true", "bool"), ("123", "number"), ("1s", "duration")] {
-        let tape = Tape::parse(&format!("Set MarginFill {value}")).unwrap();
+        let tape = Tape::parse(&format!("Set Preset Default-0.1\nSet MarginFill {value}")).unwrap();
         let error = Settings::from_tape(&tape).unwrap_err().to_string();
         assert!(
             error.contains(&format!("Set MarginFill expects string, got {kind}")),
@@ -166,7 +167,7 @@ fn explicit_margin_gradients_survive_theme_ordering() {
     let fill = r##"Set MarginFill "linear(#000000, #ffffff)""##;
     for source in [format!("{theme}\n{fill}"), format!("{fill}\n{theme}")] {
         let tape = Tape::parse(&format!(
-            "Set Width 5\nSet Height 5\nSet Margin 1\n{source}"
+            "Set Preset Default-0.1\nSet Width 5\nSet Height 5\nSet Margin 1\n{source}"
         ))
         .unwrap();
         let settings = Settings::from_tape(&tape).unwrap();
@@ -185,7 +186,7 @@ fn gradients_span_the_output_in_all_directions() {
         ("to: bottom-right", 64),
     ] {
         let tape = Tape::parse(&format!(
-            "Set Width 5\nSet Height 9\nSet Margin 2\nSet MarginFill 'linear({direction}, #000000, #ffffff)'"
+            "Set Preset Default-0.1\nSet Width 5\nSet Height 9\nSet Margin 2\nSet MarginFill 'linear({direction}, #000000, #ffffff)'"
         )).unwrap();
         let settings = Settings::from_tape(&tape).unwrap();
         let frame = decorated(&settings, None);
@@ -223,7 +224,7 @@ fn gradient_endpoints_handle_single_pixel_axes() {
 #[test]
 fn gradient_dither_is_fixed_and_preserves_endpoints() {
     let tape = Tape::parse(
-        "Set Width 8\nSet Height 3\nSet Margin 1\nSet MarginFill 'linear(#000000, #ffffff)'",
+        "Set Preset Default-0.1\nSet Width 8\nSet Height 3\nSet Margin 1\nSet MarginFill 'linear(#000000, #ffffff)'",
     )
     .unwrap();
     let settings = Settings::from_tape(&tape).unwrap();
@@ -250,6 +251,7 @@ fn gradient_dither_is_fixed_and_preserves_endpoints() {
 fn rounded_window_corners_restore_and_blend_the_local_backdrop() {
     let tape = Tape::parse(
         r##"
+        Set Preset Default-0.1
         Set Width 16
         Set Height 16
         Set Margin 2
@@ -277,6 +279,7 @@ fn rounded_window_corners_restore_and_blend_the_local_backdrop() {
 fn unset_margin_fill_uses_the_final_theme_background() {
     let tape = Tape::parse(
         r##"
+        Set Preset Default-0.1
         Set Width 5
         Set Height 5
         Set Margin 1
@@ -296,7 +299,7 @@ fn default_theme_and_single_color_margin_pixels_keep_expected_bytes() {
         ("Set MarginFill '#123456'", [18, 52, 86, 255]),
     ] {
         let tape = Tape::parse(&format!(
-            "Set Width 5\nSet Height 5\nSet Margin 1\n{setting}"
+            "Set Preset Default-0.1\nSet Width 5\nSet Height 5\nSet Margin 1\n{setting}"
         ))
         .unwrap();
         let settings = Settings::from_tape(&tape).unwrap();

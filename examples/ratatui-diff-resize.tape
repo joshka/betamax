@@ -1,4 +1,6 @@
 # Set BETAMAX_DIFF_VIEWER to a built viewer from merged ratatui-diff main.
+# Fixed terminal coordinates use the pre-preset baseline.
+Set Preset Default-0.1
 Set Shell "bash"
 Set Width 1340
 Set Height 680

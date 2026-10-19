@@ -24,6 +24,15 @@ Sources checked:
 | Video encoding    | ffmpeg-backed                      | ffmpeg-backed                                |
 | GIF/PNG rendering | Browser/server pipeline            | In-process Rust                              |
 
+## Presentation defaults
+
+Betamax defaults to `Framed`: Aardvark Ink, 1200×720, 24px text, zero terminal padding, and a
+rounded window with left dots, a backdrop, and a shadow. Existing tapes can select `Set Preset Default-0.1`
+to restore Betamax's previous defaults. `Set Preset Bare` removes decoration while keeping the new
+sizing and typography. These preset commands are Betamax extensions; they do not make tapes or
+rendered pixels identical to VHS. See [Presets](tape-reference.md#presets) for resolved values and
+override rules.
+
 ## Architecture
 
 Betamax's core difference is architectural. VHS drives a browser terminal and composes output

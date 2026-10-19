@@ -69,6 +69,17 @@ def scrollback():
     input()
 
 
+def cell_edges():
+    """Fill every terminal cell and connect a Unicode border at all four grid edges."""
+    columns, rows = os.get_terminal_size()
+    lines = ["┌" + "─" * (columns - 2) + "┐"]
+    lines += ["│" + " " * (columns - 2) + "│" for _ in range(rows - 2)]
+    lines += ["└" + "─" * (columns - 2) + "┘"]
+    write(ESC + "?25l" + ESC + "48;2;40;140;90m" + ESC + "38;2;255;255;255m" + ESC + "2J")
+    for row, line in enumerate(lines, 1):
+        write(f"{ESC}{row};1H{line}")
+
+
 def input_scene():
     # A raw-mode key inspector makes received bytes observable, independent of readline versions.
     original = termios.tcgetattr(sys.stdin)
@@ -109,7 +120,7 @@ if __name__ == "__main__":
     mode[3] &= ~termios.ECHO
     termios.tcsetattr(sys.stdin, termios.TCSANOW, mode)
     {"styles": styles, "layout": layout, "visibility": visibility,
-     "scrollback": scrollback, "input": input_scene}[sys.argv[1]]()
+     "scrollback": scrollback, "input": input_scene, "cell-edges": cell_edges}[sys.argv[1]]()
     # Keep static scenes alive so shell prompts cannot alter checkpoints.
-    if sys.argv[1] in {"styles", "layout"}:
+    if sys.argv[1] in {"styles", "layout", "cell-edges"}:
         input()

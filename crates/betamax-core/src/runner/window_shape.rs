@@ -170,6 +170,62 @@ pub(super) struct WindowOutline {
 }
 
 impl WindowOutline {
+    /// Expand into the available margin until the inner shape contains every content pixel.
+    /// The terminal rectangle stays fixed; insufficient decoration space is a startup error.
+    pub(super) fn containing(
+        rect: PixelRect,
+        content: PixelRect,
+        radius: u32,
+        width: u32,
+        margin: u32,
+    ) -> Result<Self> {
+        let candidate = |growth: u32| {
+            Self::new(
+                PixelRect {
+                    x: rect.x - growth,
+                    y: rect.y - growth,
+                    width: rect.width.saturating_add(growth.saturating_mul(2)),
+                    height: rect.height.saturating_add(growth.saturating_mul(2)),
+                },
+                radius,
+                width,
+            )
+        };
+        let contains = |outline: &Self| {
+            if content.width == 0 || content.height == 0 {
+                return true;
+            }
+            // Continuous rounded rectangles are convex. Full coverage at all four extreme
+            // pixels therefore protects the complete rectangular content, including its edges.
+            [content.x, content.x + content.width - 1]
+                .into_iter()
+                .all(|x| {
+                    [content.y, content.y + content.height - 1]
+                        .into_iter()
+                        .all(|y| outline.inner.coverage(x, y) == 1.0)
+                })
+        };
+        let original = candidate(0)?;
+        if contains(&original) {
+            return Ok(original);
+        }
+        if !contains(&candidate(margin)?) {
+            return Err(miette::miette!(
+                "window decoration would cover terminal cells; increase Margin or reduce BorderRadius or WindowBorder"
+            ).into());
+        }
+        let (mut low, mut high) = (1, margin);
+        while low < high {
+            let middle = low + (high - low) / 2;
+            if contains(&candidate(middle)?) {
+                high = middle;
+            } else {
+                low = middle + 1;
+            }
+        }
+        candidate(low)
+    }
+
     pub(super) fn new(rect: PixelRect, radius: u32, width: u32) -> Result<Self> {
         let inset = width
             .min(rect.width.div_ceil(2))

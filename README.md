@@ -83,7 +83,18 @@ sudo apt-get install ffmpeg
 
 The script writes files under `examples/output` and copies them to `target/betamax-examples` for
 local inspection. The GIF previews below are hosted as GitHub Release assets so they can render on
-GitHub and crates.io without storing generated media in the source tree.
+GitHub and crates.io without storing generated media in the source tree. Their source tapes select
+`Default-0.1` to preserve the curated presentation when regenerated. The `presets-*.tape` examples
+demonstrate the current presets.
+
+## Presentation presets
+
+Tapes use the `Default` preset, currently `Framed`: Aardvark Ink, 1200×720, 22px text, zero terminal
+padding, left window dots, rounded corners, and a subtle backdrop and shadow. Use `Set Preset Bare`
+for terminal content alone, `Set Preset Inset` for a compact panel, or `Set Preset Default-0.1` for
+the previous Betamax defaults. Explicit settings override presets in either order. `Set Preset
+Default` selects the current default explicitly. See [presets and resolved
+defaults](docs/tape-reference.md#presets) for examples and customization.
 
 ## Tape example
 

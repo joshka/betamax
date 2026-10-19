@@ -115,6 +115,7 @@ fn captions_affect_screenshots_not_state_json() {
         r#"
         Output {final_state}
         Set Shell "bash"
+        Set Preset Bare
         Set Width 180
         Set Height 120
         Set Padding 0
@@ -173,6 +174,7 @@ fn runner_writes_webp_animation_and_static_checkpoint() {
         r#"
         Output {}
         Set Shell "bash"
+        Set Preset Bare
         Set Width 80
         Set Height 60
         Set Padding 0
@@ -279,4 +281,24 @@ impl TerminalSession for FakeSession {
             scrollback: Vec::new(),
         })
     }
+}
+
+#[test]
+fn custom_capture_backend_rejects_explicit_title_following() {
+    let output = temp_output("betamax-public-api-unsupported-title.json");
+    let tape = Tape::parse(&format!(
+        "Output {}\nSet WindowTitleFromTerminal true",
+        output.display()
+    ))
+    .unwrap();
+    let error = Runner::with_capture(
+        RunOptions {
+            publish: false,
+            quiet: true,
+        },
+        FakeCapture,
+    )
+    .run_artifacts(&tape)
+    .unwrap_err();
+    assert!(error.to_string().contains("does not support title events"));
 }

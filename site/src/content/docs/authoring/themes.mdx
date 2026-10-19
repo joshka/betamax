@@ -20,6 +20,18 @@ Use the exact listed name in a tape:
 Set Theme "Aardvark Blue"
 ```
 
+## Presentation presets
+
+```tape
+Set Preset Default
+```
+
+`Default` currently selects `Framed`: a window on a gradient backdrop with left dots, a subtle
+outline, and a shadow. Select `Bare` for undecorated terminal content, or `Inset` for a compact
+rounded panel without a window bar or shadow. `Set Preset Default-0.1` restores Betamax's
+pre-preset 0.1 defaults when migrating existing tapes. Explicit Set values override a preset in
+either order. See [resolved preset settings](../../reference/tape-reference/#presets).
+
 ## Theme lookup
 
 Bundled themes make tapes portable across machines. User Ghostty themes make local experimentation
@@ -27,8 +39,8 @@ convenient. Because user themes are searched first, a local theme with the same 
 theme can change a recording on that machine. For reproducible project assets, prefer a bundled
 theme name and run examples in CI or a consistent environment.
 
-The default theme is `Aardvark Blue`. It was chosen as a readable, VHS-like default for examples,
-not because it has special behavior in the renderer.
+The default theme is `Aardvark Ink`. The `Default` preset currently selects `Framed`;
+`Default-0.1` restores the pre-preset settings, including `Aardvark Blue`.
 
 ## SP Night themes
 
@@ -51,11 +63,11 @@ These settings affect the final output frame and PTY grid:
 | Setting         | Default          | Purpose                                     |
 | --------------- | ---------------- | ------------------------------------------- |
 | `Width`         | `1200`           | Final output width in pixels                |
-| `Height`        | `600`            | Final output height in pixels               |
-| `Padding`       | `60`             | Space between cells and terminal edge       |
+| `Height`        | `720`            | Final output height in pixels               |
+| `Padding`       | `0`              | Space between cells and terminal edge       |
 | `FontFamily`    | `JetBrains Mono` | Preferred font family                       |
 | `FontSize`      | `22`             | Font size in pixels                         |
-| `LetterSpacing` | `1`              | Extra pixels between terminal cells         |
+| `LetterSpacing` | `0`              | Extra pixels between terminal cells         |
 | `LineHeight`    | `1`              | Multiplier applied to font size             |
 
 Betamax derives PTY columns and rows from these values. Increasing padding or font size usually
@@ -70,18 +82,18 @@ These settings are applied after the raw terminal frame is rendered:
 
 | Setting                   | Default          | Purpose                      |
 | ------------------------- | ---------------- | ---------------------------- |
-| `Margin`                  | `0`              | Outer frame margin in pixels |
-| `MarginFill`              | theme background | Solid or linear backdrop     |
-| `WindowBar`               | empty / disabled | Synthetic window bar mode    |
+| `Margin`                  | `32`             | Outer frame margin in pixels |
+| `MarginFill`              | theme gradient   | Solid or linear backdrop     |
+| `WindowBar`               | `Colorful`       | Synthetic window bar mode    |
 | `WindowBarSize`           | `30`             | Window bar height in pixels  |
-| `WindowBarColor`          | theme background | Window bar fill color        |
+| `WindowBarColor`          | theme surface    | Window bar fill color        |
 | `WindowTitle`             | empty / disabled | Centered static title        |
-| `WindowTitleFromTerminal` | `false`          | Follow app OSC 0/2 titles    |
+| `WindowTitleFromTerminal` | `true`           | Follow app OSC 0/2 titles    |
 | `WindowTitleColor`        | auto             | Theme-derived title contrast |
-| `BorderRadius`            | `0`              | Rounded-corner mask radius   |
-| `Shadow`                  | `false`          | Enable a black window shadow |
-| `ShadowBlur`              | `28`             | CSS blur radius in pixels    |
-| `ShadowOffset`            | `9`              | Vertical offset in pixels    |
+| `BorderRadius`            | `11`             | Rounded-corner mask radius   |
+| `Shadow`                  | `true`           | Enable a black window shadow |
+| `ShadowBlur`              | `20`             | CSS blur radius in pixels    |
+| `ShadowOffset`            | `6`              | Vertical offset in pixels    |
 | `ShadowOpacity`           | `0.55`           | Shadow opacity, clamped 0..1 |
 
 `WindowBar` currently treats any non-empty value as enabled. Modes ending in `Right`, such as

@@ -1,5 +1,7 @@
 # Real PTY event decoder. Run from the Betamax checkout root.
 Require python3
+# Fixed terminal coordinates use the pre-preset baseline.
+Set Preset Default-0.1
 Set Shell "python3 crates/betamax-core/tests/fixtures/terminal_events.py"
 Set Width 1000
 Set Height 480
