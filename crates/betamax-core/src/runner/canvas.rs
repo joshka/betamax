@@ -51,6 +51,39 @@ impl Canvas {
         }
     }
 
+    /// Copy a media frame into a canvas of the same size.
+    pub(super) fn from_frame(frame: &Frame) -> Result<Self> {
+        let mut canvas = Self::transparent(frame.width, frame.height)?;
+        canvas.blit(frame, 0, 0)?;
+        Ok(canvas)
+    }
+
+    /// Place a straight-alpha layer underneath this canvas within `rect`.
+    ///
+    /// Pixels already on the canvas stay on top; only pixels that are not fully opaque change.
+    pub(super) fn underlay(&mut self, layer: &Self, rect: PixelRect) {
+        let Some((x0, y0, x1, y1)) =
+            self.clipped_rect(rect.x as i32, rect.y as i32, rect.width, rect.height)
+        else {
+            return;
+        };
+        for y in y0..y1.min(layer.height) {
+            for x in x0..x1.min(layer.width) {
+                let offset = self.offset(x, y);
+                let [r, g, b, a] = self.pixels[offset..offset + BYTES_PER_PIXEL]
+                    .try_into()
+                    .unwrap();
+                if a == OPAQUE_ALPHA {
+                    continue;
+                }
+                let under = layer.offset(x, y);
+                self.pixels[offset..offset + BYTES_PER_PIXEL]
+                    .copy_from_slice(&layer.pixels[under..under + BYTES_PER_PIXEL]);
+                self.blend_pixel(x, y, r, g, b, a);
+            }
+        }
+    }
+
     /// Allocate a solid-color RGBA frame, checking for integer overflow.
     pub(super) fn new(
         width: u32,

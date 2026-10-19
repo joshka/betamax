@@ -568,12 +568,17 @@ where
             write_json(&path, &final_state)?;
             self.progress(ANSI_GREEN, format_args!("wrote {}", path.display()));
         }
+        let gif_frames = if outputs.gifs.is_empty() {
+            std::borrow::Cow::Borrowed(media_frames.as_slice())
+        } else {
+            settings.presentation.gif_frames(&media_frames)?
+        };
         for path in outputs.gifs {
             self.progress(
                 ANSI_YELLOW,
                 format_args!("combining frames into gif {}", path.display()),
             );
-            write_gif_with_progress(&path, &media_frames, &mut self.media_progress)?;
+            write_gif_with_progress(&path, &gif_frames, &mut self.media_progress)?;
             self.progress(ANSI_GREEN, format_args!("wrote {}", path.display()));
         }
         for path in outputs.webps {

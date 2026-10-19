@@ -3,6 +3,7 @@
 //! This is the single owner of geometry shared by PTY sizing and image decoration. Each feature
 //! owns its own metrics and drawing; this module resolves their shared bounds and drawing order.
 
+use std::borrow::Cow;
 use std::time::Duration;
 
 use super::canvas::{Canvas, PixelRect};
@@ -15,7 +16,7 @@ use super::keyboard_overlay::{
     KeyboardOverlayLocation, KeyboardOverlayMode, KeyboardOverlaySettings, VerticalAnchor,
     KEYBOARD_OVERLAY_CORNER_INSET, KEYBOARD_OVERLAY_LINE_HEIGHT, KEYBOARD_OVERLAY_TEXT_OFFSET_Y,
 };
-use super::margin::margin_backdrop;
+use super::margin::{margin_backdrop, parse_margin_fill};
 use super::window::WindowStyle;
 use super::window_shape::WindowOutline;
 use crate::ghostty::{TerminalTheme, TextSettings};
@@ -30,6 +31,9 @@ const DEFAULT_HEIGHT: u32 = 600;
 
 /// Minimum horizontal presentation-row inset without a margin, relative to caption font size.
 const PRESENTATION_OVERLAY_MIN_INSET_SCALE: f32 = 0.5;
+
+/// Gap between the window and the GIF presentation-row plate drawn over non-opaque margins.
+const PRESENTATION_ROW_PLATE_GAP: u32 = 6;
 
 /// Gap between caption text and right-aligned keyboard chips.
 const PRESENTATION_OVERLAY_GAP: u32 = 16;
@@ -56,6 +60,8 @@ pub(super) struct Presentation {
     window_canvas: Canvas,
     /// Prepared continuous window and inset-border coverage.
     outline: Option<WindowOutline>,
+    /// Theme-colored backing for the presentation row in GIF output over a non-opaque margin.
+    gif_row_plate: Option<(Canvas, PixelRect)>,
     /// Whether the tape uses presentation captions.
     pub(super) caption_overlay: bool,
     /// Optional input-sequence overlay for review media.
@@ -75,6 +81,7 @@ impl Presentation {
             bar_overlay: Canvas::transparent(0, 0)?,
             window_canvas: Canvas::transparent(0, 0)?,
             outline: None,
+            gif_row_plate: None,
             caption_overlay: false,
             keyboard_overlay: KeyboardOverlaySettings::default(),
             theme,
@@ -146,11 +153,82 @@ impl Presentation {
                 self.style.bar_color(self.theme.background),
             );
         }
+        self.gif_row_plate = self.prepare_gif_row_plate(outline.rect)?;
         self.outline = Some(outline);
         self.bar_overlay =
             self.style
                 .prepare_bar(self.width, self.height, self.theme.background)?;
         Ok(())
+    }
+
+    /// Prepare a theme-colored plate behind the presentation row for GIF output.
+    ///
+    /// Captions and keyboard chips are anti-aliased against whatever sits behind them. Over a
+    /// clear or translucent margin that is the viewer's page, which alpha formats such as WebP and
+    /// PNG keep, but GIF's single-bit transparency drops the soft text edges and leaves captions
+    /// broken up on light and dark pages alike. GIF frames are composited over this plate when
+    /// they are written, so shared frames stay untouched for the other outputs. The plate covers
+    /// the whole reserved row, so it stays put as captions change and chips appear.
+    fn prepare_gif_row_plate(&self, shell: PixelRect) -> Result<Option<(Canvas, PixelRect)>> {
+        let row_height = self.presentation_overlay_height().min(self.height);
+        let margin_is_opaque = self
+            .style
+            .margin_fill
+            .as_deref()
+            .and_then(parse_margin_fill)
+            .is_none_or(|fill| fill.is_opaque());
+        if row_height == 0 || margin_is_opaque {
+            return Ok(None);
+        }
+        // Match the window's horizontal extent and its inset from the image edge, so the plate
+        // reads as a caption strip aligned with the window. The window outline can extend into
+        // the row, and narrow margins leave little room, so the gap above the plate never
+        // exceeds the window's own inset and the plate may extend into the bottom margin to
+        // keep the chips inside it.
+        let gap = PRESENTATION_ROW_PLATE_GAP.min(shell.y);
+        let top_y = self
+            .height
+            .saturating_sub(self.style.effective_margin())
+            .saturating_sub(row_height)
+            .max(shell.y.saturating_add(shell.height))
+            .saturating_add(gap);
+        let bottom_y = self.height.saturating_sub(shell.y);
+        let rect = PixelRect {
+            x: shell.x,
+            y: top_y,
+            width: shell.width,
+            height: bottom_y.saturating_sub(top_y),
+        };
+        let mut plate = Canvas::transparent(self.width, self.height)?;
+        plate.fill_rounded_rect_alpha(
+            rect,
+            self.theme.background,
+            u8::MAX,
+            self.style.border_radius,
+        );
+        Ok(Some((plate, rect)))
+    }
+
+    /// Return frames prepared for GIF encoding, keeping every frame's hold time.
+    ///
+    /// Over a non-opaque margin each frame is composited over the presentation-row plate from
+    /// [`Self::prepare_gif_row_plate`]; otherwise the shared frames are borrowed unchanged.
+    pub(super) fn gif_frames<'a>(
+        &self,
+        frames: &'a [(Frame, Duration)],
+    ) -> Result<Cow<'a, [(Frame, Duration)]>> {
+        let Some((plate, rect)) = &self.gif_row_plate else {
+            return Ok(Cow::Borrowed(frames));
+        };
+        frames
+            .iter()
+            .map(|(frame, delay)| {
+                let mut canvas = Canvas::from_frame(frame)?;
+                canvas.underlay(plate, *rect);
+                Ok((canvas.into_frame(), *delay))
+            })
+            .collect::<Result<Vec<_>>>()
+            .map(Cow::Owned)
     }
 
     /// Width of the terminal canvas before margin and window-bar decoration.
