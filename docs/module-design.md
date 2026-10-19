@@ -105,9 +105,9 @@ requirement to preserve these exact files when a better boundary becomes clear.
 - [`border.rs`](../crates/betamax-core/src/runner/border.rs): inset outline configuration, automatic
   contrast, numeric interpretation, coverage composition policy, and border tests. Window chrome
   delegates drawing; canvas supplies shared rounded coverage and opaque pixel mixing.
-- [`window_title.rs`](../crates/betamax-core/src/runner/window_title.rs): static title configuration,
-  typography, automatic color contrast, single-line text policy, cached rasterization, and title
-  behavior tests. Window chrome resolves button clearance before applying the rounded mask.
+- [`window_title.rs`](../crates/betamax-core/src/runner/window_title.rs): title configuration, typography,
+  automatic contrast, single-line text policy, bounded raster cache, and title behavior tests in
+  its `tests` child. Window chrome resolves button clearance before applying the rounded mask.
 - [`margin.rs`](../crates/betamax-core/src/runner/margin.rs): fill parsing, gradient projection and
   sampling, dithering, and backdrop rendering.
 - [`caption.rs`](../crates/betamax-core/src/runner/caption.rs): caption text semantics, typography,
@@ -119,7 +119,9 @@ requirement to preserve these exact files when a better boundary becomes clear.
 - [`canvas.rs`](../crates/betamax-core/src/runner/canvas.rs): opaque pixel storage and shared
   drawing mechanisms. Keep feature-specific appearance and eligibility rules with their features.
 - [`capture.rs`](../crates/betamax-core/src/runner/capture.rs): visibility, frame collection and
-  coalescing, recorded durations, and snapshots of active presentation metadata.
+  coalescing, recorded durations, title-transition holds, and snapshots of presentation metadata.
+- `ghostty/title.rs`: ordered OSC callbacks, event-boundary raster capture, hidden observation,
+  and deferred callback errors. The session owns callback installation and PTY integration.
 
 A test that constructs `Settings` belongs with the behavior it verifies. Keep integration tests for
 shared bounds, drawing order, or interactions between features beside the coordinator. The test's

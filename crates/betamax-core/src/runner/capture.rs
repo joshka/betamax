@@ -19,6 +19,8 @@ pub(super) struct CaptureState {
     ///
     /// Hidden periods still update terminal state; they only suppress frame collection.
     pub(super) visible: bool,
+    /// Resolved tape/app title; None uses the initial configured title.
+    pub(super) window_title: Option<String>,
     /// Captured frames and their output delays.
     ///
     /// The frame pixels represent the raw terminal render before final margin/window decoration.
@@ -37,6 +39,7 @@ impl Default for CaptureState {
     fn default() -> Self {
         Self {
             visible: true,
+            window_title: None,
             frames: Vec::new(),
             caption: None,
             keyboard_overlay: KeyboardOverlayState::default(),
@@ -49,6 +52,10 @@ impl Default for CaptureState {
 pub(super) struct CapturedFrame {
     /// Raw terminal frame before final margin, window, and presentation-row decoration.
     pub(super) frame: Frame,
+    /// Preserve this title transition through output timing quantization.
+    pub(super) title_transition: bool,
+    /// Displayed title at the same instant as these terminal pixels.
+    pub(super) window_title: Option<String>,
     /// Caption active when this frame was captured.
     pub(super) caption: Option<String>,
     /// Keyboard overlay labels visible when this frame was captured.
@@ -84,6 +91,7 @@ pub(super) fn append_visible_frame(capture: &mut CaptureState, frame: Frame, del
     let keyboard_overlay_labels = capture.keyboard_overlay.labels();
     if let Some((last_frame, last_delay)) = capture.frames.last_mut() {
         if frames_equal(&last_frame.frame, &frame)
+            && last_frame.window_title == capture.window_title
             && last_frame.caption == caption
             && last_frame.keyboard_overlay_labels == keyboard_overlay_labels
             && keyboard_overlay_labels.is_empty()
@@ -96,12 +104,66 @@ pub(super) fn append_visible_frame(capture: &mut CaptureState, frame: Frame, del
     capture.frames.push((
         CapturedFrame {
             frame,
+            title_transition: false,
+            window_title: capture.window_title.clone(),
             caption,
             keyboard_overlay_labels,
         },
         delay,
     ));
     capture.keyboard_overlay.advance(delay);
+}
+
+/// Consume notifications before changing caption/visibility or taking a checkpoint.
+pub(super) fn collect_title_changes(
+    terminal: &mut impl TerminalSession,
+    settings: &Settings,
+    capture: &mut CaptureState,
+) -> Result<()> {
+    if !settings.presentation.style.window_title.follow_terminal {
+        return Ok(());
+    }
+    for change in terminal.take_title_changes()? {
+        assign_title(capture, settings, change.title, change.frame);
+    }
+    Ok(())
+}
+
+/// Last writer wins without mutating the raw terminal title used by state JSON.
+pub(super) fn assign_title(
+    capture: &mut CaptureState,
+    settings: &Settings,
+    title: String,
+    frame: Option<Frame>,
+) {
+    let current = capture
+        .window_title
+        .as_deref()
+        .unwrap_or(&settings.presentation.style.window_title.text);
+    if current == title {
+        return;
+    }
+    capture.window_title = Some(title);
+    if capture.visible && settings.presentation.style.window_bar_height() > 0 {
+        if let Some(frame) = frame {
+            append_visible_frame(capture, frame, Duration::ZERO);
+            if let Some((captured, _)) = capture.frames.last_mut() {
+                captured.title_transition = true;
+            }
+        }
+    }
+}
+
+/// Ensure title transitions survive GIF and CFR video quantization without double-counting
+/// naturally recorded dwell time. This runs once, before loop rotation and all encoders.
+pub(super) fn protect_title_holds(capture: &mut CaptureState, settings: &Settings) {
+    let seconds = (1.0 / settings.output_framerate().max(1.0)).max(0.01);
+    let hold = Duration::from_nanos((seconds * 1_000_000_000.0).ceil() as u64);
+    for (frame, delay) in &mut capture.frames {
+        if frame.title_transition {
+            *delay = (*delay).max(hold);
+        }
+    }
 }
 
 /// Append the final still frame for animated outputs when it differs from the last visible frame.
@@ -116,6 +178,8 @@ pub(super) fn append_final_gif_frame(capture: &mut CaptureState, frame: Frame, d
         capture.frames.push((
             CapturedFrame {
                 frame,
+                title_transition: false,
+                window_title: capture.window_title.clone(),
                 caption: capture.caption.clone(),
                 keyboard_overlay_labels: capture.keyboard_overlay.labels(),
             },
@@ -139,34 +203,4 @@ pub(super) fn frames_equal(left: &Frame, right: &Frame) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::media::PixelFormat;
-
-    #[test]
-    fn caption_changes_keep_repeated_frames_separate() {
-        let frame = test_frame();
-        let mut capture = CaptureState {
-            caption: Some("First step".to_string()),
-            ..Default::default()
-        };
-
-        append_visible_frame(&mut capture, frame.clone(), Duration::from_millis(20));
-        capture.caption = Some("Second step".to_string());
-        append_visible_frame(&mut capture, frame.clone(), Duration::from_millis(20));
-
-        assert_eq!(capture.frames.len(), 2);
-        assert_eq!(capture.frames[0].0.caption.as_deref(), Some("First step"));
-        assert_eq!(capture.frames[1].0.caption.as_deref(), Some("Second step"));
-    }
-
-    fn test_frame() -> Frame {
-        Frame {
-            width: 1,
-            height: 1,
-            stride: 4,
-            format: PixelFormat::Rgba8,
-            pixels: vec![255, 0, 0, 255],
-        }
-    }
-}
+mod tests;

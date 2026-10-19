@@ -66,6 +66,7 @@ use pty::PtySession;
 use requirements::validate_required_programs;
 use settings::Settings;
 
+use self::capture::{assign_title, collect_title_changes, protect_title_holds};
 use crate::ghostty::{CaptureRequest, GhosttyFrameCapture, PixelSize, TerminalGrid};
 use crate::key::key_bytes;
 use crate::media::{
@@ -78,6 +79,15 @@ use crate::tape::{
     Assertion, Command, Key, KeyCode, KeyModifiers, MouseEvent, Tape, Value, WaitPattern,
     WaitTarget,
 };
+
+/// One title notification and the raw terminal image at that exact VT boundary.
+#[derive(Debug, Clone)]
+pub struct TitleChange {
+    /// New raw title, including an empty string for an explicit clear.
+    pub title: String,
+    /// Event-boundary pixels, absent when title observation is hidden.
+    pub frame: Option<Frame>,
+}
 
 /// Terminal session used by the runner's capture path.
 ///
@@ -94,6 +104,28 @@ pub trait TerminalSession {
     ///
     /// Returns an error when the terminal backend cannot render a frame.
     fn capture_frame_with_cursor(&mut self, cursor_visible: bool) -> Result<Frame>;
+
+    /// Enable lossless OSC title observation for this capture session.
+    ///
+    /// # Errors
+    ///
+    /// Returns an unsupported-capability error unless the backend implements title events.
+    fn enable_title_capture(&mut self) -> Result<()> {
+        Err(miette!("terminal backend does not support title events").into())
+    }
+
+    /// Set whether title callbacks should capture pixels, with the current cursor policy.
+    /// `None` observes titles without rendering hidden event frames.
+    fn set_title_capture_cursor(&mut self, _cursor_visible: Option<bool>) {}
+
+    /// Take ordered title notifications since the previous call.
+    ///
+    /// # Errors
+    ///
+    /// Returns deferred callback rendering or title-reading failures.
+    fn take_title_changes(&mut self) -> Result<Vec<TitleChange>> {
+        Ok(Vec::new())
+    }
 
     /// Return visible terminal text for wait matching.
     ///
@@ -420,6 +452,11 @@ where
             theme: settings.presentation.theme.clone(),
         })?;
         tracing::trace!("opened Ghostty frame capture");
+        if settings.presentation.style.window_title.follow_terminal {
+            terminal.enable_title_capture()?;
+            // Shell startup is observed but is not part of recorded playback.
+            terminal.set_title_capture_cursor(None);
+        }
         tracing::debug!("spawning PTY session");
         let mut session = PtySession::spawn(&settings)?;
         tracing::trace!("spawned PTY session");
@@ -427,6 +464,7 @@ where
         let mut clipboard = String::new();
         tracing::debug!("draining PTY shell startup output");
         session.drain_into(&mut terminal, SHELL_STARTUP_IDLE)?;
+        collect_title_changes(&mut terminal, &settings, &mut capture)?;
         tracing::trace!("drained PTY shell startup output");
 
         let command_count = tape.commands.len();
@@ -460,6 +498,7 @@ where
 
         tracing::debug!("draining final PTY output");
         session.drain_into(&mut terminal, FINAL_COMMAND_IDLE)?;
+        collect_title_changes(&mut terminal, &settings, &mut capture)?;
         tracing::trace!("drained final PTY output");
         let final_raw_frame = capture_frame(&mut terminal, &settings, capture.frames.len())?;
         let writes_animated_media = !outputs.gifs.is_empty()
@@ -473,12 +512,14 @@ where
                 final_raw_frame.clone(),
                 settings.frame_delay(),
             );
+            protect_title_holds(&mut capture, &settings);
             settings.apply_loop_offset(&mut capture.frames);
         }
-        let frame = settings.presentation.decorate_frame_with_overlays(
+        let frame = settings.presentation.decorate_frame_with_title(
             &final_raw_frame,
             capture.caption.as_deref(),
             &capture.keyboard_overlay.labels(),
+            capture.window_title.as_deref(),
         )?;
         let media_frames = decorate_captured_frames(&settings, &mut capture)?;
 
@@ -575,6 +616,11 @@ where
             kind = command_kind(command),
             "running captured tape command"
         );
+        collect_title_changes(terminal, settings, capture)?;
+        terminal.set_title_capture_cursor(
+            (capture.visible && settings.presentation.style.window_bar_height() > 0)
+                .then(|| settings.cursor_visible(capture.frames.len())),
+        );
         if capture.visible {
             if let Some(label) = settings.presentation.keyboard_overlay.label(command) {
                 capture.keyboard_overlay.queue(label);
@@ -650,6 +696,16 @@ where
                 session.write_all(clipboard.as_bytes())?;
                 session.drain_for(terminal, settings.capture_interval(), settings, capture)?;
             }
+            Command::WindowTitle(title) => {
+                session.drain_queued(terminal)?;
+                collect_title_changes(terminal, settings, capture)?;
+                let frame = if capture.visible {
+                    Some(capture_frame(terminal, settings, capture.frames.len())?)
+                } else {
+                    None
+                };
+                assign_title(capture, settings, title.clone(), frame);
+            }
             Command::Caption(text) => {
                 // Caption changes are presentation state only. They intentionally do not drain,
                 // wait, or capture because the PTY has not changed; the next visual frame applies
@@ -658,10 +714,12 @@ where
             }
             Command::Screenshot(path) => {
                 session.drain_into(terminal, CHECKPOINT_IDLE)?;
-                let frame = settings.presentation.decorate_frame_with_overlays(
+                collect_title_changes(terminal, settings, capture)?;
+                let frame = settings.presentation.decorate_frame_with_title(
                     &capture_frame(terminal, settings, capture.frames.len())?,
                     capture.caption.as_deref(),
                     &capture.keyboard_overlay.labels(),
+                    capture.window_title.as_deref(),
                 )?;
                 if path
                     .extension()
@@ -678,6 +736,10 @@ where
             }
             Command::Hide => capture.visible = false,
             Command::Show => {
+                if settings.presentation.style.window_title.follow_terminal {
+                    session.drain_queued(terminal)?;
+                    collect_title_changes(terminal, settings, capture)?;
+                }
                 capture.visible = true;
                 append_visible_frame(
                     capture,
@@ -696,6 +758,11 @@ where
             }
         }
 
+        collect_title_changes(terminal, settings, capture)?;
+        terminal.set_title_capture_cursor(
+            (capture.visible && settings.presentation.style.window_bar_height() > 0)
+                .then(|| settings.cursor_visible(capture.frames.len())),
+        );
         Ok(())
     }
 
@@ -738,7 +805,7 @@ where
                 }
                 Command::Copy(text) => clipboard = text.clone(),
                 Command::Paste => session.write_all(clipboard.as_bytes())?,
-                Command::Caption(_) => {}
+                Command::Caption(_) | Command::WindowTitle(_) => {}
                 Command::Env { .. }
                 | Command::Hide
                 | Command::Output(_)
@@ -800,7 +867,9 @@ where
             | Command::Env { .. } => (ANSI_DIM, "setup"),
             Command::Sleep(_) | Command::Wait { .. } => (ANSI_YELLOW, "wait"),
             Command::Screenshot(_) | Command::State(_) => (ANSI_YELLOW, "capture"),
-            Command::Hide | Command::Show | Command::Caption(_) => (ANSI_DIM, "display"),
+            Command::Hide | Command::Show | Command::Caption(_) | Command::WindowTitle(_) => {
+                (ANSI_DIM, "display")
+            }
             _ => (ANSI_CYAN, "run"),
         };
         self.progress(
@@ -845,10 +914,11 @@ fn save_failure(
     }
     let frame_output = capture_frame(terminal, settings, capture.frames.len())
         .and_then(|frame| {
-            settings.presentation.decorate_frame_with_overlays(
+            settings.presentation.decorate_frame_with_title(
                 &frame,
                 capture.caption.as_deref(),
                 &capture.keyboard_overlay.labels(),
+                capture.window_title.as_deref(),
             )
         })
         .and_then(|frame| write_png(&directory.join("actual.png"), &frame));
@@ -936,6 +1006,7 @@ fn describe_command(command: &Command) -> String {
         Command::Env { key, .. } => format!("Env {key} <value>"),
         Command::Copy(text) => format!("Copy \"{}\"", describe_text(text)),
         Command::Paste => "Paste".to_string(),
+        Command::WindowTitle(text) => format!("WindowTitle \"{}\"", describe_text(text)),
         Command::Caption(text) => format!("Caption \"{}\"", describe_text(text)),
         Command::Source(path) => format!("Source {}", path.display()),
         Command::Screenshot(path) => format!("Screenshot {}", path.display()),
@@ -961,6 +1032,7 @@ fn command_kind(command: &Command) -> &'static str {
         Command::Copy(_) => "Copy",
         Command::Paste => "Paste",
         Command::Caption(_) => "Caption",
+        Command::WindowTitle(_) => "WindowTitle",
         Command::Screenshot(_) => "Screenshot",
         Command::State(_) => "State",
         Command::Source(_) => "Source",
@@ -1282,6 +1354,8 @@ mod tests {
                 frame: visible_frame.clone(),
                 caption: None,
                 keyboard_overlay_labels: Vec::new(),
+                window_title: None,
+                title_transition: false,
             },
             Duration::from_millis(20),
         ));

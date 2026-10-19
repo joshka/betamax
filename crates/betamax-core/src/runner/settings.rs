@@ -170,6 +170,9 @@ impl Settings {
             ("WindowBarSize", Value::Number(window_bar_size)) => {
                 self.presentation.style.window_bar_size = *window_bar_size as u32;
             }
+            ("WindowTitleFromTerminal", Value::Bool(enabled)) => {
+                self.presentation.style.window_title.follow_terminal = *enabled;
+            }
             ("WindowTitle", Value::String(title)) => {
                 self.presentation.style.window_title.text = title.clone();
             }
@@ -353,6 +356,7 @@ fn known_setting(key: &str) -> bool {
             | "WindowBorder"
             | "WindowBorderColor"
             | "WindowBorderOpacity"
+            | "WindowTitleFromTerminal"
             | "WindowTitle"
             | "WindowTitleColor"
             | "BorderRadius"
@@ -392,7 +396,7 @@ fn setting_expected_type(key: &str) -> &'static str {
         | "ShadowOffset"
         | "ShadowOpacity" => "number",
         "TypingSpeed" => "duration",
-        "CursorBlink" | "Shadow" => "bool",
+        "CursorBlink" | "Shadow" | "WindowTitleFromTerminal" => "bool",
         "KeyboardOverlay" => "Off, Keys, Input, or All",
         "KeyboardOverlayLocation" => "CaptionRow, TopLeft, TopRight, BottomLeft, or BottomRight",
         "WaitTimeout" => "duration or number",

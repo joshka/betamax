@@ -129,11 +129,23 @@ impl Presentation {
     }
 
     /// Decorate a single raw terminal frame with caption text and keyboard labels.
+    #[cfg(test)]
     pub(super) fn decorate_frame_with_overlays(
         &self,
         frame: &Frame,
         caption: Option<&str>,
         keyboard_overlay_labels: &[String],
+    ) -> Result<Frame> {
+        self.decorate_frame_with_title(frame, caption, keyboard_overlay_labels, None)
+    }
+
+    /// Decorate a checkpoint with its currently resolved title.
+    pub(super) fn decorate_frame_with_title(
+        &self,
+        frame: &Frame,
+        caption: Option<&str>,
+        keyboard_overlay_labels: &[String],
+        title: Option<&str>,
     ) -> Result<Frame> {
         let mut caption_renderer = CaptionRenderer::new();
         self.decorate_frame_with_overlay_renderer(
@@ -141,6 +153,7 @@ impl Presentation {
             caption,
             keyboard_overlay_labels,
             &mut caption_renderer,
+            title,
         )
     }
 
@@ -162,6 +175,7 @@ impl Presentation {
                     captured.caption.as_deref(),
                     &captured.keyboard_overlay_labels,
                     &mut caption_renderer,
+                    captured.window_title.as_deref(),
                 )?,
                 delay,
             ));
@@ -180,6 +194,7 @@ impl Presentation {
         caption: Option<&str>,
         keyboard_overlay_labels: &[String],
         caption_renderer: &mut CaptionRenderer,
+        title: Option<&str>,
     ) -> Result<Frame> {
         let margin = self.style.effective_margin();
         let bar_height = self.style.window_bar_height();
@@ -192,6 +207,7 @@ impl Presentation {
             &self.bar_overlay,
             &self.theme,
             &self.text,
+            title,
         )?;
         let active_caption = caption.filter(|caption| !caption.trim().is_empty());
         let keyboard_avoid_width = if self.keyboard_overlay.visible(keyboard_overlay_labels)

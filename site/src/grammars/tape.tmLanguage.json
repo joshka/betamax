@@ -28,7 +28,7 @@
     },
     "set": {
       "comment": "MarginFill accepts a solid color or quoted Betamax `linear(...)` syntax; both use the existing string rules.",
-      "match": "\\b(Set)\\s+(?:(Shell|Width|Height|FontSize|FontFamily|LetterSpacing|LineHeight|Padding|Framerate|TypingSpeed|PlaybackSpeed|LoopOffset|Margin|MarginFill|WindowBar|WindowBarColor|WindowBarSize|WindowTitle|WindowTitleColor|BorderRadius|WindowBorder|WindowBorderColor|WindowBorderOpacity|Shadow|ShadowBlur|ShadowOffset|ShadowOpacity|CursorBlink|KeyboardOverlay|KeyboardOverlayLocation|WaitTimeout|WaitPattern|Theme)|([A-Za-z_]\\w*))\\b(?:\\s+(Off|Keys|Input|All|CaptionRow|TopLeft|TopRight|BottomLeft|BottomRight)\\b)?",
+      "match": "\\b(Set)\\s+(?:(Shell|Width|Height|FontSize|FontFamily|LetterSpacing|LineHeight|Padding|Framerate|TypingSpeed|PlaybackSpeed|LoopOffset|Margin|MarginFill|WindowBar|WindowBarColor|WindowBarSize|WindowTitle|WindowTitleFromTerminal|WindowTitleColor|BorderRadius|WindowBorder|WindowBorderColor|WindowBorderOpacity|Shadow|ShadowBlur|ShadowOffset|ShadowOpacity|CursorBlink|KeyboardOverlay|KeyboardOverlayLocation|WaitTimeout|WaitPattern|Theme)|([A-Za-z_]\\w*))\\b(?:\\s+(Off|Keys|Input|All|CaptionRow|TopLeft|TopRight|BottomLeft|BottomRight)\\b)?",
       "captures": {
         "1": { "name": "keyword.control.command.tape" },
         "2": { "name": "support.type.property-name.setting.tape" },
@@ -78,7 +78,7 @@
     },
     "command": {
       "name": "keyword.control.command.tape",
-      "match": "\\b(?:Type|Sleep|Hide|Show|Copy|Paste|Caption|Resize|AssertText|AssertAbsent|AssertCells|AssertStyle)\\b"
+      "match": "\\b(?:Type|Sleep|Hide|Show|Copy|Paste|Caption|WindowTitle|Resize|AssertText|AssertAbsent|AssertCells|AssertStyle)\\b"
     },
     "key": {
       "comment": "Named keys with optional modifiers, or a modifier combination with a single-character key such as Ctrl+C.",

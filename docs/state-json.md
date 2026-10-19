@@ -79,3 +79,10 @@ spans become awkward quickly. TOML is better for configuration than for structur
 
 JSONC allows comments in hand-written fixtures, but requires a non-standard parser. Betamax writes
 strict `.json` files so tests can read them with standard JSON libraries.
+
+## Terminal title and window presentation
+
+The optional `title` field is the app's current OSC terminal title, omitted when empty. It is
+independent of `Set WindowTitle`, runtime `WindowTitle`, and whether app-title presentation is
+enabled. Tape-authored display titles do not change JSON or state assertions. State outputs contain
+one checkpoint or final value; animated media and frame sequences preserve visible title history.

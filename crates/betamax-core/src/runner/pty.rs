@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 use miette::{miette, Context, IntoDiagnostic};
 use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 
-use super::capture::{append_visible_frame, capture_frame, CaptureState};
+use super::capture::{append_visible_frame, capture_frame, collect_title_changes, CaptureState};
 use super::settings::Settings;
 use crate::runner::TerminalSession;
 use crate::shell::{apply_terminal_environment, ShellLaunch};
@@ -199,6 +199,24 @@ impl PtySession {
         Ok(saw_output)
     }
 
+    /// Consume only bytes already queued, preserving a bounded tape-command boundary.
+    pub(super) fn drain_queued(&mut self, terminal: &mut impl TerminalSession) -> Result<()> {
+        let queued: Vec<_> = self.reader.try_iter().take(128).collect();
+        if queued.len() == 128 {
+            return Err(
+                miette!("PTY queue too busy at title boundary; synchronize the app first").into(),
+            );
+        }
+        for bytes in queued {
+            terminal.write_vt(&bytes);
+            let reply = terminal.take_pending_pty_reply();
+            if !reply.is_empty() {
+                self.write_all(&reply)?;
+            }
+        }
+        Ok(())
+    }
+
     /// Wait for 100ms of PTY quiet, bounded by the tape's wait timeout.
     ///
     /// Unlike a Wait, this does not succeed on an intermediate matching frame.
@@ -304,6 +322,7 @@ impl PtySession {
             let remaining = duration.saturating_sub(started.elapsed());
             let wait = remaining.min(capture_interval);
             self.read_once_into(terminal, wait)?;
+            collect_title_changes(terminal, settings, capture)?;
             let captured_at = Instant::now();
             let elapsed = captured_at.saturating_duration_since(last_capture_at);
             if capture.visible && (elapsed >= capture_interval || started.elapsed() >= duration) {
@@ -319,6 +338,7 @@ impl PtySession {
         // Input pacing must not wait for the child to stop producing output. Leave buffered
         // chunks for the next command, whose wait or assertion owns its own deadline.
         self.read_once_into(terminal, POST_DURATION_IDLE)?;
+        collect_title_changes(terminal, settings, capture)?;
         Ok(())
     }
 
@@ -341,6 +361,7 @@ impl PtySession {
         while started.elapsed() < timeout {
             let wait = capture_interval.min(timeout.saturating_sub(started.elapsed()));
             self.read_once_into(terminal, wait)?;
+            collect_title_changes(terminal, settings, capture)?;
             let text = wait_target_text(terminal, target)?;
             let matches = wait_pattern_matches(pattern, &text)?;
             let captured_at = Instant::now();

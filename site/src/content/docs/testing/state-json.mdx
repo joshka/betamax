@@ -107,3 +107,10 @@ hard to read in diffs:
   `["foo", 1]`.
 - YAML, TOML, and JSONC each add parsing tradeoffs. Betamax writes strict JSON so tests can consume
   snapshots with standard parsers.
+
+## Terminal title and window presentation
+
+The optional `title` field is the app's current OSC terminal title, omitted when empty. It is
+independent of `Set WindowTitle`, runtime `WindowTitle`, and whether app-title presentation is
+enabled. Tape-authored display titles do not change JSON or state assertions. State outputs contain
+one checkpoint or final value; animated media and frame sequences preserve visible title history.
