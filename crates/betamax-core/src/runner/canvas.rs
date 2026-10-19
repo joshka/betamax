@@ -282,28 +282,18 @@ impl Canvas {
     ) {
         let x1 = x.saturating_add(width).min(self.width);
         let y1 = y.saturating_add(height).min(self.height);
-        let radius = radius.min(width / 2).min(height / 2) as i32;
+        let rect = PixelRect {
+            x,
+            y,
+            width,
+            height,
+        };
         for yy in y..y1 {
             for xx in x..x1 {
-                let left = xx < x + radius as u32;
-                let right = xx >= x1.saturating_sub(radius as u32);
-                let top = yy < y + radius as u32;
-                let bottom = yy >= y1.saturating_sub(radius as u32);
-                if !(left || right) || !(top || bottom) {
+                let coverage = rounded_rect_coverage(rect, radius, xx, yy) as f32;
+                if coverage >= 1.0 {
                     continue;
                 }
-                let cx = if left {
-                    x as i32 + radius
-                } else {
-                    x1 as i32 - radius - 1
-                };
-                let cy = if top {
-                    y as i32 + radius
-                } else {
-                    y1 as i32 - radius - 1
-                };
-                let coverage =
-                    rounded_corner_coverage(xx, yy, cx, cy, radius as f32, ROUNDED_RECT_AA_SAMPLES);
                 let backdrop_offset = backdrop.offset(xx, yy);
                 let fill = &backdrop.pixels[backdrop_offset..backdrop_offset + BYTES_PER_PIXEL];
                 if coverage <= 0.0 {
@@ -317,6 +307,30 @@ impl Canvas {
                 }
             }
         }
+    }
+
+    /// Mix an existing pixel with a solid color and a same-coordinate backdrop sample.
+    /// The remaining weight belongs to the existing pixel; all three inputs are opaque.
+    pub(super) fn composite_pixel(
+        &mut self,
+        x: u32,
+        y: u32,
+        color: libghostty_vt::style::RgbColor,
+        color_weight: f64,
+        backdrop: &Canvas,
+        backdrop_weight: f64,
+    ) {
+        let offset = self.offset(x, y);
+        let background = backdrop.offset(x, y);
+        for (channel, value) in [color.r, color.g, color.b].into_iter().enumerate() {
+            self.pixels[offset + channel] = (f64::from(self.pixels[offset + channel])
+                * (1.0 - color_weight - backdrop_weight)
+                + f64::from(value) * color_weight
+                + f64::from(backdrop.pixels[background + channel]) * backdrop_weight)
+                .round()
+                .clamp(0.0, 255.0) as u8;
+        }
+        self.pixels[offset + 3] = OPAQUE_ALPHA;
     }
 
     /// Return the byte offset for a pixel in the tightly packed RGBA buffer.
@@ -394,6 +408,47 @@ const ROUNDED_RECT_AA_SAMPLES: u32 = 4;
 /// Construct an RGB color.
 pub(super) const fn rgb(r: u8, g: u8, b: u8) -> libghostty_vt::style::RgbColor {
     libghostty_vt::style::RgbColor { r, g, b }
+}
+
+/// Match the existing mask's pixel centers and corner convention exactly.
+pub(super) fn rounded_rect_coverage(rect: PixelRect, radius: u32, x: u32, y: u32) -> f64 {
+    if rect.width == 0
+        || rect.height == 0
+        || x < rect.x
+        || y < rect.y
+        || x >= rect.x.saturating_add(rect.width)
+        || y >= rect.y.saturating_add(rect.height)
+    {
+        return 0.0;
+    }
+    let radius = radius.min(rect.width / 2).min(rect.height / 2);
+    let right = rect.x + rect.width;
+    let bottom = rect.y + rect.height;
+    let left_corner = x < rect.x + radius;
+    let right_corner = x >= right - radius;
+    let top_corner = y < rect.y + radius;
+    let bottom_corner = y >= bottom - radius;
+    if !(left_corner || right_corner) || !(top_corner || bottom_corner) {
+        return 1.0;
+    }
+    let cx = if left_corner {
+        rect.x + radius
+    } else {
+        right - radius - 1
+    };
+    let cy = if top_corner {
+        rect.y + radius
+    } else {
+        bottom - radius - 1
+    };
+    f64::from(rounded_corner_coverage(
+        x,
+        y,
+        cx as i32,
+        cy as i32,
+        radius as f32,
+        ROUNDED_RECT_AA_SAMPLES,
+    ))
 }
 
 /// Estimate how much of one pixel is inside a rounded-rectangle corner circle.

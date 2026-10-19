@@ -28,7 +28,7 @@
     },
     "set": {
       "comment": "MarginFill accepts a solid color or quoted Betamax `linear(...)` syntax; both use the existing string rules.",
-      "match": "\\b(Set)\\s+(?:(Shell|Width|Height|FontSize|FontFamily|LetterSpacing|LineHeight|Padding|Framerate|TypingSpeed|PlaybackSpeed|LoopOffset|Margin|MarginFill|WindowBar|WindowBarSize|BorderRadius|Shadow|ShadowBlur|ShadowOffset|ShadowOpacity|CursorBlink|KeyboardOverlay|KeyboardOverlayLocation|WaitTimeout|WaitPattern|Theme)|([A-Za-z_]\\w*))\\b(?:\\s+(Off|Keys|Input|All|CaptionRow|TopLeft|TopRight|BottomLeft|BottomRight)\\b)?",
+      "match": "\\b(Set)\\s+(?:(Shell|Width|Height|FontSize|FontFamily|LetterSpacing|LineHeight|Padding|Framerate|TypingSpeed|PlaybackSpeed|LoopOffset|Margin|MarginFill|WindowBar|WindowBarSize|BorderRadius|WindowBorder|WindowBorderColor|WindowBorderOpacity|Shadow|ShadowBlur|ShadowOffset|ShadowOpacity|CursorBlink|KeyboardOverlay|KeyboardOverlayLocation|WaitTimeout|WaitPattern|Theme)|([A-Za-z_]\\w*))\\b(?:\\s+(Off|Keys|Input|All|CaptionRow|TopLeft|TopRight|BottomLeft|BottomRight)\\b)?",
       "captures": {
         "1": { "name": "keyword.control.command.tape" },
         "2": { "name": "support.type.property-name.setting.tape" },

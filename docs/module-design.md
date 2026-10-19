@@ -102,6 +102,9 @@ requirement to preserve these exact files when a better boundary becomes clear.
   its geometry.
 - [`window.rs`](../crates/betamax-core/src/runner/window.rs): aggregate window style, effective
   margin and bar dimensions, buttons, window painting, and delegation to independent effects.
+- [`border.rs`](../crates/betamax-core/src/runner/border.rs): inset outline configuration, automatic
+  contrast, numeric interpretation, coverage composition policy, and border tests. Window chrome
+  delegates drawing; canvas supplies shared rounded coverage and opaque pixel mixing.
 - [`margin.rs`](../crates/betamax-core/src/runner/margin.rs): fill parsing, gradient projection and
   sampling, dithering, and backdrop rendering.
 - [`caption.rs`](../crates/betamax-core/src/runner/caption.rs): caption text semantics, typography,
