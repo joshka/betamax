@@ -1,13 +1,9 @@
 //! Owned RGBA canvas for output-frame decoration.
 //!
-//! Backdrop allocation, color parsing, compositing, window buttons, and rounded masks share one
-//! pixel representation here. Settings owns output geometry and drawing order; caption and keyboard
-//! layout and text shaping stay with their renderers.
-
-mod gradient;
+//! Blitting, clipping, blending, and geometric masks share one opaque pixel representation.
+//! Window and overlay modules choose the shapes and colors; presentation owns drawing order.
 
 use cosmic_text::Color;
-use gradient::{parse_margin_fill, MarginFill};
 use miette::miette;
 
 use crate::media::{Frame, PixelFormat};
@@ -19,7 +15,7 @@ use crate::Result;
 /// normalizes into tightly packed RGBA because margin fills, window buttons, and rounded-corner
 /// masking are easier to reason about in a single byte order.
 #[derive(Debug, Clone)]
-pub(super) struct SolidFrame {
+pub(super) struct Canvas {
     /// Output width in pixels.
     pub(super) width: u32,
     /// Output height in pixels.
@@ -28,37 +24,7 @@ pub(super) struct SolidFrame {
     pixels: Vec<u8>,
 }
 
-impl SolidFrame {
-    /// Prepare the full-output backdrop once, including the area behind captions and corners.
-    pub(super) fn margin_backdrop(
-        width: u32,
-        height: u32,
-        value: Option<&str>,
-        fallback: libghostty_vt::style::RgbColor,
-    ) -> Result<Self> {
-        let fill = value
-            .and_then(parse_margin_fill)
-            .unwrap_or(MarginFill::Solid(fallback));
-        let gradient = match fill {
-            MarginFill::Solid(color) => return Self::new(width, height, color),
-            MarginFill::Gradient(gradient) => gradient,
-        };
-        let mut frame = Self::new(width, height, gradient.color_at(0.0, 0.0))?;
-        for y in 0..height {
-            for x in 0..width {
-                let color = gradient.pixel_color(x, y, width, height);
-                let offset = frame.offset(x, y);
-                frame.pixels[offset..offset + BYTES_PER_PIXEL].copy_from_slice(&[
-                    color.r,
-                    color.g,
-                    color.b,
-                    OPAQUE_ALPHA,
-                ]);
-            }
-        }
-        Ok(frame)
-    }
-
+impl Canvas {
     /// Allocate a solid-color RGBA frame, checking for integer overflow.
     pub(super) fn new(
         width: u32,
@@ -81,6 +47,17 @@ impl SolidFrame {
         };
         frame.fill_rect(0, 0, width, height, color);
         Ok(frame)
+    }
+
+    /// Replace one in-bounds pixel with an opaque RGB color.
+    pub(super) fn set_pixel(&mut self, x: u32, y: u32, color: libghostty_vt::style::RgbColor) {
+        let offset = self.offset(x, y);
+        self.pixels[offset..offset + BYTES_PER_PIXEL].copy_from_slice(&[
+            color.r,
+            color.g,
+            color.b,
+            OPAQUE_ALPHA,
+        ]);
     }
 
     /// Copy a frame into this frame at a pixel offset.
@@ -261,31 +238,8 @@ impl SolidFrame {
         }
     }
 
-    /// Draw macOS-style window buttons.
-    ///
-    /// The current style language treats any non-empty mode as enabled. Modes ending in `Right`
-    /// place the buttons on the right; all other values place them on the left.
-    pub(super) fn draw_window_buttons(&mut self, cx: u32, cy: u32, bar_height: u32, mode: &str) {
-        let radius = (bar_height / WINDOW_BUTTON_RADIUS_DIVISOR).max(MIN_WINDOW_BUTTON_RADIUS);
-        let gap = radius * WINDOW_BUTTON_GAP_RADIUS_MULTIPLIER;
-        let right = mode.ends_with("Right");
-        let start_x = if right {
-            self.width.saturating_sub(cx + gap * 2)
-        } else {
-            cx
-        };
-        let colors = [
-            rgb(0xff, 0x5f, 0x57),
-            rgb(0xff, 0xbd, 0x2e),
-            rgb(0x28, 0xc8, 0x40),
-        ];
-        for (index, color) in colors.into_iter().enumerate() {
-            self.fill_circle(start_x + gap * index as u32, cy, radius, color);
-        }
-    }
-
     /// Fill a clipped circle using integer distance checks.
-    fn fill_circle(
+    pub(super) fn fill_circle(
         &mut self,
         cx: u32,
         cy: u32,
@@ -324,7 +278,7 @@ impl SolidFrame {
         width: u32,
         height: u32,
         radius: u32,
-        backdrop: &SolidFrame,
+        backdrop: &Canvas,
     ) {
         let x1 = x.saturating_add(width).min(self.width);
         let y1 = y.saturating_add(height).min(self.height);
@@ -431,36 +385,11 @@ const BYTES_PER_PIXEL: usize = 4;
 /// Fully opaque alpha byte.
 const OPAQUE_ALPHA: u8 = 0xff;
 
-/// Window-button radius divisor relative to bar height.
-const WINDOW_BUTTON_RADIUS_DIVISOR: u32 = 6;
-
-/// Minimum window-button radius in pixels.
-const MIN_WINDOW_BUTTON_RADIUS: u32 = 2;
-
-/// Spacing between synthetic window buttons as a multiple of radius.
-const WINDOW_BUTTON_GAP_RADIUS_MULTIPLIER: u32 = 3;
-
 /// Denominator for 8-bit alpha blending.
 const ALPHA_DENOMINATOR: u16 = 255;
 
 /// Sub-pixel samples per axis for anti-aliased rounded-rectangle edges.
 const ROUNDED_RECT_AA_SAMPLES: u32 = 4;
-
-/// Parse a `#RRGGBB` color.
-///
-/// Decoration colors are parsed leniently. Invalid values return `None` so callers can fall back
-/// to the active theme background rather than failing old tapes that used unsupported color text.
-pub(super) fn parse_hex_color(value: &str) -> Option<libghostty_vt::style::RgbColor> {
-    let value = value.trim().strip_prefix('#')?;
-    if value.len() != 6 || !value.is_ascii() {
-        return None;
-    }
-    Some(rgb(
-        u8::from_str_radix(&value[0..2], 16).ok()?,
-        u8::from_str_radix(&value[2..4], 16).ok()?,
-        u8::from_str_radix(&value[4..6], 16).ok()?,
-    ))
-}
 
 /// Construct an RGB color.
 pub(super) const fn rgb(r: u8, g: u8, b: u8) -> libghostty_vt::style::RgbColor {
@@ -493,7 +422,7 @@ fn rounded_corner_coverage(x: u32, y: u32, cx: i32, cy: i32, radius: f32, sample
 mod tests {
     use super::*;
 
-    fn pixel(frame: &SolidFrame, x: u32, y: u32) -> [u8; 4] {
+    fn pixel(frame: &Canvas, x: u32, y: u32) -> [u8; 4] {
         let offset = frame.offset(x, y);
         [
             frame.pixels[offset],
@@ -505,7 +434,7 @@ mod tests {
 
     #[test]
     fn caption_glyph_blending_is_clipped_to_the_caption_rect() {
-        let mut frame = SolidFrame::new(10, 10, rgb(0, 0, 0)).unwrap();
+        let mut frame = Canvas::new(10, 10, rgb(0, 0, 0)).unwrap();
 
         frame.blend_rect_clipped(
             0,

@@ -2,13 +2,11 @@
 
 use std::time::Duration;
 
+use super::keyboard_overlay::KeyboardOverlayState;
 use super::settings::Settings;
 use crate::media::Frame;
 use crate::runner::TerminalSession;
 use crate::Result;
-
-/// How long a keyboard overlay label remains visible after being queued.
-const KEYBOARD_OVERLAY_LINGER: Duration = Duration::from_millis(1500);
 
 /// Mutable frame-collection state for one captured run.
 ///
@@ -32,7 +30,7 @@ pub(super) struct CaptureState {
     /// semantic wait matching.
     pub(super) caption: Option<String>,
     /// Keyboard overlay labels that are currently visible.
-    keyboard_overlay_events: Vec<KeyboardOverlayEvent>,
+    pub(super) keyboard_overlay: KeyboardOverlayState,
 }
 
 impl Default for CaptureState {
@@ -41,7 +39,7 @@ impl Default for CaptureState {
             visible: true,
             frames: Vec::new(),
             caption: None,
-            keyboard_overlay_events: Vec::new(),
+            keyboard_overlay: KeyboardOverlayState::default(),
         }
     }
 }
@@ -55,23 +53,6 @@ pub(super) struct CapturedFrame {
     pub(super) caption: Option<String>,
     /// Keyboard overlay labels visible when this frame was captured.
     pub(super) keyboard_overlay_labels: Vec<String>,
-}
-
-/// One keyboard overlay event that is currently visible.
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct KeyboardOverlayEvent {
-    /// Label drawn in the overlay HUD.
-    label: String,
-    /// Remaining visible time for this label.
-    remaining: Duration,
-}
-
-/// Queue a keyboard overlay label for the next captured frames.
-pub(super) fn queue_keyboard_overlay_label(capture: &mut CaptureState, label: String) {
-    capture.keyboard_overlay_events.push(KeyboardOverlayEvent {
-        label,
-        remaining: KEYBOARD_OVERLAY_LINGER,
-    });
 }
 
 /// Capture one raw terminal frame with runner-controlled cursor blinking.
@@ -100,7 +81,7 @@ pub(super) fn capture_frame(
 /// timers can age across recorded frame time.
 pub(super) fn append_visible_frame(capture: &mut CaptureState, frame: Frame, delay: Duration) {
     let caption = capture.caption.clone();
-    let keyboard_overlay_labels = active_keyboard_overlay_labels(capture);
+    let keyboard_overlay_labels = capture.keyboard_overlay.labels();
     if let Some((last_frame, last_delay)) = capture.frames.last_mut() {
         if frames_equal(&last_frame.frame, &frame)
             && last_frame.caption == caption
@@ -108,7 +89,7 @@ pub(super) fn append_visible_frame(capture: &mut CaptureState, frame: Frame, del
             && keyboard_overlay_labels.is_empty()
         {
             *last_delay += delay;
-            age_keyboard_overlay_labels(capture, delay);
+            capture.keyboard_overlay.advance(delay);
             return;
         }
     }
@@ -120,7 +101,7 @@ pub(super) fn append_visible_frame(capture: &mut CaptureState, frame: Frame, del
         },
         delay,
     ));
-    age_keyboard_overlay_labels(capture, delay);
+    capture.keyboard_overlay.advance(delay);
 }
 
 /// Append the final still frame for animated outputs when it differs from the last visible frame.
@@ -136,30 +117,11 @@ pub(super) fn append_final_gif_frame(capture: &mut CaptureState, frame: Frame, d
             CapturedFrame {
                 frame,
                 caption: capture.caption.clone(),
-                keyboard_overlay_labels: active_keyboard_overlay_labels(capture),
+                keyboard_overlay_labels: capture.keyboard_overlay.labels(),
             },
             delay,
         ));
     }
-}
-
-/// Return active keyboard overlay labels in queue order.
-pub(super) fn active_keyboard_overlay_labels(capture: &CaptureState) -> Vec<String> {
-    capture
-        .keyboard_overlay_events
-        .iter()
-        .map(|event| event.label.clone())
-        .collect()
-}
-
-/// Age active keyboard overlay labels by recorded frame time.
-fn age_keyboard_overlay_labels(capture: &mut CaptureState, delay: Duration) {
-    for event in &mut capture.keyboard_overlay_events {
-        event.remaining = event.remaining.saturating_sub(delay);
-    }
-    capture
-        .keyboard_overlay_events
-        .retain(|event| !event.remaining.is_zero());
 }
 
 /// Compare frames byte-for-byte.

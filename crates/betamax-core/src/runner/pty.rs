@@ -56,8 +56,8 @@ impl PtySession {
             .openpty(PtySize {
                 rows: settings.rows,
                 cols: settings.columns,
-                pixel_width: settings.terminal_canvas_width() as u16,
-                pixel_height: settings.terminal_canvas_height() as u16,
+                pixel_width: settings.presentation.terminal_canvas_width() as u16,
+                pixel_height: settings.presentation.terminal_canvas_height() as u16,
             })
             .map_err(|error| miette!("failed to open PTY: {error}"))?;
 
@@ -116,10 +116,14 @@ impl PtySession {
                 cols: columns,
                 rows,
                 // Zero means unspecified when the optional pixel dimensions exceed PTY limits.
-                pixel_width: u16::try_from(u32::from(columns) * settings.text.cell_width())
-                    .unwrap_or(0),
-                pixel_height: u16::try_from(u32::from(rows) * settings.text.cell_height())
-                    .unwrap_or(0),
+                pixel_width: u16::try_from(
+                    u32::from(columns) * settings.presentation.text.cell_width(),
+                )
+                .unwrap_or(0),
+                pixel_height: u16::try_from(
+                    u32::from(rows) * settings.presentation.text.cell_height(),
+                )
+                .unwrap_or(0),
             })
             .map_err(|error| {
                 miette!("failed to resize PTY to {columns} columns by {rows} rows: {error}")
