@@ -37,6 +37,32 @@ fn caption_layout_shares_terminal_frame_edges_with_keyboard_overlay() {
 }
 
 #[test]
+fn caption_baseline_stays_put_when_keyboard_chips_come_and_go() {
+    let tape = Tape::parse(
+        r#"
+        Set Preset Default-0.1
+        Set Width 320
+        Set Height 200
+        Set Margin 16
+        Set KeyboardOverlay Input
+        Caption "Long caption"
+        Type "echo done"
+        "#,
+    )
+    .unwrap();
+    let settings = Settings::from_tape(&tape).unwrap();
+    let labels = vec!["\"echo done\"".to_string()];
+    let avoid_width = keyboard_overlay_panel_width(&labels, settings.presentation.width)
+        .saturating_add(PRESENTATION_OVERLAY_GAP);
+
+    let with_keys = settings.presentation.caption_layout(avoid_width).unwrap();
+    let without_keys = settings.presentation.caption_layout(0).unwrap();
+
+    assert_eq!(without_keys.text_y, with_keys.text_y);
+    assert_eq!(without_keys.text_height, with_keys.text_height);
+}
+
+#[test]
 fn presentation_overlay_edges_track_rounded_corner_optics() {
     let tape = Tape::parse(
         r#"
