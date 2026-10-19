@@ -1,6 +1,6 @@
 //! Ghostty-backed terminal capture sessions.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use libghostty_vt::{Terminal, TerminalOptions};
@@ -9,6 +9,7 @@ use super::mouse::MouseInput;
 use super::renderer::RasterRenderer;
 use super::state::TerminalState;
 use super::theme::{TerminalTheme, TextSettings};
+use super::title::TitleCapture;
 use crate::media::Frame;
 use crate::runner::{FrameCapture, TerminalSession};
 use crate::tape::{KeyModifiers, MouseEvent};
@@ -126,7 +127,8 @@ pub struct GhosttySession {
     terminal: Terminal<'static, 'static>,
     pending_pty_reply: Rc<Cell<Vec<u8>>>,
     /// Software renderer and reusable render iterators.
-    renderer: RasterRenderer,
+    renderer: Rc<RefCell<RasterRenderer>>,
+    title_capture: Rc<TitleCapture>,
     mouse: MouseInput,
     cell_size: (u32, u32),
 }
@@ -206,7 +208,12 @@ impl GhosttySession {
                 cell_width,
                 cell_height,
             )?,
-            renderer: RasterRenderer::new(request, cell_width, cell_height),
+            renderer: Rc::new(RefCell::new(RasterRenderer::new(
+                request,
+                cell_width,
+                cell_height,
+            ))),
+            title_capture: Rc::default(),
             cell_size: (cell_width, cell_height),
         })
     }
@@ -220,9 +227,25 @@ impl TerminalSession for GhosttySession {
         log_pty_write_finish(bytes);
     }
 
+    fn enable_title_capture(&mut self) -> Result<()> {
+        self.title_capture
+            .install(&mut self.terminal, Rc::clone(&self.renderer))
+    }
+
+    fn set_title_capture_cursor(&mut self, cursor: Option<bool>) {
+        self.title_capture.set_cursor(cursor);
+    }
+
+    fn take_title_changes(&mut self) -> Result<Vec<crate::runner::TitleChange>> {
+        self.title_capture.take()
+    }
+
     fn capture_frame_with_cursor(&mut self, cursor_visible: bool) -> Result<Frame> {
         tracing::trace!(cursor_visible, "capturing frame from libghostty-vt state");
-        let frame = self.renderer.render(&self.terminal, cursor_visible)?;
+        let frame = self
+            .renderer
+            .borrow_mut()
+            .render(&self.terminal, cursor_visible)?;
         tracing::trace!(
             width = frame.width,
             height = frame.height,
@@ -232,7 +255,7 @@ impl TerminalSession for GhosttySession {
     }
 
     fn viewport_cells(&mut self) -> Result<Vec<Vec<super::state::TerminalCell>>> {
-        self.renderer.viewport_cells(&self.terminal)
+        self.renderer.borrow_mut().viewport_cells(&self.terminal)
     }
 
     fn resize(&mut self, grid: TerminalGrid) -> Result<()> {
@@ -254,7 +277,7 @@ impl TerminalSession for GhosttySession {
 
     fn screen_text(&mut self) -> Result<String> {
         tracing::trace!("reading screen text from libghostty-vt state");
-        let text = self.renderer.screen_text(&self.terminal)?;
+        let text = self.renderer.borrow_mut().screen_text(&self.terminal)?;
         tracing::trace!(
             bytes = text.len(),
             "read screen text from libghostty-vt state"
@@ -264,7 +287,10 @@ impl TerminalSession for GhosttySession {
 
     fn terminal_state(&mut self) -> Result<TerminalState> {
         tracing::trace!("reading terminal state from libghostty-vt");
-        let state = self.renderer.terminal_state(&mut self.terminal)?;
+        let state = self
+            .renderer
+            .borrow_mut()
+            .terminal_state(&mut self.terminal)?;
         tracing::trace!(
             columns = state.size[0],
             rows = state.size[1],
@@ -378,6 +404,24 @@ mod tests {
             text: TextSettings::default(),
             theme: TerminalTheme::default(),
         }
+    }
+
+    #[test]
+    fn title_callback_returns_borrow_errors_at_the_runner_boundary() {
+        let request = CaptureRequest {
+            canvas: PixelSize::new(160, 80),
+            grid: TerminalGrid::new(12, 3),
+            text: TextSettings::default(),
+            theme: TerminalTheme::default(),
+        };
+        let mut session = GhosttyFrameCapture.open(request).unwrap();
+        session.enable_title_capture().unwrap();
+        session.set_title_capture_cursor(Some(false));
+        let renderer = Rc::clone(&session.renderer);
+        let _borrow = renderer.borrow_mut();
+        session.write_vt(b"\x1b]2;new title\x07");
+        let error = session.take_title_changes().unwrap_err();
+        assert!(error.to_string().contains("already borrowed"));
     }
 
     #[test]

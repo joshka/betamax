@@ -54,20 +54,21 @@ size if needed. See [Presentation and layout proof](../tape-files/#presentation-
 
 These settings are applied after the raw terminal frame is rendered:
 
-| Setting            | Default          | Purpose                      |
-| ------------------ | ---------------- | ---------------------------- |
-| `Margin`           | `0`              | Outer frame margin in pixels |
-| `MarginFill`       | theme background | Solid or linear backdrop     |
-| `WindowBar`        | empty / disabled | Synthetic window bar mode    |
-| `WindowBarSize`    | `30`             | Window bar height in pixels  |
-| `WindowBarColor`   | theme background | Window bar fill color        |
-| `WindowTitle`      | empty / disabled | Centered static title        |
-| `WindowTitleColor` | auto             | Theme-derived title contrast |
-| `BorderRadius`     | `0`              | Rounded-corner mask radius   |
-| `Shadow`           | `false`          | Enable a black window shadow |
-| `ShadowBlur`       | `28`             | CSS blur radius in pixels    |
-| `ShadowOffset`     | `9`              | Vertical offset in pixels    |
-| `ShadowOpacity`    | `0.55`           | Shadow opacity, clamped 0..1 |
+| Setting                   | Default          | Purpose                      |
+| ------------------------- | ---------------- | ---------------------------- |
+| `Margin`                  | `0`              | Outer frame margin in pixels |
+| `MarginFill`              | theme background | Solid or linear backdrop     |
+| `WindowBar`               | empty / disabled | Synthetic window bar mode    |
+| `WindowBarSize`           | `30`             | Window bar height in pixels  |
+| `WindowBarColor`          | theme background | Window bar fill color        |
+| `WindowTitle`             | empty / disabled | Centered static title        |
+| `WindowTitleFromTerminal` | `false`          | Follow app OSC 0/2 titles    |
+| `WindowTitleColor`        | auto             | Theme-derived title contrast |
+| `BorderRadius`            | `0`              | Rounded-corner mask radius   |
+| `Shadow`                  | `false`          | Enable a black window shadow |
+| `ShadowBlur`              | `28`             | CSS blur radius in pixels    |
+| `ShadowOffset`            | `9`              | Vertical offset in pixels    |
+| `ShadowOpacity`           | `0.55`           | Shadow opacity, clamped 0..1 |
 
 `WindowBar` currently treats any non-empty value as enabled. Modes ending in `Right`, such as
 `RingsRight` and `ColorfulRight`, place the window buttons on the right. Other non-empty values
@@ -136,8 +137,11 @@ stronger contrast. An explicit `WindowBarColor` participates in the calculation.
 the text color before glyph antialiasing.
 
 Explicit `#rrggbb` title colors bypass contrast adjustment and survive later `Set Theme` commands,
-even when their contrast is low. Only static titles are supported; the program's OSC window title
-does not change the bar.
+even when their contrast is low. Enable `Set WindowTitleFromTerminal true` to let app OSC 0/2
+updates change the displayed title. Use runtime `WindowTitle "text"` to set it from the tape again;
+the latest tape or app assignment wins. Empty titles clear the bar. Fast visible bursts are kept
+with minimum frame holds, which can extend playback. Hidden updates become current without
+replaying hidden history on `Show`. See the [tape reference](../../reference/tape-reference/#following-app-titles).
 
 ## Timing and cursor styling
 

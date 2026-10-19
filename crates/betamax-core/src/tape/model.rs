@@ -155,6 +155,8 @@ pub enum Command {
     /// Captions are not PTY input and do not participate in waits. An empty string clears the
     /// active caption.
     Caption(String),
+    /// Change the displayed window title in tape order, without changing terminal state.
+    WindowTitle(String),
     /// Parsed placeholder for VHS `Source`; execution is intentionally not implemented yet.
     Source(PathBuf),
     /// Capture an immediate PNG screenshot without changing the primary outputs.

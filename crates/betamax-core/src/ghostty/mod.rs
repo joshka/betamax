@@ -35,6 +35,7 @@ mod sprites;
 mod state;
 mod target;
 mod theme;
+mod title;
 
 #[doc(inline)]
 pub use engine::{CaptureRequest, GhosttyFrameCapture, GhosttySession, PixelSize, TerminalGrid};

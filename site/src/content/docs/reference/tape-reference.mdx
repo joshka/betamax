@@ -71,7 +71,8 @@ an error rather than a quiet fallback.
 | `WindowBar`               | string                     | empty / disabled | Non-empty values draw a synthetic window bar                          |
 | `WindowBarSize`           | number                     | `30`             | Window bar height in pixels                                           |
 | `WindowBarColor`          | `#rrggbb` string           | theme background | Bar fill; explicit values take precedence over Theme                  |
-| `WindowTitle`             | string                     | empty / disabled | Static centered window bar title                                      |
+| `WindowTitle`             | string                     | empty / disabled | Initial centered window bar title                                     |
+| `WindowTitleFromTerminal` | bool                       | `false`          | Let OSC 0/2 update the window title.                                  |
 | `WindowTitleColor`        | `auto` or `#rrggbb` string | auto             | Invalid colors use automatic contrast                                 |
 | `BorderRadius`            | number                     | `0`              | Rounded-corner mask radius in pixels                                  |
 | `WindowBorder`            | number                     | `0`              | Inset outline width in integer pixels; zero disables.                 |
@@ -200,7 +201,7 @@ Set WindowTitle "jk — log"
 Set WindowTitleColor auto
 ```
 
-`WindowTitle` defaults to an empty string and is ignored when `WindowBar` is empty. The static
+`WindowTitle` defaults to an empty string and is ignored when `WindowBar` is empty. The
 single-line title is centered across the whole bar, with equal space reserved at both ends to avoid
 buttons in left and `Right` modes, with a gap of two button radii. Long titles truncate with `…`;
 extremely narrow bars clip the ellipsis or omit the title when no space remains. Line breaks become
@@ -216,7 +217,41 @@ The ratio describes the text color before glyph antialiasing.
 
 An explicit `#rrggbb` title color bypasses automatic contrast adjustment and survives `Set Theme`
 in either order, even when its contrast is low. Titles affect decorated media only; they do not
-change terminal state or follow the program's OSC window title.
+change terminal state.
+
+#### Following app titles
+
+`Set WindowTitleFromTerminal true` lets the recorded program change the bar with OSC 0 or OSC 2.
+The default is `false`, so existing static titles remain unchanged. For example, the app can write
+`printf '\033]2;title set by app\007'`. BEL and ST terminators are supported by Ghostty.
+
+```tape
+Set WindowBar Colorful
+Set WindowTitle "title set by tape"
+Set WindowTitleFromTerminal true
+
+Type "printf '\033]2;title set by app\007'"
+Enter
+Sleep 1s
+WindowTitle "title reset by tape"
+Sleep 1s
+```
+
+The latest assignment wins: app titles replace the initial tape title, `WindowTitle "text"`
+replaces an app title, and a later OSC can replace it again. Shell startup and prompt OSC titles
+count too. An empty title explicitly clears the bar; it does not restore the initial value.
+Repeated identical assignments do not create a transition. The title remains hidden with no bar.
+
+Every visible title transition retains its corresponding terminal frame, including several titles
+in one output burst. Titles participate in frame coalescing. Before encoding, a transition gets at
+least one output video frame and 10ms of hold time if its natural hold is shorter. Very fast bursts
+can therefore extend playback. Hidden updates change the current title without replaying hidden
+history on `Show`. Screenshots and final stills use the current title. Title patches are cached
+with a bounded 32-entry cache for the run.
+
+State JSON always reports the app's raw terminal title, even with following disabled. Tape display
+assignments do not change that state. Custom capture backends must implement title observation to
+support the opt-in; an unsupported backend returns an error instead of silently losing events.
 
 ## Command reference
 
@@ -237,6 +272,15 @@ Applies one setting from the table above. `Set` commands must appear before runt
 they affect shell startup, PTY size, capture timing, rendering, or output decoration.
 
 The shell starts in the directory where `betamax` was run, not the tape file's directory.
+
+### `WindowTitle <text>`
+
+Change the displayed window title immediately in tape order. Unlike the startup-only
+`Set WindowTitle`, this command can appear between runtime commands. It accepts one text argument,
+including an empty string to clear the bar; use quotes for spaces. It does not accept `@duration`:
+use `Sleep` for a deliberate hold. Pending PTY output is consumed before the assignment without
+waiting for quiet. If that queue exceeds the bounded drain budget, synchronize with the app first.
+See [Following app titles](#following-app-titles) for precedence and output timing.
 
 ### `Env <key> <value>`
 

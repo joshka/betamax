@@ -129,6 +129,7 @@ impl WindowStyle {
     }
 
     /// Paint cached chrome, then restore rounded corners from the backdrop.
+    #[allow(clippy::too_many_arguments)]
     pub(super) fn draw(
         &self,
         output: &mut Canvas,
@@ -137,6 +138,7 @@ impl WindowStyle {
         bar_overlay: &Canvas,
         theme: &TerminalTheme,
         text: &TextSettings,
+        title: Option<&str>,
     ) -> Result<()> {
         let margin = self.effective_margin();
         let bar_height = self.window_bar_height();
@@ -151,7 +153,7 @@ impl WindowStyle {
             );
             let title_bounds = self.title_bounds(output.width, &buttons);
             self.window_title
-                .draw(output, title_bounds, text, theme, bar)?;
+                .draw(output, title_bounds, text, theme, bar, title)?;
         }
         if self.border.visible() {
             self.border.draw(

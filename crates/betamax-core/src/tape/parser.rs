@@ -88,6 +88,14 @@ fn parse_tokens(line_number: usize, tokens: &[String], commands: &mut Vec<Comman
                 cursor += 1;
             }
             "Paste" => commands.push(Command::Paste),
+            "WindowTitle" => {
+                if delay.is_some() {
+                    return Err(miette!("WindowTitle does not accept a duration").into());
+                }
+                let text = required_token(line_number, tokens, cursor, "window title")?;
+                commands.push(Command::WindowTitle(text.to_string()));
+                cursor += 1;
+            }
             "Caption" => {
                 let text = required_token(line_number, tokens, cursor, "caption text")?;
                 commands.push(Command::Caption(text.to_string()));
@@ -611,6 +619,7 @@ fn is_command_token(token: &str) -> bool {
             | "Copy"
             | "Paste"
             | "Caption"
+            | "WindowTitle"
             | "Source"
             | "Screenshot"
             | "State"
@@ -684,6 +693,29 @@ fn validate_command_order(commands: &[Command]) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parses_runtime_window_titles_without_setting_type_inference() {
+        let tape = Tape::parse(
+            r#"Set WindowTitle initial
+Sleep 1ms WindowTitle "123" WindowTitle "" WindowTitle "title reset by tape"
+Wait+Screen ready WindowTitle final"#,
+        )
+        .unwrap();
+        assert!(tape.commands.contains(&Command::WindowTitle("123".into())));
+        assert!(tape.commands.contains(&Command::WindowTitle(String::new())));
+        assert_eq!(
+            tape.commands.last(),
+            Some(&Command::WindowTitle("final".into()))
+        );
+        for source in [
+            "WindowTitle",
+            "WindowTitle@1s title",
+            "WindowTitle title Set WindowTitle late",
+        ] {
+            assert!(Tape::parse(source).is_err(), "{source}");
+        }
+    }
 
     #[test]
     fn parses_chained_assertions_and_validates_json_with_line_context() {
