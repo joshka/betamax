@@ -6,6 +6,7 @@ use super::margin::parse_hex_color;
 use super::shadow::Shadow;
 use crate::ghostty::TerminalTheme;
 use crate::media::Frame;
+use crate::Result;
 
 /// Default synthetic window bar height in pixels.
 const DEFAULT_WINDOW_BAR_SIZE: u32 = 30;
@@ -33,8 +34,10 @@ pub(super) struct WindowStyle {
     pub(super) window_bar: String,
     /// Height of the synthetic window bar when enabled.
     pub(super) window_bar_size: u32,
-    /// Window bar fill color as `#RRGGBB`; invalid values fall back to the theme background.
+    /// Theme-derived window bar fill color as `#RRGGBB`.
     pub(super) window_bar_color: String,
+    /// Explicit bar color, preserved across subsequent theme settings.
+    pub(super) window_bar_color_override: Option<String>,
     /// Radius for masking the captured terminal plus window bar.
     pub(super) border_radius: u32,
     /// Static shadow configuration and painting policy.
@@ -46,8 +49,8 @@ pub(super) struct WindowStyle {
 impl WindowStyle {
     /// Construct style defaults from the current theme.
     ///
-    /// The window-bar background is stored as raw text because a tape can later replace it with a
-    /// user-provided color. An unset margin fill remains distinct so it can follow the final theme.
+    /// Explicit bar colors remain separate from the theme-derived default so setting order cannot
+    /// reset them. An unset margin fill remains distinct so it can follow the final theme.
     pub(super) fn new(theme: &TerminalTheme) -> Self {
         let background = theme.background_hex();
         Self {
@@ -56,6 +59,7 @@ impl WindowStyle {
             window_bar: String::new(),
             window_bar_size: DEFAULT_WINDOW_BAR_SIZE,
             window_bar_color: background,
+            window_bar_color_override: None,
             border_radius: 0,
             shadow: Shadow::default(),
             border: Border::default(),
@@ -85,20 +89,55 @@ impl WindowStyle {
         }
     }
 
-    /// Paint chrome over the terminal, then restore rounded corners from the backdrop.
+    /// Prepare bar pixels once in output coordinates, preserving short-bar button clipping.
+    pub(super) fn prepare_bar(
+        &self,
+        width: u32,
+        height: u32,
+        fallback: libghostty_vt::style::RgbColor,
+    ) -> Result<Canvas> {
+        let margin = self.effective_margin();
+        let bar_height = self.window_bar_height();
+        if bar_height == 0 {
+            return Canvas::transparent(0, 0);
+        }
+        let radius = (bar_height / WINDOW_BUTTON_RADIUS_DIVISOR).max(MIN_WINDOW_BUTTON_RADIUS);
+        let height = height.min(
+            margin
+                .saturating_add(bar_height)
+                .saturating_add(radius)
+                .saturating_add(1),
+        );
+        let mut overlay = Canvas::transparent(width, height)?;
+        let color = self
+            .window_bar_color_override
+            .as_deref()
+            .unwrap_or(&self.window_bar_color);
+        let color = parse_hex_color(color).unwrap_or(fallback);
+        overlay.fill_rect(
+            margin,
+            margin,
+            width.saturating_sub(margin.saturating_mul(2)),
+            bar_height,
+            color,
+        );
+        self.draw_window_buttons(&mut overlay);
+        Ok(overlay)
+    }
+
+    /// Paint cached chrome, then restore rounded corners from the backdrop.
     pub(super) fn draw(
         &self,
         output: &mut Canvas,
         terminal: &Frame,
         backdrop: &Canvas,
+        bar_overlay: &Canvas,
         fallback: libghostty_vt::style::RgbColor,
     ) {
         let margin = self.effective_margin();
         let bar_height = self.window_bar_height();
-        let bar = parse_hex_color(&self.window_bar_color).unwrap_or(fallback);
         if bar_height > 0 {
-            output.fill_rect(margin, margin, terminal.width, bar_height, bar);
-            self.draw_window_buttons(output);
+            output.copy_opaque_pixels(bar_overlay);
         }
         if self.border.visible() {
             self.border.draw(
@@ -154,8 +193,227 @@ impl WindowStyle {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::runner::settings::Settings;
     use crate::tape::Tape;
+
+    fn pixel(frame: &Frame, x: u32, y: u32) -> [u8; 4] {
+        let offset = (y as usize * frame.width as usize + x as usize) * 4;
+        frame.pixels[offset..offset + 4].try_into().unwrap()
+    }
+
+    fn bar_settings(commands: &str) -> Settings {
+        let tape = Tape::parse(&format!(
+            r##"
+            Set Width 160
+            Set Height 120
+            Set Padding 0
+            Set Margin 8
+            Set MarginFill "#445566"
+            Set WindowBar Rings
+            Set WindowBarSize 30
+            Set BorderRadius 10
+            {commands}
+            "##
+        ))
+        .unwrap();
+        Settings::from_tape(&tape).unwrap()
+    }
+
+    fn decorated_bar(settings: &Settings) -> Frame {
+        let raw = Canvas::new(
+            settings.presentation.terminal_canvas_width(),
+            settings.presentation.terminal_canvas_height(),
+            settings.presentation.theme.background,
+        )
+        .unwrap()
+        .into_frame();
+        settings
+            .presentation
+            .decorate_frame_with_overlays(&raw, None, &[])
+            .unwrap()
+    }
+
+    #[test]
+    fn window_bar_color_survives_theme_ordering() {
+        let theme = r##"Set Theme '{"name":"Test","background":"#151723"}'"##;
+        for commands in [
+            format!("Set WindowBarColor \"#aAbBcC\"\n{theme}"),
+            format!("{theme}\nSet WindowBarColor \"#aAbBcC\""),
+        ] {
+            let settings = bar_settings(&commands);
+            assert_eq!(
+                settings
+                    .presentation
+                    .style
+                    .window_bar_color_override
+                    .as_deref(),
+                Some("#aAbBcC")
+            );
+            let output = decorated_bar(&settings);
+            assert_eq!(pixel(&output, 80, 20), [0xaa, 0xbb, 0xcc, 255]);
+            assert_eq!(pixel(&output, 80, 38), [0x15, 0x17, 0x23, 255]);
+        }
+    }
+
+    #[test]
+    fn invalid_window_bar_colors_follow_the_active_theme() {
+        let theme = r##"Set Theme '{"name":"Test","background":"#151723"}'"##;
+        for color in ["", "red", "#123", "#12345678", "#zzzzzz", "#aéxyz"] {
+            for commands in [
+                format!("Set WindowBarColor \"{color}\"\n{theme}"),
+                format!("{theme}\nSet WindowBarColor \"{color}\""),
+            ] {
+                let output = decorated_bar(&bar_settings(&commands));
+                assert_eq!(
+                    pixel(&output, 80, 20),
+                    [0x15, 0x17, 0x23, 255],
+                    "{commands}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn window_bar_color_rejects_non_string_values() {
+        for (value, kind) in [("42", "number"), ("true", "bool"), ("1s", "duration")] {
+            let tape = Tape::parse(&format!("Set WindowBarColor {value}")).unwrap();
+            let error = Settings::from_tape(&tape).unwrap_err().to_string();
+            assert!(error.contains(&format!("Set WindowBarColor expects string, got {kind}")));
+        }
+    }
+
+    #[test]
+    fn custom_bar_rounds_only_window_corners_and_preserves_buttons() {
+        for mode in ["Rings", "RingsRight"] {
+            let settings = bar_settings(&format!(
+                "Set WindowBar {mode}\nSet WindowBarColor \"#0f101a\""
+            ));
+            let output = decorated_bar(&settings);
+            assert_eq!(pixel(&output, 8, 8), [0x44, 0x55, 0x66, 255]);
+            assert_eq!(pixel(&output, 80, 8), [0x0f, 0x10, 0x1a, 255]);
+            let edge = pixel(&output, 12, 9);
+            for (actual, expected) in edge.into_iter().zip([51_u8, 63, 78, 255]) {
+                assert!(actual.abs_diff(expected) <= 1, "rounded edge: {edge:?}");
+            }
+            // The bar/terminal seam is straight, including at both window edges.
+            for x in [8, 80, 151] {
+                assert_eq!(pixel(&output, x, 37), [0x0f, 0x10, 0x1a, 255]);
+                assert_eq!(pixel(&output, x, 38), [0x10, 0x20, 0x40, 255]);
+            }
+            let first_button_x = if mode == "Rings" { 23 } else { 107 };
+            for (index, expected) in [
+                [0xff, 0x5f, 0x57, 255],
+                [0xff, 0xbd, 0x2e, 255],
+                [0x28, 0xc8, 0x40, 255],
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                assert_eq!(
+                    pixel(&output, first_button_x + index as u32 * 15, 23),
+                    expected
+                );
+            }
+            let again = decorated_bar(&settings);
+            assert_eq!(output.pixels, again.pixels);
+            assert!(output
+                .pixels
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .all(|pixel| pixel[3] == 255));
+        }
+    }
+
+    #[test]
+    fn automatic_border_uses_theme_contrast_with_a_custom_bar() {
+        let settings = bar_settings(
+            r##"
+            Set Theme '{"name":"Light","background":"#ffffff"}'
+            Set WindowBarColor "#0f101a"
+            Set WindowBorder 2
+            Set WindowBorderOpacity 1
+            "##,
+        );
+        let output = decorated_bar(&settings);
+
+        assert_eq!(pixel(&output, 80, 8), [0, 0, 0, 255]);
+        assert_eq!(pixel(&output, 80, 20), [0x0f, 0x10, 0x1a, 255]);
+        assert_eq!(pixel(&output, 80, 38), [255, 255, 255, 255]);
+    }
+
+    #[test]
+    fn default_window_bar_preserves_legacy_pixels() {
+        for mode in ["", "Colorful", "Rings", "RingsRight", "ColorfulRight"] {
+            for bar_height in [2, 30] {
+                let settings = bar_settings(&format!(
+                    "Set WindowBar \"{mode}\"\nSet WindowBarSize {bar_height}"
+                ));
+                assert!(settings
+                    .presentation
+                    .style
+                    .window_bar_color_override
+                    .is_none());
+                let output = decorated_bar(&settings);
+                let raw = Canvas::new(
+                    settings.presentation.terminal_canvas_width(),
+                    settings.presentation.terminal_canvas_height(),
+                    settings.presentation.theme.background,
+                )
+                .unwrap()
+                .into_frame();
+                // Reference the decoration sequence used before WindowBarColor existed.
+                let fill = rgb(0x44, 0x55, 0x66);
+                let mut legacy = Canvas::new(
+                    settings.presentation.width,
+                    settings.presentation.height,
+                    fill,
+                )
+                .unwrap();
+                let margin = settings.presentation.style.effective_margin();
+                let height = settings.presentation.style.window_bar_height();
+                legacy.blit(&raw, margin, margin + height).unwrap();
+                if height > 0 {
+                    legacy.fill_rect(
+                        margin,
+                        margin,
+                        raw.width,
+                        height,
+                        settings.presentation.theme.background,
+                    );
+                    settings.presentation.style.draw_window_buttons(&mut legacy);
+                }
+                legacy.apply_rounded_rect_mask(
+                    margin,
+                    margin,
+                    raw.width,
+                    raw.height + height,
+                    10,
+                    &Canvas::new(
+                        settings.presentation.width,
+                        settings.presentation.height,
+                        fill,
+                    )
+                    .unwrap(),
+                );
+                assert_eq!(
+                    output.pixels,
+                    legacy.into_frame().pixels,
+                    "{mode}, {bar_height}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn window_bar_color_is_ignored_when_the_bar_is_disabled() {
+        let plain = decorated_bar(&bar_settings("Set WindowBar \"\""));
+        let custom = decorated_bar(&bar_settings(
+            "Set WindowBar \"\"\nSet WindowBarColor \"#0f101a\"",
+        ));
+        assert_eq!(plain.pixels, custom.pixels);
+    }
 
     #[test]
     fn parses_frame_style_settings() {

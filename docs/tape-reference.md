@@ -53,6 +53,7 @@ Common settings:
 | `MarginFill`              | string                                     | theme background | Solid color or linear gradient backdrop.    |
 | `WindowBar`               | `Rings`, `RingsRight`, `Colorful`, or etc. | empty / disabled | Any non-empty value enables the bar.        |
 | `WindowBarSize`           | number                                     | `30`             | Bar height in pixels when enabled.          |
+| `WindowBarColor`          | `#rrggbb` string                           | theme background | Invalid colors fall back to theme bg.       |
 | `BorderRadius`            | number                                     | `0`              | Rounded-corner mask radius in pixels.       |
 | `WindowBorder`            | number                                     | `0`              | Inset width in pixels; zero disables.       |
 | `WindowBorderColor`       | string                                     | `auto`           | Auto contrast or explicit `#rrggbb`.        |
@@ -161,6 +162,23 @@ zero opacity. Allow a margin of at least about `ShadowBlur + abs(ShadowOffset)` 
 clipping: about `37` pixels with the defaults, or `Margin 44` for extra room. Increase the margin
 further if the faint tail is still visible at the edge. The shadow shows best on a gradient or on a
 backdrop lighter than near-black.
+
+### Window bar color
+
+`Set WindowBarColor "#0f101a"` fills the window bar with a `#rrggbb` color. The default is
+the active theme background. An explicit color takes precedence regardless of whether `Set Theme`
+appears before or after it. Invalid colors, including an empty string, fall back to the active theme
+background. The setting has no effect when `WindowBar` is empty.
+
+Only the bar changes; terminal colors stay in the theme. With `BorderRadius`, the window's top
+corners are rounded and the boundary between the bar and terminal remains straight.
+
+```tape
+Set WindowBar RingsRight
+Set WindowBarColor "#0f101a"
+Set Theme '{"name":"Night","background":"#151723"}'
+Set BorderRadius 11
+```
 
 ## Commands
 

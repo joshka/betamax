@@ -25,6 +25,28 @@ pub(super) struct Canvas {
 }
 
 impl Canvas {
+    /// Allocate a sparse decoration layer whose transparent pixels are skipped when copied.
+    pub(super) fn transparent(width: u32, height: u32) -> Result<Self> {
+        let mut layer = Self::new(width, height, rgb(0, 0, 0))?;
+        layer.pixels.fill(0);
+        Ok(layer)
+    }
+
+    /// Copy opaque pixels from a decoration layer sharing this canvas's output coordinates.
+    pub(super) fn copy_opaque_pixels(&mut self, overlay: &Self) {
+        for (source, target) in overlay
+            .pixels
+            .as_chunks::<BYTES_PER_PIXEL>()
+            .0
+            .iter()
+            .zip(self.pixels.as_chunks_mut::<BYTES_PER_PIXEL>().0)
+        {
+            if source[3] == OPAQUE_ALPHA {
+                target.copy_from_slice(source);
+            }
+        }
+    }
+
     /// Allocate a solid-color RGBA frame, checking for integer overflow.
     pub(super) fn new(
         width: u32,
