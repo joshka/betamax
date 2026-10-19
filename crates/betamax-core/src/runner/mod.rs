@@ -41,18 +41,22 @@ use miette::{miette, Context};
 use crate::Result;
 
 mod artifacts;
+mod canvas;
+mod caption;
 mod capture;
+mod keyboard_overlay;
+mod margin;
 mod options;
+mod presentation;
 mod pty;
 mod requirements;
 mod settings;
+mod window;
 
 #[doc(inline)]
 pub use artifacts::RunArtifacts;
-use capture::{
-    active_keyboard_overlay_labels, append_final_gif_frame, append_visible_frame, capture_frame,
-    queue_keyboard_overlay_label, CaptureState,
-};
+use caption::active_caption;
+use capture::{append_final_gif_frame, append_visible_frame, capture_frame, CaptureState};
 #[doc(inline)]
 pub use options::RunOptions;
 use pty::PtySession;
@@ -395,22 +399,22 @@ where
         tracing::debug!(
             columns = settings.columns,
             rows = settings.rows,
-            output.width = settings.width,
-            output.height = settings.height,
-            canvas.width = settings.terminal_canvas_width(),
-            canvas.height = settings.terminal_canvas_height(),
+            output.width = settings.presentation.width,
+            output.height = settings.presentation.height,
+            canvas.width = settings.presentation.terminal_canvas_width(),
+            canvas.height = settings.presentation.terminal_canvas_height(),
             commands = tape.commands.len(),
             "starting captured tape run",
         );
         tracing::debug!("opening Ghostty frame capture");
         let mut terminal = self.capture.open(CaptureRequest {
             canvas: PixelSize::new(
-                settings.terminal_canvas_width(),
-                settings.terminal_canvas_height(),
+                settings.presentation.terminal_canvas_width(),
+                settings.presentation.terminal_canvas_height(),
             ),
             grid: TerminalGrid::new(settings.columns, settings.rows),
-            text: settings.text.clone(),
-            theme: settings.theme.clone(),
+            text: settings.presentation.text.clone(),
+            theme: settings.presentation.theme.clone(),
         })?;
         tracing::trace!("opened Ghostty frame capture");
         tracing::debug!("spawning PTY session");
@@ -468,10 +472,10 @@ where
             );
             settings.apply_loop_offset(&mut capture.frames);
         }
-        let frame = settings.decorate_frame_with_overlays(
+        let frame = settings.presentation.decorate_frame_with_overlays(
             &final_raw_frame,
             capture.caption.as_deref(),
-            &active_keyboard_overlay_labels(&capture),
+            &capture.keyboard_overlay.labels(),
         )?;
         let media_frames = decorate_captured_frames(&settings, &mut capture)?;
 
@@ -569,8 +573,8 @@ where
             "running captured tape command"
         );
         if capture.visible {
-            if let Some(label) = settings.keyboard_overlay_label(command) {
-                queue_keyboard_overlay_label(capture, label);
+            if let Some(label) = settings.presentation.keyboard_overlay.label(command) {
+                capture.keyboard_overlay.queue(label);
             }
         }
         match command {
@@ -651,10 +655,10 @@ where
             }
             Command::Screenshot(path) => {
                 session.drain_into(terminal, CHECKPOINT_IDLE)?;
-                let frame = settings.decorate_frame_with_overlays(
+                let frame = settings.presentation.decorate_frame_with_overlays(
                     &capture_frame(terminal, settings, capture.frames.len())?,
                     capture.caption.as_deref(),
-                    &active_keyboard_overlay_labels(capture),
+                    &capture.keyboard_overlay.labels(),
                 )?;
                 if path
                     .extension()
@@ -838,10 +842,10 @@ fn save_failure(
     }
     let frame_output = capture_frame(terminal, settings, capture.frames.len())
         .and_then(|frame| {
-            settings.decorate_frame_with_overlays(
+            settings.presentation.decorate_frame_with_overlays(
                 &frame,
                 capture.caption.as_deref(),
-                &active_keyboard_overlay_labels(capture),
+                &capture.keyboard_overlay.labels(),
             )
         })
         .and_then(|frame| write_png(&directory.join("actual.png"), &frame));
@@ -871,15 +875,9 @@ fn decorate_captured_frames(
     settings: &Settings,
     capture: &mut CaptureState,
 ) -> Result<Vec<(Frame, Duration)>> {
-    settings.decorate_captured_frames(capture.frames.drain(..))
-}
-
-/// Convert parsed caption text into the active presentation state.
-///
-/// Empty or whitespace-only captions clear the overlay. Non-empty captions keep their original
-/// spacing so authors can intentionally align short labels within the rendered overlay.
-fn active_caption(text: &str) -> Option<String> {
-    (!text.trim().is_empty()).then(|| text.to_string())
+    settings
+        .presentation
+        .decorate_captured_frames(capture.frames.drain(..))
 }
 
 fn describe_command(command: &Command) -> String {
@@ -1047,172 +1045,9 @@ fn describe_text(text: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::settings::{KeyboardOverlayLocation, KeyboardOverlayMode};
     use super::*;
     use crate::media::Frame;
     use crate::runner::capture::{frames_equal, CapturedFrame};
-
-    #[test]
-    fn uses_vhs_typography_defaults() {
-        let tape = Tape::parse("").unwrap();
-        let settings = Settings::from_tape(&tape).unwrap();
-
-        assert_eq!(settings.width, 1200);
-        assert_eq!(settings.height, 600);
-        assert_eq!(settings.framerate, 50);
-        assert_eq!(settings.typing_delay, Duration::from_millis(50));
-        assert_eq!(settings.text.font_size, 22.0);
-        assert_eq!(settings.text.font_family.as_deref(), Some("JetBrains Mono"));
-        assert_eq!(settings.text.letter_spacing, 1.0);
-        assert_eq!(settings.text.line_height, 1.0);
-        assert_eq!(settings.text.padding, 60);
-        assert_eq!(settings.theme.name, "Aardvark Blue");
-        assert_eq!(settings.style.margin, 0);
-        assert_eq!(settings.style.margin_fill, None);
-        assert_eq!(settings.style.window_bar, "");
-        assert_eq!(settings.style.window_bar_size, 30);
-        assert_eq!(settings.style.window_bar_color, "#102040");
-        assert_eq!(settings.style.border_radius, 0);
-        assert_eq!(settings.keyboard_overlay.mode, KeyboardOverlayMode::Off);
-        assert_eq!(
-            settings.keyboard_overlay.location,
-            KeyboardOverlayLocation::CaptionRow
-        );
-    }
-
-    #[test]
-    fn accepts_aardvark_blue_theme() {
-        let tape = Tape::parse(r#"Set Theme "Aardvark Blue""#).unwrap();
-        let settings = Settings::from_tape(&tape).unwrap();
-
-        assert_eq!(settings.theme.name, "Aardvark Blue");
-    }
-
-    #[test]
-    fn parses_frame_style_settings() {
-        let tape = Tape::parse(
-            r##"
-            Set Margin 12
-            Set MarginFill "#674EFF"
-            Set WindowBar Colorful
-            Set WindowBarSize 40
-            Set BorderRadius 8
-            "##,
-        )
-        .unwrap();
-
-        let settings = Settings::from_tape(&tape).unwrap();
-
-        assert_eq!(settings.style.margin, 12);
-        assert_eq!(settings.style.margin_fill.as_deref(), Some("#674EFF"));
-        assert_eq!(settings.style.window_bar, "Colorful");
-        assert_eq!(settings.style.window_bar_size, 40);
-        assert_eq!(settings.style.border_radius, 8);
-    }
-
-    #[test]
-    fn keyboard_overlay_keys_mode_shows_only_key_commands() {
-        let tape = Tape::parse(
-            r#"
-            Set KeyboardOverlay Keys
-            Type "open palette"
-            Ctrl+P
-            Down 2
-            Enter
-            Copy "from clipboard"
-            Paste
-            "#,
-        )
-        .unwrap();
-
-        let settings = Settings::from_tape(&tape).unwrap();
-
-        assert_eq!(settings.keyboard_overlay.mode, KeyboardOverlayMode::Keys);
-        assert_eq!(
-            tape.commands
-                .iter()
-                .filter_map(|command| settings.keyboard_overlay_label(command))
-                .collect::<Vec<_>>(),
-            vec!["Ctrl+P", "Down x2", "Enter"]
-        );
-    }
-
-    #[test]
-    fn keyboard_overlay_input_mode_shows_short_typed_intent() {
-        let tape = Tape::parse(
-            r#"
-            Set KeyboardOverlay Input
-            Type "j"
-            Type "echo foo"
-            Type "printf 'too implementation-shaped\n'"
-            Ctrl+P
-            Paste
-            "#,
-        )
-        .unwrap();
-
-        let settings = Settings::from_tape(&tape).unwrap();
-
-        assert_eq!(settings.keyboard_overlay.mode, KeyboardOverlayMode::Input);
-        assert_eq!(
-            tape.commands
-                .iter()
-                .filter_map(|command| settings.keyboard_overlay_label(command))
-                .collect::<Vec<_>>(),
-            vec!["j", "\"echo foo\"", "Ctrl+P", "Paste"]
-        );
-    }
-
-    #[test]
-    fn keyboard_overlay_all_mode_summarizes_every_visible_input() {
-        let tape = Tape::parse(
-            r#"
-            Set KeyboardOverlay All
-            Type "echo foo"
-            Type "printf 'implementation-shaped but visible\n'"
-            Ctrl+P
-            Paste
-            "#,
-        )
-        .unwrap();
-
-        let settings = Settings::from_tape(&tape).unwrap();
-
-        assert_eq!(settings.keyboard_overlay.mode, KeyboardOverlayMode::All);
-        assert_eq!(
-            tape.commands
-                .iter()
-                .filter_map(|command| settings.keyboard_overlay_label(command))
-                .collect::<Vec<_>>(),
-            vec!["\"echo foo\"", "Type 44 chars", "Ctrl+P", "Paste",]
-        );
-    }
-
-    #[test]
-    fn keyboard_overlay_labels_hidden_input_only_at_runtime() {
-        let tape = Tape::parse(
-            r#"
-            Set KeyboardOverlay Input
-            Type "visible"
-            Hide
-            Type "secret"
-            Enter
-            Show
-            Down
-            "#,
-        )
-        .unwrap();
-
-        let settings = Settings::from_tape(&tape).unwrap();
-
-        assert_eq!(
-            tape.commands
-                .iter()
-                .filter_map(|command| settings.keyboard_overlay_label(command))
-                .collect::<Vec<_>>(),
-            vec!["\"visible\"", "\"secret\"", "Enter", "Down"]
-        );
-    }
 
     #[test]
     fn keyboard_overlay_changes_pixels_without_resizing_output() {
@@ -1228,13 +1063,14 @@ mod tests {
         .unwrap();
         let settings = Settings::from_tape(&tape).unwrap();
         let frame = sized_test_frame(
-            settings.terminal_canvas_width(),
-            settings.terminal_canvas_height(),
+            settings.presentation.terminal_canvas_width(),
+            settings.presentation.terminal_canvas_height(),
             [255, 0, 0, 255],
         );
 
         let labels = vec!["\"abc\"".to_string()];
         let decorated = settings
+            .presentation
             .decorate_frame_with_overlays(&frame, None, &labels)
             .unwrap();
         let rgba = decorated.rgba().unwrap();
@@ -1243,25 +1079,6 @@ mod tests {
         assert_eq!(decorated.width, 180);
         assert_eq!(decorated.height, 120);
         assert_ne!(bottom_left, [255, 0, 0, 255]);
-    }
-
-    #[test]
-    fn invalid_keyboard_overlay_modes_are_errors() {
-        let tape = Tape::parse("Set KeyboardOverlay floating").unwrap();
-        let error = Settings::from_tape(&tape).unwrap_err().to_string();
-
-        assert!(error.contains("Set KeyboardOverlay expects Off, Keys, Input, or All"));
-    }
-
-    #[test]
-    fn keyboard_overlay_location_is_configurable() {
-        let tape = Tape::parse("Set KeyboardOverlayLocation BottomRight").unwrap();
-        let settings = Settings::from_tape(&tape).unwrap();
-
-        assert_eq!(
-            settings.keyboard_overlay.location,
-            KeyboardOverlayLocation::BottomRight
-        );
     }
 
     #[test]
@@ -1278,10 +1095,10 @@ mod tests {
         .unwrap();
         let settings = Settings::from_tape(&tape).unwrap();
 
-        assert_eq!(settings.width, 900);
-        assert_eq!(settings.height, 480);
-        assert_eq!(settings.terminal_canvas_width(), 876);
-        assert_eq!(settings.terminal_canvas_height(), 422);
+        assert_eq!(settings.presentation.width, 900);
+        assert_eq!(settings.presentation.height, 480);
+        assert_eq!(settings.presentation.terminal_canvas_width(), 876);
+        assert_eq!(settings.presentation.terminal_canvas_height(), 422);
     }
 
     #[test]
@@ -1297,8 +1114,8 @@ mod tests {
         .unwrap();
         let settings = Settings::from_tape(&tape).unwrap();
 
-        assert_eq!(settings.terminal_canvas_width(), 900);
-        assert_eq!(settings.terminal_canvas_height(), 480);
+        assert_eq!(settings.presentation.terminal_canvas_width(), 900);
+        assert_eq!(settings.presentation.terminal_canvas_height(), 480);
     }
 
     #[test]
@@ -1316,12 +1133,13 @@ mod tests {
         .unwrap();
         let settings = Settings::from_tape(&tape).unwrap();
         let frame = sized_test_frame(
-            settings.terminal_canvas_width(),
-            settings.terminal_canvas_height(),
+            settings.presentation.terminal_canvas_width(),
+            settings.presentation.terminal_canvas_height(),
             [255, 0, 0, 255],
         );
 
         let decorated = settings
+            .presentation
             .decorate_frame_with_overlays(&frame, None, &[])
             .unwrap();
 
@@ -1342,15 +1160,17 @@ mod tests {
         .unwrap();
         let settings = Settings::from_tape(&tape).unwrap();
         let frame = sized_test_frame(
-            settings.terminal_canvas_width(),
-            settings.terminal_canvas_height(),
+            settings.presentation.terminal_canvas_width(),
+            settings.presentation.terminal_canvas_height(),
             [255, 0, 0, 255],
         );
 
         let plain = settings
+            .presentation
             .decorate_frame_with_overlays(&frame, None, &[])
             .unwrap();
         let captioned = settings
+            .presentation
             .decorate_frame_with_overlays(&frame, Some("Review checkpoint"), &[])
             .unwrap();
 
@@ -1372,16 +1192,17 @@ mod tests {
         .unwrap();
         let settings = Settings::from_tape(&tape).unwrap();
         let frame = sized_test_frame(
-            settings.terminal_canvas_width(),
-            settings.terminal_canvas_height(),
+            settings.presentation.terminal_canvas_width(),
+            settings.presentation.terminal_canvas_height(),
             [0, 0, 0, 255],
         );
 
         let captioned = settings
+            .presentation
             .decorate_frame_with_overlays(&frame, Some("BASELINE"), &[])
             .unwrap();
 
-        let row_top = settings.terminal_canvas_height();
+        let row_top = settings.presentation.terminal_canvas_height();
         let fill = &captioned.pixels[row_top as usize * captioned.width as usize * 4..][..4];
         let ink_columns = (0..captioned.width)
             .filter(|&x| {
@@ -1414,22 +1235,26 @@ mod tests {
         .unwrap();
         let settings = Settings::from_tape(&tape).unwrap();
 
-        assert_eq!(settings.terminal_canvas_width(), 220);
-        assert!(settings.terminal_canvas_height() < 180);
+        assert_eq!(settings.presentation.terminal_canvas_width(), 220);
+        assert!(settings.presentation.terminal_canvas_height() < 180);
 
         let frame = sized_test_frame(
-            settings.terminal_canvas_width(),
-            settings.terminal_canvas_height(),
+            settings.presentation.terminal_canvas_width(),
+            settings.presentation.terminal_canvas_height(),
             [255, 0, 0, 255],
         );
         let labels = vec!["\"abc\"".to_string()];
         let decorated = settings
+            .presentation
             .decorate_frame_with_overlays(&frame, Some("Step 1"), &labels)
             .unwrap();
         let rgba = decorated.rgba().unwrap();
 
-        let terminal_bottom_y = settings.terminal_canvas_height().saturating_sub(1);
-        let first_overlay_y = settings.terminal_canvas_height();
+        let terminal_bottom_y = settings
+            .presentation
+            .terminal_canvas_height()
+            .saturating_sub(1);
+        let first_overlay_y = settings.presentation.terminal_canvas_height();
         let terminal_pixel = rgba_pixel(&rgba, decorated.width, 1, terminal_bottom_y);
         let overlay_pixel = rgba_pixel(&rgba, decorated.width, 1, first_overlay_y);
 
@@ -1442,47 +1267,13 @@ mod tests {
     }
 
     #[test]
-    fn unknown_settings_are_errors() {
-        let tape = Tape::parse("Set Wdith 900").unwrap();
-        let error = Settings::from_tape(&tape).unwrap_err().to_string();
-
-        assert!(error.contains("unsupported Set setting `Wdith`"));
-    }
-
-    #[test]
-    fn type_mismatched_settings_are_errors() {
-        let tape = Tape::parse(r#"Set Width "wide""#).unwrap();
-        let error = Settings::from_tape(&tape).unwrap_err().to_string();
-
-        assert!(error.contains("Set Width expects number, got string"));
-    }
-
-    #[test]
-    fn playback_speed_changes_output_delay_not_capture_cadence() {
-        for speed in [0.5, 1.0, 2.0] {
-            let tape =
-                Tape::parse(&format!("Set Framerate 50\nSet PlaybackSpeed {speed}")).unwrap();
-            let settings = Settings::from_tape(&tape).unwrap();
-
-            assert_eq!(settings.capture_interval(), Duration::from_millis(20));
-            assert_eq!(
-                settings.frame_delay(),
-                Duration::from_secs_f64(0.02 / speed)
-            );
-            assert_eq!(settings.output_framerate(), 50.0 * speed);
-            assert_eq!(
-                settings.playback_delay(Duration::from_millis(137)),
-                Duration::from_secs_f64(0.137 / speed)
-            );
-        }
-    }
-
-    #[test]
     fn trailing_hide_keeps_cleanup_frame_out_of_gif() {
         let visible_frame = test_frame([255, 0, 0, 255]);
         let cleanup_frame = test_frame([0, 255, 0, 255]);
-        let mut capture = CaptureState::default();
-        capture.visible = false;
+        let mut capture = CaptureState {
+            visible: false,
+            ..CaptureState::default()
+        };
         capture.frames.push((
             CapturedFrame {
                 frame: visible_frame.clone(),
@@ -1513,18 +1304,11 @@ mod tests {
     }
 
     #[test]
-    fn empty_caption_text_clears_overlay_state() {
-        assert_eq!(active_caption(""), None);
-        assert_eq!(active_caption("   "), None);
-        assert_eq!(active_caption("  Step 1  ").as_deref(), Some("  Step 1  "));
-    }
-
-    #[test]
     fn keyboard_overlay_lingers_then_expires() {
         let frame = test_frame([255, 0, 0, 255]);
         let mut capture = CaptureState::default();
 
-        queue_keyboard_overlay_label(&mut capture, "Enter".to_string());
+        capture.keyboard_overlay.queue("Enter".to_string());
         append_visible_frame(&mut capture, frame.clone(), Duration::from_millis(500));
         append_visible_frame(&mut capture, frame.clone(), Duration::from_millis(500));
         append_visible_frame(&mut capture, frame.clone(), Duration::from_millis(600));

@@ -1,0 +1,204 @@
+use super::*;
+use crate::runner::settings::Settings;
+use crate::tape::Tape;
+
+#[test]
+fn caption_layout_shares_terminal_frame_edges_with_keyboard_overlay() {
+    let tape = Tape::parse(
+        r#"
+        Set Width 320
+        Set Height 200
+        Set Margin 16
+        Set KeyboardOverlay Input
+        Caption "Long caption"
+        Type "echo done"
+        "#,
+    )
+    .unwrap();
+    let settings = Settings::from_tape(&tape).unwrap();
+    let labels = vec!["\"echo done\"".to_string()];
+    let avoid_width = keyboard_overlay_panel_width(&labels, settings.presentation.width)
+        .saturating_add(PRESENTATION_OVERLAY_GAP);
+    let layout = settings.presentation.caption_layout(avoid_width).unwrap();
+
+    assert_eq!(layout.text_x, 16);
+    assert_eq!(
+        layout.text_width,
+        settings
+            .presentation
+            .width
+            .saturating_sub(32)
+            .saturating_sub(avoid_width)
+    );
+    assert_eq!(settings.presentation.presentation_overlay_right_x(), 304);
+    assert_eq!(settings.presentation.keyboard_overlay_anchor().right_x, 304);
+    assert_eq!(settings.presentation.caption_overlay_left_x(), 16);
+}
+
+#[test]
+fn presentation_overlay_edges_track_rounded_corner_optics() {
+    let tape = Tape::parse(
+        r#"
+        Set Width 320
+        Set Height 200
+        Set Margin 16
+        Set BorderRadius 8
+        Set KeyboardOverlay Input
+        Caption "Long caption"
+        Type "echo done"
+        "#,
+    )
+    .unwrap();
+    let settings = Settings::from_tape(&tape).unwrap();
+    let labels = vec!["\"echo done\"".to_string()];
+    let avoid_width = keyboard_overlay_panel_width(&labels, settings.presentation.width)
+        .saturating_add(PRESENTATION_OVERLAY_GAP);
+    let layout = settings.presentation.caption_layout(avoid_width).unwrap();
+
+    assert_eq!(settings.presentation.presentation_overlay_right_x(), 304);
+    assert_eq!(settings.presentation.caption_overlay_left_x(), 20);
+    assert_eq!(settings.presentation.keyboard_overlay_anchor().right_x, 300);
+    assert_eq!(layout.text_x, 20);
+}
+
+#[test]
+fn presentation_overlay_without_margin_uses_terminal_padding() {
+    let tape = Tape::parse(
+        r#"
+        Set Width 320
+        Set Height 200
+        Set Padding 20
+        Set KeyboardOverlay Input
+        Caption "Long caption"
+        Type "echo done"
+        "#,
+    )
+    .unwrap();
+    let settings = Settings::from_tape(&tape).unwrap();
+
+    assert_eq!(settings.presentation.caption_overlay_left_x(), 20);
+    assert_eq!(settings.presentation.caption_layout(0).unwrap().text_x, 20);
+    assert_eq!(settings.presentation.keyboard_overlay_anchor().right_x, 300);
+}
+
+#[test]
+fn presentation_overlay_without_margin_or_padding_keeps_minimum_inset() {
+    let tape = Tape::parse(
+        r#"
+        Set Width 320
+        Set Height 200
+        Set FontSize 20
+        Set Padding 0
+        Caption "Long caption"
+        "#,
+    )
+    .unwrap();
+    let settings = Settings::from_tape(&tape).unwrap();
+
+    // Half of the 18 px caption font (0.9 x FontSize 20).
+    assert_eq!(settings.presentation.caption_overlay_left_x(), 9);
+}
+
+#[test]
+fn presentation_overlay_with_margin_ignores_terminal_padding() {
+    let tape = Tape::parse(
+        r#"
+        Set Width 320
+        Set Height 200
+        Set Margin 16
+        Set Padding 32
+        Set BorderRadius 12
+        Caption "Long caption"
+        "#,
+    )
+    .unwrap();
+    let settings = Settings::from_tape(&tape).unwrap();
+
+    assert_eq!(settings.presentation.caption_overlay_left_x(), 22);
+}
+
+#[test]
+fn corner_keyboard_overlay_does_not_reserve_presentation_row() {
+    let tape = Tape::parse(
+        r#"
+        Set Width 320
+        Set Height 200
+        Set Margin 16
+        Set KeyboardOverlay Input
+        Set KeyboardOverlayLocation BottomRight
+        Type "echo done"
+        "#,
+    )
+    .unwrap();
+    let settings = Settings::from_tape(&tape).unwrap();
+
+    assert_eq!(settings.presentation.presentation_overlay_height(), 0);
+    assert_eq!(
+        settings.presentation.terminal_canvas_height(),
+        settings.presentation.height.saturating_sub(32)
+    );
+}
+
+#[test]
+fn corner_keyboard_overlay_nestles_inside_terminal_edges() {
+    let tape = Tape::parse(
+        r#"
+        Set Width 320
+        Set Height 200
+        Set Margin 16
+        Set WindowBar Colorful
+        Set WindowBarSize 30
+        Set KeyboardOverlay Input
+        Set KeyboardOverlayLocation BottomLeft
+        Type "echo done"
+        "#,
+    )
+    .unwrap();
+    let settings = Settings::from_tape(&tape).unwrap();
+    let anchor = settings.presentation.keyboard_overlay_anchor();
+
+    assert!(matches!(anchor.horizontal, HorizontalAnchor::Left));
+    assert!(matches!(anchor.vertical, VerticalAnchor::Bottom));
+    assert_eq!(anchor.inner_left_x(), 34);
+    assert_eq!(anchor.inner_bottom_y(), 166);
+}
+
+#[test]
+fn caption_row_keeps_the_gradient_behind_its_text() {
+    let tape = Tape::parse(
+        r##"
+        Set Width 320
+        Set Height 200
+        Set Padding 0
+        Set Margin 16
+        Set MarginFill "linear(to: right, #000000, #ffffff)"
+        Caption "Gradient"
+    "##,
+    )
+    .unwrap();
+    let settings = Settings::from_tape(&tape).unwrap();
+    let terminal = Canvas::new(
+        settings.presentation.terminal_canvas_width(),
+        settings.presentation.terminal_canvas_height(),
+        super::super::canvas::rgb(255, 0, 0),
+    )
+    .unwrap()
+    .into_frame();
+    let frame = settings
+        .presentation
+        .decorate_frame_with_overlays(&terminal, Some("Gradient"), &[])
+        .unwrap();
+    let y = settings.presentation.height - settings.presentation.style.effective_margin() - 1;
+    assert_eq!(pixel(&frame, 0, y), [0, 0, 0, 255]);
+    assert_eq!(pixel(&frame, 160, y), [128, 128, 128, 255]);
+    assert_eq!(pixel(&frame, 319, y), [255, 255, 255, 255]);
+    let backdrop = settings.presentation.backdrop.clone().into_frame();
+    let layout = settings.presentation.caption_layout(0).unwrap();
+    assert!((layout.text_y..layout.text_y + layout.text_height)
+        .any(|y| (layout.text_x..160).any(|x| pixel(&frame, x, y) != pixel(&backdrop, x, y))));
+}
+
+fn pixel(frame: &Frame, x: u32, y: u32) -> [u8; 4] {
+    let offset = ((y * frame.width + x) * 4) as usize;
+    frame.pixels[offset..offset + 4].try_into().unwrap()
+}
