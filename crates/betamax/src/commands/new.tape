@@ -28,7 +28,7 @@
 #   Set Padding <number>            Set the padding of the terminal
 #   Set Framerate <number>          Set the framerate of the recording
 #   Set PlaybackSpeed <float>       Set the playback speed of the recording
-#   Set MarginFill <#000000>        Set the color the margin will be filled with.
+#   Set MarginFill <#000000>        Set the margin color, gradient, or `transparent`.
 #   Set Margin <number>             Set the size of the outer margin.
 #   Set BorderRadius <number>       Set terminal border radius, in pixels.
 #   Set WindowBar <string>          Set window bar type. (one of: Rings, RingsRight, Colorful, ColorfulRight)

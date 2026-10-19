@@ -50,7 +50,7 @@ Defaults below describe `Default`, which currently selects `Framed`. See [Preset
 | `WaitTimeout`             | duration or number                                     | `15s`            | Number values are seconds.                  |
 | `WaitPattern`             | regex string                                           | `>$`             | Used by `Wait` without explicit pattern.    |
 | `Margin`                  | number                                                 | `32`             | Outer decoration margin in pixels.          |
-| `MarginFill`              | string                                                 | theme gradient   | Solid color or linear gradient backdrop.    |
+| `MarginFill`              | string                                                 | theme gradient   | Color, linear gradient, or `transparent`.   |
 | `WindowBar`               | `Rings`, `RingsRight`, `Colorful`, or etc.             | `Colorful`       | Left dots; any non-empty value enables bar. |
 | `WindowBarSize`           | number                                                 | `30`             | Bar height in pixels when enabled.          |
 | `WindowBarColor`          | `#rrggbb` string                                       | theme surface    | Invalid colors fall back to theme bg.       |
@@ -185,7 +185,8 @@ Output remains opaque.
 
 ### Margin fill
 
-`MarginFill` accepts a single `#rrggbb` color or Betamax's `linear(...)` gradient syntax:
+`MarginFill` accepts a single color or Betamax's `linear(...)` gradient syntax. A color is
+`#rrggbb`, `#rrggbbaa` with alpha last as in CSS, or `transparent`:
 
 ```tape
 Set Margin 44
@@ -200,11 +201,11 @@ Set MarginFill "linear(angle: 135deg, #4d5b9e 0%, #232640 42%, #0f101a 100%)"
 Without a direction, it runs from top to bottom. A `to:` direction points from the first stop to
 the last, and accepts `top`, `top-right`, `right`, `bottom-right`, `bottom`, `bottom-left`, `left`,
 or `top-left`. `angle: <number>deg` is measured clockwise from upward: `90deg` is left to right and
-`135deg` is top-left to bottom-right. A stop is `#rrggbb` or `#rrggbb <position>%`. When positions
-are omitted, they are distributed evenly; when one stop has a position, every stop must have one,
-in strictly ascending order.
+`135deg` is top-left to bottom-right. A stop is a color, optionally followed by `<position>%`.
+When positions are omitted, they are distributed evenly; when one stop has a position, every stop
+must have one, in strictly ascending order.
 
-This is Betamax syntax, not a CSS parser: it accepts `#rrggbb` colors, `to:` directions, angles,
+This is Betamax syntax, not a CSS parser: it accepts hex colors, `transparent`, `to:` directions, angles,
 and linear stops only. Colors interpolate in sRGB, rounding each channel with a small, fixed ordered
 dither to soften banding in GIFs. The gradient spans the entire output, including rounded window
 corners and the caption row. It does not change the terminal's background or grid.
@@ -215,6 +216,35 @@ margin. Invalid colors and malformed gradients fall back to the active theme bac
 validate` checks tape syntax and command order, so it does not reject malformed fill strings. Radial
 gradients and image fills are not yet supported. See `examples/margin-gradient.tape` for a complete
 example.
+
+#### Transparent margin
+
+`Set MarginFill transparent` leaves the backdrop clear so the output sits on whatever page shows it.
+Alpha colors tint the page or fade a gradient to clear:
+
+```tape
+Set Preset Framed
+Set MarginFill transparent
+Set MarginFill "#0f101a80"
+Set MarginFill "linear(to: bottom, #4d5b9e, transparent)"
+```
+
+Stops with alpha blend premultiplied, so a fade to `transparent` keeps its hue as it clears rather
+than darkening. With `transparent`, the margin, caption row, and the area outside rounded corners
+are fully transparent. The shadow
+becomes translucent black, so it darkens any page. The window, bar, border, and terminal stay opaque.
+Captions and keyboard labels keep their theme colors, so check them against the page they sit on.
+
+| Output             | Transparency                                                          |
+| ------------------ | --------------------------------------------------------------------- |
+| PNG, `Screenshot`  | Full alpha                                                            |
+| PNG sequence, WebP | Full alpha                                                            |
+| WebM               | Full alpha (VP9 `yuva420p`)                                           |
+| GIF                | One bit: partly transparent pixels, including the shadow, are dropped |
+| MP4                | Rejected before the shell starts; H.264 has no alpha                  |
+
+Use PNG or WebP to keep soft shadows and antialiased corners. See
+`examples/margin-transparent.tape`.
 
 ### Window shadow
 

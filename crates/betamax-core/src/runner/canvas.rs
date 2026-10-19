@@ -1,6 +1,7 @@
 //! Owned RGBA canvas for output-frame decoration.
 //!
-//! Blitting, clipping, blending, and geometric masks share one opaque pixel representation.
+//! Blitting, clipping, blending, and geometric masks share one straight-alpha pixel
+//! representation. Pixels are opaque unless the margin fill is transparent.
 //! Window and overlay modules choose the shapes and colors; presentation owns drawing order.
 
 use cosmic_text::Color;
@@ -85,6 +86,32 @@ impl Canvas {
         ]);
     }
 
+    /// Replace one in-bounds pixel with a straight-alpha color; clear pixels store zero color.
+    pub(super) fn set_pixel_alpha(
+        &mut self,
+        x: u32,
+        y: u32,
+        color: libghostty_vt::style::RgbColor,
+        alpha: u8,
+    ) {
+        let offset = self.offset(x, y);
+        let pixel = if alpha == 0 {
+            [0; BYTES_PER_PIXEL]
+        } else {
+            [color.r, color.g, color.b, alpha]
+        };
+        self.pixels[offset..offset + BYTES_PER_PIXEL].copy_from_slice(&pixel);
+    }
+
+    /// Replace every pixel with one straight-alpha color.
+    pub(super) fn fill_alpha(&mut self, color: libghostty_vt::style::RgbColor, alpha: u8) {
+        for y in 0..self.height {
+            for x in 0..self.width {
+                self.set_pixel_alpha(x, y, color, alpha);
+            }
+        }
+    }
+
     /// Copy a frame into this frame at a pixel offset.
     ///
     /// The source is converted to RGBA first, so callers can pass either RGBA or BGRA frames.
@@ -128,8 +155,7 @@ impl Canvas {
 
     /// Fill a clipped rectangle with alpha blending.
     ///
-    /// Alpha fills are composited onto an opaque frame instead of introducing transparent output
-    /// pixels, because the media encoders currently treat rendered frames as opaque RGBA.
+    /// Alpha fills are composited onto the existing pixel; they never make output more transparent.
     fn fill_rect_alpha(
         &mut self,
         x: u32,
@@ -388,7 +414,7 @@ impl Canvas {
     }
 
     /// Mix an existing pixel with a solid color and a same-coordinate backdrop sample.
-    /// The remaining weight belongs to the existing pixel; all three inputs are opaque.
+    /// The remaining weight belongs to the existing pixel; the solid color is opaque.
     pub(super) fn composite_pixel(
         &mut self,
         x: u32,
@@ -400,6 +426,27 @@ impl Canvas {
     ) {
         let offset = self.offset(x, y);
         let background = backdrop.offset(x, y);
+        let existing_alpha = self.pixels[offset + 3];
+        let backdrop_alpha = backdrop.pixels[background + 3];
+        if existing_alpha < OPAQUE_ALPHA || backdrop_alpha < OPAQUE_ALPHA {
+            // Mix premultiplied samples so a clear backdrop fades coverage rather than color.
+            let existing_weight =
+                (1.0 - color_weight - backdrop_weight) * f64::from(existing_alpha) / 255.0;
+            let backdrop_weight = backdrop_weight * f64::from(backdrop_alpha) / 255.0;
+            let alpha = existing_weight + color_weight + backdrop_weight;
+            for (channel, value) in [color.r, color.g, color.b].into_iter().enumerate() {
+                let premultiplied = f64::from(self.pixels[offset + channel]) * existing_weight
+                    + f64::from(value) * color_weight
+                    + f64::from(backdrop.pixels[background + channel]) * backdrop_weight;
+                self.pixels[offset + channel] = if alpha > 0.0 {
+                    (premultiplied / alpha).round().clamp(0.0, 255.0) as u8
+                } else {
+                    0
+                };
+            }
+            self.pixels[offset + 3] = (alpha * 255.0).round().clamp(0.0, 255.0) as u8;
+            return;
+        }
         for (channel, value) in [color.r, color.g, color.b].into_iter().enumerate() {
             self.pixels[offset + channel] = (f64::from(self.pixels[offset + channel])
                 * (1.0 - color_weight - backdrop_weight)

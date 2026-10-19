@@ -439,6 +439,15 @@ where
     /// appearing in GIF/video output.
     fn run_with_capture(&mut self, tape: &Tape, outputs: Outputs) -> Result<RunArtifacts> {
         let mut settings = Settings::from_tape(tape)?;
+        if settings.presentation.style.margin_has_alpha() {
+            if let Some(path) = outputs.mp4s.first() {
+                return Err(miette!(
+                    "MP4 cannot carry MarginFill transparency: {}; use PNG, WebP, WebM, or GIF output",
+                    path.display()
+                )
+                .into());
+            }
+        }
         tracing::debug!(
             columns = settings.columns,
             rows = settings.rows,
@@ -1137,6 +1146,22 @@ mod tests {
     use super::*;
     use crate::media::Frame;
     use crate::runner::capture::{frames_equal, CapturedFrame};
+
+    #[test]
+    fn transparent_margin_rejects_mp4_before_spawning_the_shell() {
+        let tape = Tape::parse(
+            "Output target/betamax-transparent.mp4\nSet MarginFill transparent\nSleep 1ms",
+        )
+        .unwrap();
+        let error = Runner::new(RunOptions::default())
+            .run_artifacts(&tape)
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("MP4 cannot carry MarginFill transparency"),
+            "{error}"
+        );
+    }
 
     #[test]
     fn keyboard_overlay_changes_pixels_without_resizing_output() {
