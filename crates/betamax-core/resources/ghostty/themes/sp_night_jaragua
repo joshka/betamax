@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: MIT
+# Source: https://github.com/sp-night/ghostty/blob/d430783e6305eabd4b167730419e791a14cd5c8e/themes/sp_night_jaragua
+# Bare hexadecimal colors are prefixed with # for Betamax compatibility.
+#
+# MIT License
+#
+# Copyright (c) 2026 sp night
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+# SP Night — Pico do Jaraguá
+# A mesma noite, vista do ponto mais alto da cidade. O escuro do noite girado para o verde da mata fechada — e a torre vermelha e branca acesa no topo.
+#
+# Generated from the SP Night palette — do not edit by hand.
+# https://github.com/sp-night/ghostty
+#
+# install: ~/.config/ghostty/themes/sp_night_jaragua
+# enable:  theme = sp_night_jaragua
+
+palette = 0=#050806
+palette = 1=#ea5d5d
+palette = 2=#79d488
+palette = 3=#f5c66b
+palette = 4=#6e92de
+palette = 5=#b094e2
+palette = 6=#60bfb8
+palette = 7=#868b87
+palette = 8=#707471
+palette = 9=#ff716f
+palette = 10=#8ce99b
+palette = 11=#ffdc9c
+palette = 12=#80a5f2
+palette = 13=#c3a7f6
+palette = 14=#73d2cb
+palette = 15=#e7eee9
+
+background = #0c100d
+foreground = #d3dad5
+cursor-color = #f2984a
+cursor-text = #050806
+selection-background = #202622
+selection-foreground = #d3dad5
+split-divider-color = #323733
+unfocused-split-fill = #050806

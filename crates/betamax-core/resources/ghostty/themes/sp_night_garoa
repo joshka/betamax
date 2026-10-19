@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: MIT
+# Source: https://github.com/sp-night/ghostty/blob/d430783e6305eabd4b167730419e791a14cd5c8e/themes/sp_night_garoa
+# Bare hexadecimal colors are prefixed with # for Betamax compatibility.
+#
+# MIT License
+#
+# Copyright (c) 2026 sp night
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+# SP Night — Garoa
+# A mesma janela, vista através do chuvisco. Cinza chapado — a garoa não esfria a cidade, ela desbota.
+#
+# Generated from the SP Night palette — do not edit by hand.
+# https://github.com/sp-night/ghostty
+#
+# install: ~/.config/ghostty/themes/sp_night_garoa
+# enable:  theme = sp_night_garoa
+
+palette = 0=#151719
+palette = 1=#d87676
+palette = 2=#9acaa2
+palette = 3=#e7cb8a
+palette = 4=#7993cb
+palette = 5=#af97d3
+palette = 6=#77babf
+palette = 7=#8d949f
+palette = 8=#767d88
+palette = 9=#ed8988
+palette = 10=#addeb5
+palette = 11=#fbdf9d
+palette = 12=#8ba6df
+palette = 13=#c2aae7
+palette = 14=#8acdd2
+palette = 15=#dae1ea
+
+background = #1c1e20
+foreground = #c7cdd6
+cursor-color = #e3a068
+cursor-text = #151719
+selection-background = #313436
+selection-foreground = #c7cdd6
+split-divider-color = #414346
+unfocused-split-fill = #151719
