@@ -61,6 +61,10 @@ These settings are applied after the raw terminal frame is rendered:
 | `WindowBar`     | empty / disabled | Synthetic window bar mode    |
 | `WindowBarSize` | `30`             | Window bar height in pixels  |
 | `BorderRadius`  | `0`              | Rounded-corner mask radius   |
+| `Shadow`        | `false`          | Enable a black window shadow |
+| `ShadowBlur`    | `28`             | CSS blur radius in pixels    |
+| `ShadowOffset`  | `9`              | Vertical offset in pixels    |
+| `ShadowOpacity` | `0.55`           | Shadow opacity, clamped 0..1 |
 
 `WindowBar` currently treats any non-empty value as enabled. Modes ending in `Right`, such as
 `RingsRight` and `ColorfulRight`, place the window buttons on the right. Other non-empty values
@@ -95,6 +99,21 @@ an empty string disables the margin. Invalid colors or gradients fall back to th
 background. Fill strings are not checked by the syntax-only `betamax validate` command. Setting a
 theme before or after an explicit fill preserves that fill. See
 [Margin fill](../../reference/tape-reference/#margin-fill) for the full syntax.
+
+`Shadow` is rendered over the full `MarginFill` backdrop after it has resolved its color or
+gradient. `ShadowBlur` follows CSS: sigma is half the blur radius, so the default `28` gives sigma
+`14`. For an unclipped result, use at least `ShadowBlur + abs(ShadowOffset)` pixels of margin
+(about `37` with the defaults); `Margin 44` leaves room for the tail. A gradient or backdrop
+lighter than near-black makes the shadow easier to see.
+
+```tape
+Set Margin 44
+Set MarginFill "linear(to: bottom-right, #4d5b9e 0%, #232640 42%, #0f101a 100%)"
+Set Shadow true
+Set ShadowBlur 28
+Set ShadowOffset 9
+Set ShadowOpacity 0.55
+```
 
 ## Timing and cursor styling
 

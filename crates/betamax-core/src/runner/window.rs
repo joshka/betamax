@@ -1,7 +1,8 @@
 //! Window chrome configuration, dimensions, button styling, and painting.
 
-use super::canvas::{rgb, Canvas};
+use super::canvas::{rgb, Canvas, PixelRect};
 use super::margin::parse_hex_color;
+use super::shadow::Shadow;
 use crate::ghostty::TerminalTheme;
 use crate::media::Frame;
 
@@ -21,7 +22,7 @@ const WINDOW_BUTTON_GAP_RADIUS_MULTIPLIER: u32 = 3;
 ///
 /// Margin and bar dimensions reserve space before the PTY grid is derived. Painting happens after
 /// raw terminal capture, so screenshots, GIFs, videos, and PNG sequences share the same chrome.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub(super) struct WindowStyle {
     /// Outer margin around the captured terminal, in pixels.
     pub(super) margin: u32,
@@ -35,6 +36,8 @@ pub(super) struct WindowStyle {
     pub(super) window_bar_color: String,
     /// Radius for masking the captured terminal plus window bar.
     pub(super) border_radius: u32,
+    /// Static shadow configuration and painting policy.
+    pub(super) shadow: Shadow,
 }
 
 impl WindowStyle {
@@ -51,7 +54,13 @@ impl WindowStyle {
             window_bar_size: DEFAULT_WINDOW_BAR_SIZE,
             window_bar_color: background,
             border_radius: 0,
+            shadow: Shadow::default(),
         }
+    }
+
+    /// Prepare static window effects before terminal pixels are drawn.
+    pub(super) fn prepare_backdrop(&self, backdrop: &mut Canvas, bounds: PixelRect) {
+        self.shadow.prepare(backdrop, bounds, self.border_radius);
     }
 
     /// VHS only applies margin when a margin fill is configured.

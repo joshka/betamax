@@ -51,6 +51,7 @@ mod presentation;
 mod pty;
 mod requirements;
 mod settings;
+mod shadow;
 mod window;
 
 #[doc(inline)]

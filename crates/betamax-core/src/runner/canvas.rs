@@ -340,7 +340,7 @@ impl Canvas {
     }
 
     /// Alpha-blend one pixel over the existing frame color.
-    fn blend_pixel(&mut self, x: u32, y: u32, r: u8, g: u8, b: u8, a: u8) {
+    pub(super) fn blend_pixel(&mut self, x: u32, y: u32, r: u8, g: u8, b: u8, a: u8) {
         let offset = self.offset(x, y);
         let alpha = u16::from(a);
         let inv_alpha = ALPHA_DENOMINATOR - alpha;

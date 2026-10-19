@@ -171,6 +171,16 @@ impl Settings {
                 self.presentation.style.border_radius = *border_radius as u32;
             }
             ("CursorBlink", Value::Bool(cursor_blink)) => self.cursor_blink = *cursor_blink,
+            ("Shadow", Value::Bool(shadow)) => self.presentation.style.shadow.enabled = *shadow,
+            ("ShadowBlur", Value::Number(blur)) => {
+                self.presentation.style.shadow.set_blur(*blur)?
+            }
+            ("ShadowOffset", Value::Number(offset)) => {
+                self.presentation.style.shadow.set_offset(*offset)?
+            }
+            ("ShadowOpacity", Value::Number(opacity)) => {
+                self.presentation.style.shadow.set_opacity(*opacity)?
+            }
             ("KeyboardOverlay", Value::String(mode)) => {
                 self.presentation.keyboard_overlay.mode = parse_keyboard_overlay_mode(mode)?;
             }
@@ -322,6 +332,10 @@ fn known_setting(key: &str) -> bool {
             | "WindowBar"
             | "WindowBarSize"
             | "BorderRadius"
+            | "Shadow"
+            | "ShadowBlur"
+            | "ShadowOffset"
+            | "ShadowOpacity"
             | "CursorBlink"
             | "KeyboardOverlay"
             | "KeyboardOverlayLocation"
@@ -337,9 +351,9 @@ fn setting_expected_type(key: &str) -> &'static str {
         "Shell" | "FontFamily" | "MarginFill" | "WindowBar" | "WaitPattern" | "Theme" => "string",
         "Width" | "Height" | "FontSize" | "LetterSpacing" | "LineHeight" | "Padding"
         | "Framerate" | "PlaybackSpeed" | "LoopOffset" | "Margin" | "WindowBarSize"
-        | "BorderRadius" => "number",
+        | "BorderRadius" | "ShadowBlur" | "ShadowOffset" | "ShadowOpacity" => "number",
         "TypingSpeed" => "duration",
-        "CursorBlink" => "bool",
+        "CursorBlink" | "Shadow" => "bool",
         "KeyboardOverlay" => "Off, Keys, Input, or All",
         "KeyboardOverlayLocation" => "CaptionRow, TopLeft, TopRight, BottomLeft, or BottomRight",
         "WaitTimeout" => "duration or number",
@@ -361,7 +375,6 @@ fn value_kind(value: &Value) -> &'static str {
 mod tests {
     use super::*;
     use crate::runner::keyboard_overlay::{KeyboardOverlayLocation, KeyboardOverlayMode};
-
     #[test]
     fn uses_vhs_typography_defaults() {
         let tape = Tape::parse("").unwrap();
