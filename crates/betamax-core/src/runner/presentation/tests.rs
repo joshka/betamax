@@ -232,6 +232,40 @@ fn caption_row_keeps_the_gradient_behind_its_text() {
         .any(|y| (layout.text_x..160).any(|x| pixel(&frame, x, y) != pixel(&backdrop, x, y))));
 }
 
+#[test]
+fn caption_row_gets_an_opaque_plate_over_a_transparent_margin() {
+    let tape = Tape::parse(
+        r##"
+        Set Preset Framed
+        Set Width 320
+        Set Height 200
+        Set MarginFill transparent
+        Caption "Plate"
+    "##,
+    )
+    .unwrap();
+    let settings = Settings::from_tape(&tape).unwrap();
+    let presentation = &settings.presentation;
+    let terminal = Canvas::new(
+        presentation.terminal_canvas_width(),
+        presentation.terminal_canvas_height(),
+        presentation.theme.background,
+    )
+    .unwrap()
+    .into_frame();
+    let frame = presentation
+        .decorate_frame_with_overlays(&terminal, Some("Plate"), &[])
+        .unwrap();
+    let layout = presentation.caption_layout(0).unwrap();
+    let y = layout.text_y + layout.text_height / 2;
+    let bg = presentation.theme.background;
+    assert_eq!(
+        pixel(&frame, presentation.width / 2, y),
+        [bg.r, bg.g, bg.b, 255]
+    );
+    assert_eq!(pixel(&frame, 0, y)[3], 0);
+}
+
 fn pixel(frame: &Frame, x: u32, y: u32) -> [u8; 4] {
     let offset = ((y * frame.width + x) * 4) as usize;
     frame.pixels[offset..offset + 4].try_into().unwrap()

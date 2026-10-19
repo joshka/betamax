@@ -15,7 +15,7 @@ use super::keyboard_overlay::{
     KeyboardOverlayLocation, KeyboardOverlayMode, KeyboardOverlaySettings, VerticalAnchor,
     KEYBOARD_OVERLAY_CORNER_INSET, KEYBOARD_OVERLAY_LINE_HEIGHT, KEYBOARD_OVERLAY_TEXT_OFFSET_Y,
 };
-use super::margin::margin_backdrop;
+use super::margin::{margin_backdrop, parse_margin_fill};
 use super::window::WindowStyle;
 use super::window_shape::WindowOutline;
 use crate::ghostty::{TerminalTheme, TextSettings};
@@ -30,6 +30,9 @@ const DEFAULT_HEIGHT: u32 = 600;
 
 /// Minimum horizontal presentation-row inset without a margin, relative to caption font size.
 const PRESENTATION_OVERLAY_MIN_INSET_SCALE: f32 = 0.5;
+
+/// Gap between the window and the presentation-row plate drawn over non-opaque margins.
+const PRESENTATION_ROW_PLATE_GAP: u32 = 6;
 
 /// Gap between caption text and right-aligned keyboard chips.
 const PRESENTATION_OVERLAY_GAP: u32 = 16;
@@ -146,11 +149,49 @@ impl Presentation {
                 self.style.bar_color(self.theme.background),
             );
         }
+        self.prepare_presentation_row_plate(outline.rect);
         self.outline = Some(outline);
         self.bar_overlay =
             self.style
                 .prepare_bar(self.width, self.height, self.theme.background)?;
         Ok(())
+    }
+
+    /// Back the presentation row with the theme background when the margin is not opaque.
+    ///
+    /// Captions and keyboard chips use theme colors, so drawing them over clear or translucent
+    /// pixels leaves their contrast to whatever page shows the image. The plate is drawn for the
+    /// whole reserved row, so it stays put as captions change and chips appear.
+    fn prepare_presentation_row_plate(&mut self, shell: PixelRect) {
+        let row_height = self.presentation_overlay_height().min(self.height);
+        let margin_is_opaque = self
+            .style
+            .margin_fill
+            .as_deref()
+            .and_then(parse_margin_fill)
+            .is_none_or(|fill| fill.is_opaque());
+        if row_height == 0 || margin_is_opaque {
+            return;
+        }
+        // Match the window's horizontal extent and leave a visible gap below it, so the plate
+        // reads as a caption strip rather than a misaligned extension of the window.
+        let bottom_y = self.height.saturating_sub(self.style.effective_margin());
+        let top_y = bottom_y
+            .saturating_sub(row_height)
+            .max(shell.y.saturating_add(shell.height))
+            .saturating_add(PRESENTATION_ROW_PLATE_GAP);
+        let rect = PixelRect {
+            x: shell.x,
+            y: top_y,
+            width: shell.width,
+            height: bottom_y.saturating_sub(top_y),
+        };
+        self.window_canvas.fill_rounded_rect_alpha(
+            rect,
+            self.theme.background,
+            u8::MAX,
+            self.style.border_radius,
+        );
     }
 
     /// Width of the terminal canvas before margin and window-bar decoration.
