@@ -85,6 +85,14 @@ The script writes files under `examples/output` and copies them to `target/betam
 local inspection. The GIF previews below are hosted as GitHub Release assets so they can render on
 GitHub and crates.io without storing generated media in the source tree.
 
+## Presentation styles
+
+Tapes use `Framed` by default: Aardvark Ink, 1200×720, 24px text, zero terminal padding,
+left window dots, rounded corners, and a subtle backdrop and shadow. Use `Set Style Bare` for
+terminal content alone, `Set Style Inset` for a compact panel, or `Set Style VHS` for the previous
+Betamax defaults. Explicit settings override styles in either order.
+See [styles and resolved defaults](docs/tape-reference.md#styles) for examples and customization.
+
 ## Tape example
 
 ```tape

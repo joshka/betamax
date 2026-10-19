@@ -13,6 +13,7 @@ use regex::Regex;
 
 use super::keyboard_overlay::{parse_keyboard_overlay_location, parse_keyboard_overlay_mode};
 use super::presentation::Presentation;
+use super::style::Style;
 use crate::ghostty::TerminalTheme;
 use crate::tape::{Command, Tape, Value, WaitPattern};
 use crate::wait::regex_source;
@@ -79,9 +80,8 @@ pub(super) struct Settings {
 impl Settings {
     /// Build execution settings by applying startup commands in tape order.
     ///
-    /// Defaults are intentionally close to VHS output: 1200x600, 50 FPS, 50 ms typing delay, a
-    /// prompt-oriented wait pattern, and the Aardvark Blue theme. After all settings are applied
-    /// the terminal grid is derived from pixel dimensions and text metrics.
+    /// Framed is the default presentation; explicit settings override the selected style.
+    /// After all settings are applied, derive the terminal grid from resolved pixel/text geometry.
     ///
     /// Apply `Set` and `Env`, and reserve caption space when the tape uses captions.
     /// Output paths, waits, key presses, and
@@ -105,10 +105,13 @@ impl Settings {
             env: Vec::new(),
         };
 
+        let style = Style::from_tape(tape)?;
+        style.apply(&mut settings.presentation)?;
+
         for command in &tape.commands {
             match command {
                 Command::Env { key, value } => settings.env.push((key.clone(), value.clone())),
-                Command::Set { key, value } => settings.apply_set(key, value)?,
+                Command::Set { key, value } if key != "Style" => settings.apply_set(key, value)?,
                 Command::Caption(text) if !text.trim().is_empty() => {
                     settings.presentation.caption_overlay = true;
                 }
@@ -116,6 +119,7 @@ impl Settings {
             }
         }
 
+        style.resolve_surfaces(&mut settings.presentation);
         settings.apply_terminal_grid();
         settings.presentation.prepare_backdrop()?;
         Ok(settings)
@@ -420,7 +424,7 @@ mod tests {
     use crate::runner::keyboard_overlay::{KeyboardOverlayLocation, KeyboardOverlayMode};
     #[test]
     fn uses_vhs_typography_defaults() {
-        let tape = Tape::parse("").unwrap();
+        let tape = Tape::parse("Set Style VHS\n").unwrap();
         let settings = Settings::from_tape(&tape).unwrap();
 
         assert_eq!(settings.presentation.width, 1200);
@@ -454,7 +458,11 @@ mod tests {
 
     #[test]
     fn accepts_aardvark_blue_theme() {
-        let tape = Tape::parse(r#"Set Theme "Aardvark Blue""#).unwrap();
+        let tape = Tape::parse(
+            r#"Set Style VHS
+Set Theme "Aardvark Blue""#,
+        )
+        .unwrap();
         let settings = Settings::from_tape(&tape).unwrap();
 
         assert_eq!(settings.presentation.theme.name, "Aardvark Blue");
@@ -462,7 +470,7 @@ mod tests {
 
     #[test]
     fn unknown_settings_are_errors() {
-        let tape = Tape::parse("Set Wdith 900").unwrap();
+        let tape = Tape::parse("Set Style VHS\nSet Wdith 900").unwrap();
         let error = Settings::from_tape(&tape).unwrap_err().to_string();
 
         assert!(error.contains("unsupported Set setting `Wdith`"));
@@ -470,7 +478,11 @@ mod tests {
 
     #[test]
     fn type_mismatched_settings_are_errors() {
-        let tape = Tape::parse(r#"Set Width "wide""#).unwrap();
+        let tape = Tape::parse(
+            r#"Set Style VHS
+Set Width "wide""#,
+        )
+        .unwrap();
         let error = Settings::from_tape(&tape).unwrap_err().to_string();
 
         assert!(error.contains("Set Width expects number, got string"));
@@ -479,8 +491,10 @@ mod tests {
     #[test]
     fn playback_speed_changes_output_delay_not_capture_cadence() {
         for speed in [0.5, 1.0, 2.0] {
-            let tape =
-                Tape::parse(&format!("Set Framerate 50\nSet PlaybackSpeed {speed}")).unwrap();
+            let tape = Tape::parse(&format!(
+                "Set Style VHS\nSet Framerate 50\nSet PlaybackSpeed {speed}"
+            ))
+            .unwrap();
             let settings = Settings::from_tape(&tape).unwrap();
 
             assert_eq!(settings.capture_interval(), Duration::from_millis(20));

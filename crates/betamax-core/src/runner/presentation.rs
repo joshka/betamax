@@ -81,6 +81,11 @@ impl Presentation {
 
     /// Prepare the backdrop once after all startup settings have been applied.
     pub(super) fn prepare_backdrop(&mut self) -> Result<()> {
+        if self.terminal_canvas_width() == 0 || self.terminal_canvas_height() == 0 {
+            return Err(miette::miette!(
+                "Width and Height leave no terminal canvas; increase the dimensions or use Set Style Bare"
+            ).into());
+        }
         self.backdrop = margin_backdrop(
             self.width,
             self.height,

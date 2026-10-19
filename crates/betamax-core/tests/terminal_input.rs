@@ -125,6 +125,7 @@ fn run_fixture(name: &str, commands: &str) -> betamax_core::ghostty::TerminalSta
     let tape = Tape::parse(&format!(
         r#"
         Set Shell "python3 {}"
+        Set Style VHS
         Set Width 1000
         Set Height 640
         Set Padding 0

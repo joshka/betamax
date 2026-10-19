@@ -168,7 +168,7 @@ mod tests {
 
     #[test]
     fn invalid_keyboard_overlay_modes_are_errors() {
-        let tape = Tape::parse("Set KeyboardOverlay floating").unwrap();
+        let tape = Tape::parse("Set Style VHS\nSet KeyboardOverlay floating").unwrap();
         let error = Settings::from_tape(&tape).unwrap_err().to_string();
 
         assert!(error.contains("Set KeyboardOverlay expects Off, Keys, Input, or All"));
@@ -176,7 +176,7 @@ mod tests {
 
     #[test]
     fn keyboard_overlay_location_is_configurable() {
-        let tape = Tape::parse("Set KeyboardOverlayLocation BottomRight").unwrap();
+        let tape = Tape::parse("Set Style VHS\nSet KeyboardOverlayLocation BottomRight").unwrap();
         let settings = Settings::from_tape(&tape).unwrap();
 
         assert_eq!(

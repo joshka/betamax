@@ -6,6 +6,7 @@ use crate::tape::Tape;
 fn caption_layout_shares_terminal_frame_edges_with_keyboard_overlay() {
     let tape = Tape::parse(
         r#"
+        Set Style VHS
         Set Width 320
         Set Height 200
         Set Margin 16
@@ -39,6 +40,7 @@ fn caption_layout_shares_terminal_frame_edges_with_keyboard_overlay() {
 fn presentation_overlay_edges_track_rounded_corner_optics() {
     let tape = Tape::parse(
         r#"
+        Set Style VHS
         Set Width 320
         Set Height 200
         Set Margin 16
@@ -65,6 +67,7 @@ fn presentation_overlay_edges_track_rounded_corner_optics() {
 fn presentation_overlay_without_margin_uses_terminal_padding() {
     let tape = Tape::parse(
         r#"
+        Set Style VHS
         Set Width 320
         Set Height 200
         Set Padding 20
@@ -85,6 +88,7 @@ fn presentation_overlay_without_margin_uses_terminal_padding() {
 fn presentation_overlay_without_margin_or_padding_keeps_minimum_inset() {
     let tape = Tape::parse(
         r#"
+        Set Style VHS
         Set Width 320
         Set Height 200
         Set FontSize 20
@@ -103,6 +107,7 @@ fn presentation_overlay_without_margin_or_padding_keeps_minimum_inset() {
 fn presentation_overlay_with_margin_ignores_terminal_padding() {
     let tape = Tape::parse(
         r#"
+        Set Style VHS
         Set Width 320
         Set Height 200
         Set Margin 16
@@ -121,6 +126,7 @@ fn presentation_overlay_with_margin_ignores_terminal_padding() {
 fn corner_keyboard_overlay_does_not_reserve_presentation_row() {
     let tape = Tape::parse(
         r#"
+        Set Style VHS
         Set Width 320
         Set Height 200
         Set Margin 16
@@ -143,6 +149,7 @@ fn corner_keyboard_overlay_does_not_reserve_presentation_row() {
 fn corner_keyboard_overlay_nestles_inside_terminal_edges() {
     let tape = Tape::parse(
         r#"
+        Set Style VHS
         Set Width 320
         Set Height 200
         Set Margin 16
@@ -167,6 +174,7 @@ fn corner_keyboard_overlay_nestles_inside_terminal_edges() {
 fn caption_row_keeps_the_gradient_behind_its_text() {
     let tape = Tape::parse(
         r##"
+        Set Style VHS
         Set Width 320
         Set Height 200
         Set Padding 0
@@ -219,10 +227,15 @@ fn title_composes_with_other_window_effects_and_caption() {
         Set BorderRadius 11
         Set WindowBorder 2
     "##;
-    let plain =
-        Settings::from_tape(&Tape::parse(&format!("{base}\nCaption Caption")).unwrap()).unwrap();
+    let plain = Settings::from_tape(
+        &Tape::parse(&format!("Set Style VHS\n{base}\nCaption Caption")).unwrap(),
+    )
+    .unwrap();
     let titled = Settings::from_tape(
-        &Tape::parse(&format!("{base}\nSet WindowTitle Title\nCaption Caption")).unwrap(),
+        &Tape::parse(&format!(
+            "Set Style VHS\n{base}\nSet WindowTitle Title\nCaption Caption"
+        ))
+        .unwrap(),
     )
     .unwrap();
     let raw = Canvas::new(
@@ -265,10 +278,11 @@ fn decoration_preserves_every_terminal_pixel_and_grid_with_zero_padding() {
         let source = format!(
             "Set Width 320\nSet Height 200\nSet Padding 0\nSet Margin 20\nSet WindowBar \"{bar}\""
         );
-        let plain = Settings::from_tape(&Tape::parse(&source).unwrap()).unwrap();
+        let plain = Settings::from_tape(&Tape::parse(&format!("Set Style VHS\n{source}")).unwrap())
+            .unwrap();
         let decorated = Settings::from_tape(
             &Tape::parse(&format!(
-                "{source}\nSet BorderRadius 11\nSet WindowBorder 2\nSet WindowBorderOpacity 1"
+                "Set Style VHS\n{source}\nSet BorderRadius 11\nSet WindowBorder 2\nSet WindowBorderOpacity 1"
             ))
             .unwrap(),
         )
@@ -304,7 +318,8 @@ fn decoration_preserves_every_terminal_pixel_and_grid_with_zero_padding() {
 
 #[test]
 fn decoration_rejects_insufficient_margin_instead_of_cropping_cells() {
-    let tape = Tape::parse("Set Padding 0\nSet Margin 0\nSet BorderRadius 11").unwrap();
+    let tape =
+        Tape::parse("Set Style VHS\nSet Padding 0\nSet Margin 0\nSet BorderRadius 11").unwrap();
     let error = Settings::from_tape(&tape).unwrap_err().to_string();
     assert!(error.contains("increase Margin"), "{error}");
 }

@@ -53,6 +53,7 @@ mod pty;
 mod requirements;
 mod settings;
 mod shadow;
+mod style;
 mod window;
 mod window_shape;
 mod window_title;
@@ -105,6 +106,12 @@ pub trait TerminalSession {
     ///
     /// Returns an error when the terminal backend cannot render a frame.
     fn capture_frame_with_cursor(&mut self, cursor_visible: bool) -> Result<Frame>;
+
+    /// Whether this backend can follow app titles when enabled by a presentation default.
+    /// Backends implementing title events should return `true`.
+    fn supports_title_capture(&self) -> bool {
+        false
+    }
 
     /// Enable lossless OSC title observation for this capture session.
     ///
@@ -431,7 +438,7 @@ where
     /// PTY bytes into the terminal so hidden cleanup commands can affect final state without
     /// appearing in GIF/video output.
     fn run_with_capture(&mut self, tape: &Tape, outputs: Outputs) -> Result<RunArtifacts> {
-        let settings = Settings::from_tape(tape)?;
+        let mut settings = Settings::from_tape(tape)?;
         tracing::debug!(
             columns = settings.columns,
             rows = settings.rows,
@@ -453,6 +460,12 @@ where
             theme: settings.presentation.theme.clone(),
         })?;
         tracing::trace!("opened Ghostty frame capture");
+        let explicit_title_follow = tape.commands.iter().any(|command| {
+            matches!(command, Command::Set { key, .. } if key == "WindowTitleFromTerminal")
+        });
+        if !terminal.supports_title_capture() && !explicit_title_follow {
+            settings.presentation.style.window_title.follow_terminal = false;
+        }
         if settings.presentation.style.window_title.follow_terminal {
             terminal.enable_title_capture()?;
             // Shell startup is observed but is not part of recorded playback.
@@ -1129,6 +1142,7 @@ mod tests {
     fn keyboard_overlay_changes_pixels_without_resizing_output() {
         let tape = Tape::parse(
             r#"
+            Set Style VHS
             Set Width 180
             Set Height 120
             Set Padding 0
@@ -1161,6 +1175,7 @@ mod tests {
     fn frame_style_reduces_terminal_canvas_like_vhs() {
         let tape = Tape::parse(
             r#"
+            Set Style VHS
             Set Width 900
             Set Height 480
             Set Margin 12
@@ -1181,6 +1196,7 @@ mod tests {
     fn empty_margin_fill_disables_margin_like_vhs() {
         let tape = Tape::parse(
             r#"
+            Set Style VHS
             Set Width 900
             Set Height 480
             Set Margin 12
@@ -1198,6 +1214,7 @@ mod tests {
     fn decoration_keeps_requested_output_dimensions() {
         let tape = Tape::parse(
             r#"
+            Set Style VHS
             Set Width 10
             Set Height 8
             Set Padding 0
@@ -1227,6 +1244,7 @@ mod tests {
     fn caption_decoration_preserves_dimensions_and_changes_pixels() {
         let tape = Tape::parse(
             r#"
+            Set Style VHS
             Set Width 180
             Set Height 120
             Set Padding 0
@@ -1259,6 +1277,7 @@ mod tests {
     fn caption_text_keeps_padding_inset_without_margin() {
         let tape = Tape::parse(
             r#"
+            Set Style VHS
             Set Width 320
             Set Height 120
             Set Padding 20
@@ -1300,6 +1319,7 @@ mod tests {
     fn presentation_overlays_reserve_space_below_terminal_canvas() {
         let tape = Tape::parse(
             r#"
+            Set Style VHS
             Set Width 220
             Set Height 180
             Set Padding 0

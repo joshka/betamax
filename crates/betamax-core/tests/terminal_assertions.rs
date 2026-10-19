@@ -11,6 +11,7 @@ fn run(commands: &str) -> betamax_core::Result<betamax_core::RunArtifacts> {
     let tape = Tape::parse(&format!(
         r#"
         Set Shell "python3 {}"
+        Set Style VHS
         Set Width 400
         Set Height 240
         Set Padding 0

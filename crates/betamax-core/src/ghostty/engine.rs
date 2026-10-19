@@ -227,6 +227,10 @@ impl TerminalSession for GhosttySession {
         log_pty_write_finish(bytes);
     }
 
+    fn supports_title_capture(&self) -> bool {
+        true
+    }
+
     fn enable_title_capture(&mut self) -> Result<()> {
         self.title_capture
             .install(&mut self.terminal, Rc::clone(&self.renderer))

@@ -40,6 +40,7 @@ fn title_changes_follow_last_writer_and_preserve_bursts_and_raw_json() {
         r#"
         Output {root}/frames
         Set Shell "python3 {fixture}"
+        Set Style VHS
         Set Width 400
         Set Height 240
         Set Padding 0
@@ -138,6 +139,7 @@ fn app_titles_do_not_change_the_bar_without_opt_in() {
     let source = format!(
         r#"
         Set Shell "python3 {fixture}"
+        Set Style VHS
         Set Width 400
         Set Height 240
         Set Padding 0
@@ -194,6 +196,7 @@ fn hidden_title_bursts_only_show_the_latest_value() {
         r#"
         Output {root}/frames
         Set Shell "python3 {fixture} startup"
+        Set Style VHS
         Set Width 400
         Set Height 240
         Set Padding 0

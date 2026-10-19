@@ -1,0 +1,105 @@
+use super::*;
+use crate::runner::settings::Settings;
+
+fn settings(source: &str) -> Settings {
+    Settings::from_tape(&Tape::parse(source).unwrap()).unwrap()
+}
+
+#[test]
+fn implicit_and_explicit_framed_share_the_complete_baseline() {
+    let implicit = settings("");
+    let explicit = settings("Set Style Framed");
+    assert_eq!(implicit.presentation.style, explicit.presentation.style);
+    assert_eq!((implicit.columns, implicit.rows), (81, 26));
+    assert_eq!(implicit.presentation.theme.name, "Aardvark Ink");
+    assert_eq!(implicit.presentation.text.font_size, 24.0);
+    assert_eq!(implicit.presentation.text.padding, 0);
+    assert_eq!(
+        (implicit.presentation.width, implicit.presentation.height),
+        (1200, 720)
+    );
+    assert!(implicit.presentation.style.window_title.follow_terminal);
+}
+
+#[test]
+fn explicit_values_override_styles_in_either_order_and_last_value_wins() {
+    for source in [
+        "Set Margin 44\nSet Padding 0\nSet Shadow false\nSet WindowBar \"\"\nSet WindowBorder 0\nSet Style Framed",
+        "Set Style Framed\nSet Margin 44\nSet Padding 0\nSet Shadow false\nSet WindowBar \"\"\nSet WindowBorder 0",
+    ] {
+        let settings = settings(source);
+        let style = &settings.presentation.style;
+        assert_eq!(style.margin, 44);
+        assert_eq!(settings.presentation.text.padding, 0);
+        assert!(!style.shadow.enabled);
+        assert!(style.window_bar.is_empty());
+        assert_eq!(style.border.width, 0);
+    }
+    let repeated = settings("Set Margin 44\nSet Style Bare\nSet Margin 12\nSet Style Framed");
+    assert_eq!(repeated.presentation.style.margin, 12);
+}
+
+#[test]
+fn styles_have_distinct_geometry_and_vhs_restores_old_defaults() {
+    let bare = settings("Set Style Bare");
+    assert_eq!(
+        (
+            bare.presentation.style.margin,
+            bare.presentation.text.padding
+        ),
+        (0, 0)
+    );
+    assert_eq!((bare.columns, bare.rows), (85, 30));
+    let inset = settings("Set Style Inset");
+    assert_eq!(inset.presentation.style.margin, 16);
+    assert!(inset.presentation.style.window_bar.is_empty());
+    assert!(!inset.presentation.style.shadow.enabled);
+    let vhs = settings("Set Style VHS");
+    assert_eq!(vhs.presentation.theme.name, "Aardvark Blue");
+    assert_eq!(vhs.presentation.height, 600);
+    assert_eq!(vhs.presentation.text.font_size, 22.0);
+    assert_eq!(vhs.presentation.text.padding, 60);
+    assert!(!vhs.presentation.style.window_title.follow_terminal);
+}
+
+#[test]
+fn final_theme_drives_surfaces_without_erasing_explicit_colors() {
+    for source in [
+        "Set MarginFill \"#123456\"\nSet WindowBarColor \"#abcdef\"\nSet Theme \"GitHub Light Default\"\nSet Style Framed",
+        "Set Style Framed\nSet Theme \"GitHub Light Default\"\nSet MarginFill \"#123456\"\nSet WindowBarColor \"#abcdef\"",
+    ] {
+        let result = settings(source);
+        assert_eq!(result.presentation.style.margin_fill.as_deref(), Some("#123456"));
+        assert_eq!(result.presentation.style.window_bar_color_override.as_deref(), Some("#abcdef"));
+    }
+    let light = settings("Set Theme \"GitHub Light Default\"");
+    let dark = settings("");
+    assert_ne!(
+        light.presentation.style.margin_fill,
+        dark.presentation.style.margin_fill
+    );
+}
+
+#[test]
+fn invalid_styles_fail_even_when_overridden() {
+    for source in [
+        "Set Style Unknown",
+        "Set Style 1",
+        "Set Style false",
+        "Set Style Unknown\nSet Style Bare",
+    ] {
+        assert!(
+            Settings::from_tape(&Tape::parse(source).unwrap()).is_err(),
+            "{source}"
+        );
+    }
+}
+
+#[test]
+fn tiny_framed_dimensions_fail_before_capture_instead_of_panicking() {
+    let tape = Tape::parse("Set Width 80\nSet Height 60").unwrap();
+    let error = Settings::from_tape(&tape).unwrap_err().to_string();
+    assert!(error.contains("leave no terminal canvas"), "{error}");
+    let bare = settings("Set Style Bare\nSet Width 80\nSet Height 60");
+    assert!(bare.columns > 0 && bare.rows > 0);
+}
