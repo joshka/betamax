@@ -49,7 +49,7 @@ jobs:
       # scope or in CI. GITHUB_TOKEN owns the comment; the PAT is used only for media uploads.
       # The pinned reporter checks run/PR metadata, artifact digests, sizes and signatures.
       - name: Publish PR-built CLI previews
-        uses: joshka/betamax-action/report@46a3673d7a5dd7696b862848cb7e9902d797094d # local binary support
+        uses: joshka/betamax-action/report@841f2eaa1772841fcae285ea6a3fe46f96c5d3ba # local binary support
         with:
           workflow: ci.yml
           comment-key: cli

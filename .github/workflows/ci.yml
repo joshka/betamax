@@ -37,7 +37,7 @@ jobs:
           persist-credentials: false
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # master
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
         with:
           toolchain: stable
           components: clippy
@@ -49,7 +49,7 @@ jobs:
         run: rustup toolchain install beta --component clippy
 
       - name: Install mise tools
-        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
         with:
           install: true
 
@@ -108,12 +108,12 @@ jobs:
           persist-credentials: false
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # master
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
         with:
           toolchain: stable
 
       - name: Install mise tools
-        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
         with:
           install: true
 
@@ -153,7 +153,7 @@ jobs:
       - name: Upload renderer checkpoints
         id: raw-checkpoints
         if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: renderer-fidelity-${{ matrix.os }}
           path: target/renderer-fidelity
@@ -188,7 +188,7 @@ jobs:
 
       - name: Upload terminal input diagnostics
         if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: terminal-input-${{ matrix.os }}
           path: |
@@ -210,7 +210,7 @@ jobs:
       - name: Upload renderer gallery
         id: gallery-upload
         if: ${{ always() && steps.gallery.outputs.available == 'true' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           path: target/renderer-gallery/renderer-fidelity-${{ matrix.os }}.html
           archive: false
@@ -270,7 +270,7 @@ jobs:
           persist-credentials: false
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # master
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
         with:
           toolchain: stable
 
@@ -278,7 +278,7 @@ jobs:
         run: rustup toolchain install nightly --component rustfmt
 
       - name: Install mise tools
-        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
         with:
           install: true
 
@@ -312,7 +312,7 @@ jobs:
       - name: Render tapes with the PR CLI
         id: previews
         if: runner.os == 'Linux'
-        uses: joshka/betamax-action@46a3673d7a5dd7696b862848cb7e9902d797094d # local binary support
+        uses: joshka/betamax-action@841f2eaa1772841fcae285ea6a3fe46f96c5d3ba # local binary support
         with:
           binary: target/debug/betamax
           tapes: |
@@ -333,7 +333,7 @@ jobs:
         if: runner.os == 'Linux'
         env:
           BETAMAX_FEATURE_ROOT: ${{ github.workspace }}
-        uses: joshka/betamax-action@46a3673d7a5dd7696b862848cb7e9902d797094d # local binary support
+        uses: joshka/betamax-action@841f2eaa1772841fcae285ea6a3fe46f96c5d3ba # local binary support
         with:
           binary: target/debug/betamax
           tapes: examples/features/*.tape
@@ -350,7 +350,7 @@ jobs:
 
       - name: Upload feature guide and checkpoints
         if: ${{ always() && runner.os == 'Linux' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: feature-checkpoints
           path: target/features
@@ -359,7 +359,7 @@ jobs:
       - name: Publish standalone feature guide
         id: feature-guide
         if: ${{ always() && runner.os == 'Linux' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           path: target/features/feature-gallery.html
           archive: false
@@ -410,7 +410,7 @@ jobs:
           persist-credentials: false
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # master
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
         with:
           toolchain: stable
 
@@ -418,7 +418,7 @@ jobs:
         run: rustup toolchain install nightly
 
       - name: Install mise tools
-        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
         with:
           install: true
 
@@ -431,7 +431,7 @@ jobs:
           cache-targets: true
 
       - name: Install cargo maintenance tools
-        uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2.87.26
+        uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
         with:
           tool: ${{ matrix.tools }}
           fallback: none
