@@ -109,7 +109,8 @@ Set MarginFill "#c8c8c8"
 Set BorderRadius 12
 {extra}"##
         );
-        Settings::from_tape(&Tape::parse(&format!("Set Style VHS\n{source}")).unwrap()).unwrap()
+        Settings::from_tape(&Tape::parse(&format!("Set Preset Default-0.1\n{source}")).unwrap())
+            .unwrap()
     }
 
     fn decorated(settings: &Settings) -> Frame {
@@ -166,7 +167,7 @@ Set BorderRadius 12
                 "Set ShadowBlur expects number, got bool",
             ),
         ] {
-            let tape = Tape::parse(&format!("Set Style VHS\n{source}")).unwrap();
+            let tape = Tape::parse(&format!("Set Preset Default-0.1\n{source}")).unwrap();
             let error = Settings::from_tape(&tape).unwrap_err().to_string();
             assert!(error.contains(expected), "{source}: {error}");
         }

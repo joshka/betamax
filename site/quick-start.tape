@@ -8,6 +8,8 @@ Output site/public/assets/betamax-hero-quick-start.gif
 Require cargo
 Require cargo-binstall
 
+# Preserve the frameless 0.1 capture inside the site's existing TV frame.
+Set Preset Default-0.1
 Set Shell "bash"
 Set Theme "Betamax Brownout"
 # The TV frame wants a 780x520 terminal viewport with 80px of overscan padding around it.

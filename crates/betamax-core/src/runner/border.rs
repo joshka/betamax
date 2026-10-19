@@ -223,11 +223,11 @@ mod tests {
     #[test]
     fn window_border_settings_preserve_geometry_and_theme_overrides() {
         let plain = Settings::from_tape(
-            &Tape::parse("Set Style VHS\nSet Width 160\nSet Height 140").unwrap(),
+            &Tape::parse("Set Preset Default-0.1\nSet Width 160\nSet Height 140").unwrap(),
         )
         .unwrap();
         let border = Settings::from_tape(&Tape::parse(
-            "Set Style VHS\nSet Width 160\nSet Height 140\nSet WindowBorder 1.9\nSet WindowBorderOpacity 2\nSet WindowBorderColor \"#123456\"\nSet Theme \"Aardvark Blue\""
+            "Set Preset Default-0.1\nSet Width 160\nSet Height 140\nSet WindowBorder 1.9\nSet WindowBorderOpacity 2\nSet WindowBorderColor \"#123456\"\nSet Theme \"Aardvark Blue\""
         ).unwrap()).unwrap();
         assert_eq!(border.presentation.style.border.width, 1);
         assert_eq!(border.presentation.style.border.opacity, 1.0);
@@ -248,7 +248,7 @@ mod tests {
         );
         let auto = Settings::from_tape(
             &Tape::parse(
-                "Set Style VHS\nSet WindowBorderColor \"#123456\"\nSet WindowBorderColor auto",
+                "Set Preset Default-0.1\nSet WindowBorderColor \"#123456\"\nSet WindowBorderColor auto",
             )
             .unwrap(),
         )
@@ -261,8 +261,10 @@ mod tests {
             "Set WindowBorderOpacity true",
         ] {
             assert!(
-                Settings::from_tape(&Tape::parse(&format!("Set Style VHS\n{source}")).unwrap())
-                    .is_err(),
+                Settings::from_tape(
+                    &Tape::parse(&format!("Set Preset Default-0.1\n{source}")).unwrap()
+                )
+                .is_err(),
                 "{source}"
             );
         }

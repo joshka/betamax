@@ -97,7 +97,7 @@ requirement to preserve these exact files when a better boundary becomes clear.
 
 - [`settings.rs`](../crates/betamax-core/src/runner/settings.rs): startup assembly, tape-order `Set`
   dispatch, common diagnostics, execution defaults and timing, and PTY-grid derivation.
-- [`style.rs`](../crates/betamax-core/src/runner/style.rs): named appearance baselines, style
+- [`preset.rs`](../crates/betamax-core/src/runner/preset.rs): named appearance baselines, preset
   selection, and final-theme surface defaults. Explicit startup settings override the baseline.
 - [`presentation.rs`](../crates/betamax-core/src/runner/presentation.rs): shared bounds and
   placement, composition order, and the prepared backdrop cache. Both PTY sizing and decoration use

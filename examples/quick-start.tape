@@ -5,6 +5,8 @@ Require cargo
 Require cargo-binstall
 
 # Use the local Brownout Ghostty theme and a warm outer margin.
+# Preserve the curated website/README presentation on regeneration.
+Set Preset Default-0.1
 Set Shell "bash"
 Set Theme "Betamax Brownout"
 Set Width 1032

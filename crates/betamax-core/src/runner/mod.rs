@@ -49,11 +49,11 @@ mod keyboard_overlay;
 mod margin;
 mod options;
 mod presentation;
+mod preset;
 mod pty;
 mod requirements;
 mod settings;
 mod shadow;
-mod style;
 mod window;
 mod window_shape;
 mod window_title;
@@ -1142,7 +1142,7 @@ mod tests {
     fn keyboard_overlay_changes_pixels_without_resizing_output() {
         let tape = Tape::parse(
             r#"
-            Set Style VHS
+            Set Preset Default-0.1
             Set Width 180
             Set Height 120
             Set Padding 0
@@ -1175,7 +1175,7 @@ mod tests {
     fn frame_style_reduces_terminal_canvas_like_vhs() {
         let tape = Tape::parse(
             r#"
-            Set Style VHS
+            Set Preset Default-0.1
             Set Width 900
             Set Height 480
             Set Margin 12
@@ -1196,7 +1196,7 @@ mod tests {
     fn empty_margin_fill_disables_margin_like_vhs() {
         let tape = Tape::parse(
             r#"
-            Set Style VHS
+            Set Preset Default-0.1
             Set Width 900
             Set Height 480
             Set Margin 12
@@ -1214,7 +1214,7 @@ mod tests {
     fn decoration_keeps_requested_output_dimensions() {
         let tape = Tape::parse(
             r#"
-            Set Style VHS
+            Set Preset Default-0.1
             Set Width 10
             Set Height 8
             Set Padding 0
@@ -1244,7 +1244,7 @@ mod tests {
     fn caption_decoration_preserves_dimensions_and_changes_pixels() {
         let tape = Tape::parse(
             r#"
-            Set Style VHS
+            Set Preset Default-0.1
             Set Width 180
             Set Height 120
             Set Padding 0
@@ -1277,7 +1277,7 @@ mod tests {
     fn caption_text_keeps_padding_inset_without_margin() {
         let tape = Tape::parse(
             r#"
-            Set Style VHS
+            Set Preset Default-0.1
             Set Width 320
             Set Height 120
             Set Padding 20
@@ -1319,7 +1319,7 @@ mod tests {
     fn presentation_overlays_reserve_space_below_terminal_canvas() {
         let tape = Tape::parse(
             r#"
-            Set Style VHS
+            Set Preset Default-0.1
             Set Width 220
             Set Height 180
             Set Padding 0

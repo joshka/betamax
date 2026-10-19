@@ -9,46 +9,49 @@ use crate::Result;
 
 /// A visual baseline, independent of capture timing and output format.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub(super) enum Style {
+pub(super) enum Preset {
     #[default]
     Framed,
     Bare,
     Inset,
-    Vhs,
+    Default01,
 }
 
-impl Style {
-    /// Last style wins. Validate every occurrence, including overridden selections.
+impl Preset {
+    /// Last preset wins. Validate every occurrence, including overridden selections.
     pub(super) fn from_tape(tape: &Tape) -> Result<Self> {
-        let mut style = Self::default();
+        let mut preset = Self::default();
         for command in &tape.commands {
             if let Command::Set { key, value } = command {
-                if key != "Style" {
+                if key != "Preset" {
                     continue;
                 }
                 let Value::String(name) = value else {
-                    return Err(miette!("Set Style expects Framed, Bare, Inset, or VHS").into());
+                    return Err(miette!(
+                        "Set Preset expects Default, Framed, Bare, Inset, or Default-0.1"
+                    )
+                    .into());
                 };
-                style = match name.to_ascii_lowercase().as_str() {
+                preset = match name.to_ascii_lowercase().as_str() {
+                    "default" => Self::default(),
                     "framed" => Self::Framed,
                     "bare" => Self::Bare,
                     "inset" => Self::Inset,
-                    "vhs" => Self::Vhs,
-                    _ => {
-                        return Err(miette!(
-                            "unknown Style `{name}`; expected Framed, Bare, Inset, or VHS"
-                        )
-                        .into())
-                    }
+                    "default-0.1" => Self::Default01,
+                    _ => return Err(miette!(
+                        "unknown Preset `{name}`; expected Default, Framed, Bare, Inset, or Default-0.1"
+                    )
+                    .into()),
                 };
             }
         }
-        Ok(style)
+        Ok(preset)
     }
 
-    /// Apply one baseline before ordinary Set commands. VHS retains the former runtime defaults.
+    /// Apply one baseline before ordinary Set commands. Default-0.1 retains the pre-preset runtime
+    /// defaults.
     pub(super) fn apply(self, presentation: &mut Presentation) -> Result<()> {
-        if self == Self::Vhs {
+        if self == Self::Default01 {
             return Ok(());
         }
         presentation.theme = TerminalTheme::from_name("Aardvark Ink")?;
@@ -75,7 +78,7 @@ impl Style {
 
     /// Theme-derived style surfaces follow the final theme; explicit colors remain authoritative.
     pub(super) fn resolve_surfaces(self, presentation: &mut Presentation) {
-        if matches!(self, Self::Bare | Self::Vhs) {
+        if matches!(self, Self::Bare | Self::Default01) {
             return;
         }
         let bg = presentation.theme.background;

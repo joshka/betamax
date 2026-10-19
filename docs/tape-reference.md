@@ -27,45 +27,45 @@ An extensionless `Output` path is treated as a directory for numbered PNG frames
 
 ## Settings
 
-Defaults below describe `Framed`, the default style. See [Styles](#styles) for alternatives.
+Defaults below describe `Default`, which currently selects `Framed`. See [Presets](#presets) for alternatives.
 
-| Setting                   | Value                                      | Default          | Notes                                       |
-| ------------------------- | ------------------------------------------ | ---------------- | ------------------------------------------- |
-| `Shell`                   | string                                     | `$SHELL` or `sh` | Shell argv is split with shell-like rules.  |
-| `Theme`                   | theme name or inline JSON string           | `Aardvark Ink`   | Theme names use Ghostty-style lookup.       |
-| `FontFamily`              | string                                     | `JetBrains Mono` | Falls back through the font system.         |
-| `FontSize`                | number                                     | `24`             | Pixels.                                     |
-| `LetterSpacing`           | number                                     | `0`              | Additional pixels between cells.            |
-| `LineHeight`              | number                                     | `1`              | Multiplier applied to font size.            |
-| `Width`                   | number                                     | `1200`           | Final output width in pixels.               |
-| `Height`                  | number                                     | `720`            | Final output height in pixels.              |
-| `Padding`                 | number                                     | `0`              | Inner padding before terminal cells.        |
-| `Framerate`               | number                                     | `50`             | Capture cadence in frames per second.       |
-| `TypingSpeed`             | duration                                   | `50ms`           | Default delay between typed characters.     |
-| `PlaybackSpeed`           | number                                     | `1.0`            | Changes output playback, not PTY timing.    |
-| `LoopOffset`              | number                                     | `0.0`            | `0..=1` is a fraction; otherwise seconds.   |
-| `CursorBlink`             | bool                                       | `true`           | Simulates a half-second blink cadence.      |
-| KeyboardOverlay           | `Off`, `Keys`, `Input`, or `All`           | `Off`            | Shows recent input chips in media.          |
-| KeyboardOverlayLocation   | `CaptionRow`, `TopLeft`, `TopRight`, etc.  | `CaptionRow`     | Places keyboard overlay chips.              |
-| `WaitTimeout`             | duration or number                         | `15s`            | Number values are seconds.                  |
-| `WaitPattern`             | regex string                               | `>$`             | Used by `Wait` without explicit pattern.    |
-| `Margin`                  | number                                     | `32`             | Outer decoration margin in pixels.          |
-| `MarginFill`              | string                                     | theme gradient   | Solid color or linear gradient backdrop.    |
-| `WindowBar`               | `Rings`, `RingsRight`, `Colorful`, or etc. | `Colorful`       | Left dots; any non-empty value enables bar. |
-| `WindowBarSize`           | number                                     | `30`             | Bar height in pixels when enabled.          |
-| `WindowBarColor`          | `#rrggbb` string                           | theme surface    | Invalid colors fall back to theme bg.       |
-| `WindowTitle`             | string                                     | empty / disabled | Initial centered window bar title.          |
-| `WindowTitleFromTerminal` | bool                                       | `true`           | Let OSC 0/2 update the window title.        |
-| `WindowTitleColor`        | `auto` or `#rrggbb` string                 | auto             | Invalid colors use automatic contrast.      |
-| `BorderRadius`            | number                                     | `11`             | Rounded-corner mask radius in pixels.       |
-| `WindowBorder`            | number                                     | `1`              | Shell outline width; zero disables.         |
-| `WindowBorderColor`       | string                                     | `auto`           | Auto contrast or explicit `#rrggbb`.        |
-| `WindowBorderOpacity`     | number                                     | `0.15`           | Outline opacity, clamped to 0–1.            |
-| `Style`                   | `Framed`, `Bare`, `Inset`, or `VHS`        | `Framed`         | Baseline for appearance settings.           |
-| `Shadow`                  | bool                                       | `true`           | Outer window shadow.                        |
-| `ShadowBlur`              | number                                     | `20`             | CSS blur radius in pixels.                  |
-| `ShadowOffset`            | number                                     | `6`              | Vertical shadow offset in pixels.           |
-| `ShadowOpacity`           | number                                     | `0.55`           | Shadow opacity, clamped to 0–1.             |
+| Setting                   | Value                                                  | Default          | Notes                                       |
+| ------------------------- | ------------------------------------------------------ | ---------------- | ------------------------------------------- |
+| `Shell`                   | string                                                 | `$SHELL` or `sh` | Shell argv is split with shell-like rules.  |
+| `Theme`                   | theme name or inline JSON string                       | `Aardvark Ink`   | Theme names use Ghostty-style lookup.       |
+| `FontFamily`              | string                                                 | `JetBrains Mono` | Falls back through the font system.         |
+| `FontSize`                | number                                                 | `24`             | Pixels.                                     |
+| `LetterSpacing`           | number                                                 | `0`              | Additional pixels between cells.            |
+| `LineHeight`              | number                                                 | `1`              | Multiplier applied to font size.            |
+| `Width`                   | number                                                 | `1200`           | Final output width in pixels.               |
+| `Height`                  | number                                                 | `720`            | Final output height in pixels.              |
+| `Padding`                 | number                                                 | `0`              | Inner padding before terminal cells.        |
+| `Framerate`               | number                                                 | `50`             | Capture cadence in frames per second.       |
+| `TypingSpeed`             | duration                                               | `50ms`           | Default delay between typed characters.     |
+| `PlaybackSpeed`           | number                                                 | `1.0`            | Changes output playback, not PTY timing.    |
+| `LoopOffset`              | number                                                 | `0.0`            | `0..=1` is a fraction; otherwise seconds.   |
+| `CursorBlink`             | bool                                                   | `true`           | Simulates a half-second blink cadence.      |
+| KeyboardOverlay           | `Off`, `Keys`, `Input`, or `All`                       | `Off`            | Shows recent input chips in media.          |
+| KeyboardOverlayLocation   | `CaptionRow`, `TopLeft`, `TopRight`, etc.              | `CaptionRow`     | Places keyboard overlay chips.              |
+| `WaitTimeout`             | duration or number                                     | `15s`            | Number values are seconds.                  |
+| `WaitPattern`             | regex string                                           | `>$`             | Used by `Wait` without explicit pattern.    |
+| `Margin`                  | number                                                 | `32`             | Outer decoration margin in pixels.          |
+| `MarginFill`              | string                                                 | theme gradient   | Solid color or linear gradient backdrop.    |
+| `WindowBar`               | `Rings`, `RingsRight`, `Colorful`, or etc.             | `Colorful`       | Left dots; any non-empty value enables bar. |
+| `WindowBarSize`           | number                                                 | `30`             | Bar height in pixels when enabled.          |
+| `WindowBarColor`          | `#rrggbb` string                                       | theme surface    | Invalid colors fall back to theme bg.       |
+| `WindowTitle`             | string                                                 | empty / disabled | Initial centered window bar title.          |
+| `WindowTitleFromTerminal` | bool                                                   | `true`           | Let OSC 0/2 update the window title.        |
+| `WindowTitleColor`        | `auto` or `#rrggbb` string                             | auto             | Invalid colors use automatic contrast.      |
+| `BorderRadius`            | number                                                 | `11`             | Rounded-corner mask radius in pixels.       |
+| `WindowBorder`            | number                                                 | `1`              | Shell outline width; zero disables.         |
+| `WindowBorderColor`       | string                                                 | `auto`           | Auto contrast or explicit `#rrggbb`.        |
+| `WindowBorderOpacity`     | number                                                 | `0.15`           | Outline opacity, clamped to 0–1.            |
+| `Preset`                  | `Default`, `Framed`, `Bare`, `Inset`, or `Default-0.1` | `Default`        | Baseline for appearance settings.           |
+| `Shadow`                  | bool                                                   | `true`           | Outer window shadow.                        |
+| `ShadowBlur`              | number                                                 | `20`             | CSS blur radius in pixels.                  |
+| `ShadowOffset`            | number                                                 | `6`              | Vertical shadow offset in pixels.           |
+| `ShadowOpacity`           | number                                                 | `0.55`           | Shadow opacity, clamped to 0–1.             |
 
 Unknown settings and type mismatches are errors. For example, `Set Wdith 900` and
 `Set Width "wide"` fail before the shell starts instead of silently falling back to defaults.
@@ -103,25 +103,27 @@ with startup files and history disabled where possible. Those shells use the VHS
 prompt by default, so captures do not inherit prompts such as `bash-5.3$` from the host
 environment.
 
-### Styles
+### Presets
 
-An unconfigured tape uses `Framed`. `Set Style Framed` selects that same definition explicitly.
-Style names are case-insensitive. When repeated, the last `Set Style` selects the baseline.
-Ordinary `Set` values override it regardless of their position relative to `Set Style`; repeated
+An unconfigured tape uses `Default`, which currently selects `Framed`. `Set Preset Default`
+selects the current default explicitly; `Set Preset Framed` selects that named look directly.
+Future default selection can change without redefining the named Framed preset.
+Preset names are case-insensitive. When repeated, the last `Set Preset` selects the baseline.
+Ordinary `Set` values override it regardless of their position relative to `Set Preset`; repeated
 ordinary settings retain their existing last-value-wins behavior.
 
 ```tape
 Set FontSize 26
-Set Style Framed
+Set Preset Framed
 Set Theme "GitHub Light Default"
 Set Shadow false
 ```
 
 This uses the framed baseline, 26px text, a light theme, and no shadow. Explicit colors survive
-style and theme ordering. `Set WindowBar ""`, `Set WindowBorder 0`, and `Set Shadow false` disable
+preset and theme ordering. `Set WindowBar ""`, `Set WindowBorder 0`, and `Set Shadow false` disable
 those effects. To remove all decoration together, select `Bare`.
 
-| Setting                               | Framed               | Bare                  | Inset                 | VHS                   |
+| Setting                               | Framed               | Bare                  | Inset                 | Default-0.1           |
 | ------------------------------------- | -------------------- | --------------------- | --------------------- | --------------------- |
 | Width × Height                        | 1200×720             | 1200×720              | 1200×720              | 1200×600              |
 | Theme                                 | Aardvark Ink         | Aardvark Ink          | Aardvark Ink          | Aardvark Blue         |
@@ -137,13 +139,14 @@ those effects. To remove all decoration together, select `Bare`.
 | Shadow / Blur / Offset / Opacity      | true / 20 / 6 / 0.55 | false / 28 / 9 / 0.55 | false / 28 / 9 / 0.55 | false / 28 / 9 / 0.55 |
 | WindowTitleFromTerminal               | true                 | true                  | true                  | false                 |
 
-All styles start with an empty static title and automatic title contrast. Timing, shell, cursor,
-keyboard overlays, captions, and output format are independent of style.
+All presets start with an empty static title and automatic title contrast. Timing, shell, cursor,
+keyboard overlays, captions, and output format are independent of preset.
 
 `Framed` provides a window bar, rounded shell, subtle outline, gradient, and shadow for README
 media. `Bare` provides undecorated terminal content. `Inset` provides a compact rounded panel on a
-solid backdrop, without a bar or shadow. Run `examples/styles-{framed,bare,inset,vhs}.tape` to
-render the same terminal scene with each baseline.
+solid backdrop, without a bar or shadow. Run
+`examples/presets-{default,framed,bare,inset,default-0.1}.tape` to render the same terminal scene
+with each baseline.
 
 For dark themes, the backdrop runs from background mixed with 8% white to background mixed with
 25% black; the bar and inset backdrop use the latter surface. For light themes, the gradient uses
@@ -153,16 +156,18 @@ An explicit `MarginFill` or `WindowBarColor` overrides the derived surface.
 At a displayed width of 800px, the 1200px source's 24px text appears approximately 16px tall.
 Choose a smaller font or larger canvas for denser applications; output scaling is independent.
 
-For existing tapes that need the previous Betamax defaults, add `Set Style VHS` in the preamble.
-This restores the former sizing, typography, theme, and disabled effects. It does not promise
-pixel-identical VHS rendering. `Bare` retains the new typography and sizing instead. Named styles
-are visual baselines whose values may evolve; set individual values when exact settings matter.
+For tapes migrating from Betamax 0.1 to the planned 0.2 defaults, add `Set Preset Default-0.1` in
+the preamble. This restores the pre-preset 0.1 sizing, typography, theme, and disabled effects. It
+does not promise pixel-identical VHS rendering. `Bare` retains the new typography and sizing
+instead. `Framed`, `Bare`, and `Inset` are visual baselines whose values may evolve. `Default-0.1`
+retains the pre-preset 0.1 default settings; renderer fixes may still change pixels. Set individual
+values when exact settings matter.
 
 ### Window border
 
 `Set WindowBorder 1` enables a subtle inset outline around the terminal and window bar together.
 It follows the continuous corners of `BorderRadius`, without a divider between the bar and terminal.
-The Framed and Inset width is one pixel; Bare and VHS disable the outline. Fractional widths
+The Framed and Inset width is one pixel; Bare and Default-0.1 disable the outline. Fractional widths
 truncate to integer pixels. Negative or non-finite widths and non-finite opacity values are errors.
 Opacity is clamped to 0–1; zero leaves rendering unchanged.
 
@@ -204,7 +209,7 @@ and linear stops only. Colors interpolate in sRGB, rounding each channel with a 
 dither to soften banding in GIFs. The gradient spans the entire output, including rounded window
 corners and the caption row. It does not change the terminal's background or grid.
 
-With no explicit `MarginFill`, the backdrop follows the selected style and final theme. An explicit
+With no explicit `MarginFill`, the backdrop follows the selected preset and final theme. An explicit
 color or gradient is preserved regardless of `Set Theme` ordering. `Set MarginFill ""` disables the
 margin. Invalid colors and malformed gradients fall back to the active theme background. `betamax
 validate` checks tape syntax and command order, so it does not reject malformed fill strings. Radial
@@ -242,7 +247,7 @@ circular window buttons are prepared once per run, without resizing terminal pix
 ### Window bar color
 
 `Set WindowBarColor "#0f101a"` fills the window bar with a `#rrggbb` color. The default is the
-style-derived theme surface. An explicit color takes precedence regardless of whether `Set Theme`
+preset-derived theme surface. An explicit color takes precedence regardless of whether `Set Theme`
 appears before or after it. Invalid colors, including an empty string, fall back to the active theme
 background. The setting has no effect when `WindowBar` is empty.
 
@@ -285,7 +290,7 @@ change terminal state.
 #### Following app titles
 
 `Set WindowTitleFromTerminal true` lets the recorded program change the bar with OSC 0 or OSC 2. The
-default is `true` (`false` with `Style VHS`). Set it to `false` to keep a static title. Custom
+default is `true` (`false` with `Preset Default-0.1`). Set it to `false` to keep a static title. Custom
 capture backends follow app titles by default only when they report title-event support; an explicit
 `true` still requires that capability. For example, the app can write `printf '\033]2;title set by
 app\007'`. BEL and ST terminators are supported by Ghostty.

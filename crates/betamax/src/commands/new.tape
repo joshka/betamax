@@ -99,7 +99,7 @@ Output {name}.gif
 Require echo
 
 Set Shell "bash"
-Set Style Framed
+Set Preset Default
 
 Type "echo 'Welcome to Betamax!'" Sleep 500ms  Enter
 

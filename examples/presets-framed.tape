@@ -1,6 +1,6 @@
-# The same scene with the Bare baseline. Framed is also the implicit default.
-Output examples/output/styles-bare.png
-Set Style Bare
+# The same scene with the Framed baseline. Framed is also the implicit default.
+Output examples/output/presets-framed.png
+Set Preset Framed
 Set Shell "bash"
 Set CursorBlink false
 Set WindowTitle "Betamax — text and Unicode"

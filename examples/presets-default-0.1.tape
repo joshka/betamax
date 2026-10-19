@@ -1,6 +1,6 @@
-# The same scene with the VHS baseline. Framed is also the implicit default.
-Output examples/output/styles-vhs.png
-Set Style VHS
+# The same scene with the Default-0.1 baseline. Framed is also the implicit default.
+Output examples/output/presets-default-0.1.png
+Set Preset Default-0.1
 Set Shell "bash"
 Set CursorBlink false
 Set WindowTitle "Betamax — text and Unicode"

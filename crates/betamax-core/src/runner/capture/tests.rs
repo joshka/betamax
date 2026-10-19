@@ -21,7 +21,7 @@ fn caption_changes_keep_repeated_frames_separate() {
 #[test]
 fn title_assignments_preserve_bursts_and_only_extend_short_holds() {
     let source = "Set WindowBar Colorful\nSet WindowTitle Initial\nSet Framerate 30";
-    let tape = crate::tape::Tape::parse(&format!("Set Style VHS\n{source}")).unwrap();
+    let tape = crate::tape::Tape::parse(&format!("Set Preset Default-0.1\n{source}")).unwrap();
     let settings = Settings::from_tape(&tape).unwrap();
     let mut capture = CaptureState::default();
     for title in ["A", "B", "A", "A"] {
@@ -58,7 +58,7 @@ fn test_frame() -> Frame {
 
 fn protected_burst(rate: u16, speed: f64) -> (Vec<(Frame, Duration)>, f64) {
     let source = format!("Set WindowBar Colorful\nSet Framerate {rate}\nSet PlaybackSpeed {speed}");
-    let tape = crate::tape::Tape::parse(&format!("Set Style VHS\n{source}")).unwrap();
+    let tape = crate::tape::Tape::parse(&format!("Set Preset Default-0.1\n{source}")).unwrap();
     let settings = Settings::from_tape(&tape).unwrap();
     let mut capture = CaptureState::default();
     for (title, pixel) in [

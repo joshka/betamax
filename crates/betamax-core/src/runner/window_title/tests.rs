@@ -9,7 +9,7 @@ use crate::tape::Tape;
 
 fn title_settings(extra: &str) -> Settings {
     let source = format!("Set Width 320\nSet Height 160\nSet Padding 0\nSet Margin 10\nSet WindowBar Colorful\n{extra}");
-    let tape = Tape::parse(&format!("Set Style VHS\n{source}")).unwrap();
+    let tape = Tape::parse(&format!("Set Preset Default-0.1\n{source}")).unwrap();
     Settings::from_tape(&tape).unwrap()
 }
 
@@ -37,7 +37,7 @@ fn window_title_settings_accept_strings_and_reject_wrong_types() {
     assert_eq!(settings.presentation.style.window_title.color, "#707380");
     for key in ["WindowTitle", "WindowTitleColor"] {
         for value in ["true", "12", "2s"] {
-            let tape = Tape::parse(&format!("Set Style VHS\nSet {key} {value}")).unwrap();
+            let tape = Tape::parse(&format!("Set Preset Default-0.1\nSet {key} {value}")).unwrap();
             let error = Settings::from_tape(&tape).unwrap_err().to_string();
             assert!(
                 error.contains(&format!("Set {key} expects string")),
@@ -142,7 +142,7 @@ fn window_title_defaults_and_disabled_bar_preserve_pixels_and_grid() {
     );
     // With no decorations, the default output remains the raw terminal pixels.
     let settings = Settings::from_tape(
-        &Tape::parse("Set Style VHS\nSet Width 80\nSet Height 80\nSet Padding 0").unwrap(),
+        &Tape::parse("Set Preset Default-0.1\nSet Width 80\nSet Height 80\nSet Padding 0").unwrap(),
     )
     .unwrap();
     let raw = Canvas::new(80, 80, rgb(1, 2, 3)).unwrap().into_frame();
@@ -381,7 +381,7 @@ fn following_app_titles_requires_a_boolean_and_defaults_off() {
     );
     for value in ["auto", "1", "1s"] {
         let tape = Tape::parse(&format!(
-            "Set Style VHS\nSet WindowTitleFromTerminal {value}"
+            "Set Preset Default-0.1\nSet WindowTitleFromTerminal {value}"
         ))
         .unwrap();
         let error = Settings::from_tape(&tape).unwrap_err().to_string();

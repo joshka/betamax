@@ -273,7 +273,7 @@ mod tests {
     fn bar_settings(commands: &str) -> Settings {
         let tape = Tape::parse(&format!(
             r##"
-            Set Style VHS
+            Set Preset Default-0.1
             Set Width 160
             Set Height 120
             Set Padding 12
@@ -346,7 +346,10 @@ mod tests {
     #[test]
     fn window_bar_color_rejects_non_string_values() {
         for (value, kind) in [("42", "number"), ("true", "bool"), ("1s", "duration")] {
-            let tape = Tape::parse(&format!("Set Style VHS\nSet WindowBarColor {value}")).unwrap();
+            let tape = Tape::parse(&format!(
+                "Set Preset Default-0.1\nSet WindowBarColor {value}"
+            ))
+            .unwrap();
             let error = Settings::from_tape(&tape).unwrap_err().to_string();
             assert!(error.contains(&format!("Set WindowBarColor expects string, got {kind}")));
         }
@@ -492,7 +495,7 @@ mod tests {
     fn parses_frame_style_settings() {
         let tape = Tape::parse(
             r##"
-            Set Style VHS
+            Set Preset Default-0.1
             Set Margin 12
             Set MarginFill "#674EFF"
             Set WindowBar Colorful

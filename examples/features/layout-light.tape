@@ -5,7 +5,7 @@ Output target/features/layout-light.png
 Env BETAMAX_ACCENT "15;118;110"
 Require python3
 # Keep exact pixel fixtures independent of the implicit presentation style.
-Set Style VHS
+Set Preset Default-0.1
 Set Shell "bash"
 Set Theme "GitHub Light Default"
 Set FontFamily "DejaVu Sans Mono"

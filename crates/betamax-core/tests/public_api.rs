@@ -115,7 +115,7 @@ fn captions_affect_screenshots_not_state_json() {
         r#"
         Output {final_state}
         Set Shell "bash"
-        Set Style Bare
+        Set Preset Bare
         Set Width 180
         Set Height 120
         Set Padding 0
@@ -174,7 +174,7 @@ fn runner_writes_webp_animation_and_static_checkpoint() {
         r#"
         Output {}
         Set Shell "bash"
-        Set Style Bare
+        Set Preset Bare
         Set Width 80
         Set Height 60
         Set Padding 0
