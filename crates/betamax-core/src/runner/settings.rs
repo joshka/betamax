@@ -131,6 +131,8 @@ pub(super) struct Settings {
     pub(super) theme: TerminalTheme,
     /// Outer frame decoration settings.
     pub(super) style: StyleSettings,
+    /// Cached opaque margin canvas, prepared after all startup settings have been applied.
+    backdrop: SolidFrame,
     /// Whether the tape uses presentation captions.
     pub(super) caption_overlay: bool,
     /// Optional input-sequence overlay for review media.
@@ -154,8 +156,8 @@ pub(super) struct Settings {
 pub(super) struct StyleSettings {
     /// Outer margin around the captured terminal, in pixels.
     pub(super) margin: u32,
-    /// Margin fill color as `#RRGGBB`; invalid values fall back to the theme background.
-    pub(super) margin_fill: String,
+    /// Explicit solid color or linear gradient. `None` follows the final selected theme.
+    pub(super) margin_fill: Option<String>,
     /// Window button mode. Empty disables the bar; non-empty draws traffic-light buttons.
     pub(super) window_bar: String,
     /// Height of the synthetic window bar when enabled.
@@ -218,13 +220,13 @@ pub(super) enum KeyboardOverlayLocation {
 impl StyleSettings {
     /// Construct style defaults from the current theme.
     ///
-    /// The theme background is duplicated into string fields because tape settings can later
-    /// replace them with raw user-provided values that are parsed only during frame decoration.
+    /// The window-bar background is stored as raw text because a tape can later replace it with a
+    /// user-provided color. An unset margin fill remains distinct so it can follow the final theme.
     fn new(theme: &TerminalTheme) -> Self {
         let background = theme.background_hex();
         Self {
             margin: 0,
-            margin_fill: background.clone(),
+            margin_fill: None,
             window_bar: String::new(),
             window_bar_size: DEFAULT_WINDOW_BAR_SIZE,
             window_bar_color: background,
@@ -258,6 +260,7 @@ impl Settings {
             typing_delay: DEFAULT_TYPING_DELAY,
             text: TextSettings::default(),
             style: StyleSettings::new(&theme),
+            backdrop: SolidFrame::new(0, 0, theme.background)?,
             caption_overlay: false,
             keyboard_overlay: KeyboardOverlaySettings::default(),
             theme,
@@ -279,6 +282,12 @@ impl Settings {
         }
 
         settings.apply_terminal_grid();
+        settings.backdrop = SolidFrame::margin_backdrop(
+            settings.width,
+            settings.height,
+            settings.style.margin_fill.as_deref(),
+            settings.theme.background,
+        )?;
         Ok(settings)
     }
 
@@ -318,7 +327,7 @@ impl Settings {
             ("LoopOffset", Value::Number(loop_offset)) => self.loop_offset = *loop_offset,
             ("Margin", Value::Number(margin)) => self.style.margin = *margin as u32,
             ("MarginFill", Value::String(margin_fill)) => {
-                self.style.margin_fill = margin_fill.clone();
+                self.style.margin_fill = Some(margin_fill.clone());
             }
             ("WindowBar", Value::String(window_bar)) => self.style.window_bar = window_bar.clone(),
             ("WindowBarSize", Value::Number(window_bar_size)) => {
@@ -378,7 +387,7 @@ impl Settings {
 
     /// VHS only applies margin when a margin fill is configured.
     fn effective_margin(&self) -> u32 {
-        if self.style.margin_fill.is_empty() {
+        if self.style.margin_fill.as_deref() == Some("") {
             0
         } else {
             self.style.margin
@@ -576,9 +585,8 @@ impl Settings {
     ) -> Result<Frame> {
         let margin = self.effective_margin();
         let bar_height = self.window_bar_height();
-        let fill = parse_hex_color(&self.style.margin_fill).unwrap_or(self.theme.background);
         let bar = parse_hex_color(&self.style.window_bar_color).unwrap_or(self.theme.background);
-        let mut output = SolidFrame::new(self.width, self.height, fill)?;
+        let mut output = self.backdrop.clone();
         output.blit(frame, margin, margin + bar_height)?;
         if bar_height > 0 {
             output.fill_rect(margin, margin, frame.width, bar_height, bar);
@@ -596,7 +604,7 @@ impl Settings {
                 frame.width,
                 frame.height + bar_height,
                 self.style.border_radius,
-                fill,
+                &self.backdrop,
             );
         }
         let active_caption = caption.filter(|caption| !caption.trim().is_empty());

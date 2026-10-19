@@ -1068,7 +1068,7 @@ mod tests {
         assert_eq!(settings.text.padding, 60);
         assert_eq!(settings.theme.name, "Aardvark Blue");
         assert_eq!(settings.style.margin, 0);
-        assert_eq!(settings.style.margin_fill, "#102040");
+        assert_eq!(settings.style.margin_fill, None);
         assert_eq!(settings.style.window_bar, "");
         assert_eq!(settings.style.window_bar_size, 30);
         assert_eq!(settings.style.window_bar_color, "#102040");
@@ -1104,7 +1104,7 @@ mod tests {
         let settings = Settings::from_tape(&tape).unwrap();
 
         assert_eq!(settings.style.margin, 12);
-        assert_eq!(settings.style.margin_fill, "#674EFF");
+        assert_eq!(settings.style.margin_fill.as_deref(), Some("#674EFF"));
         assert_eq!(settings.style.window_bar, "Colorful");
         assert_eq!(settings.style.window_bar_size, 40);
         assert_eq!(settings.style.border_radius, 8);

@@ -4,7 +4,10 @@
 //! pixel representation here. Settings owns output geometry and drawing order; caption and keyboard
 //! layout and text shaping stay with their renderers.
 
+mod gradient;
+
 use cosmic_text::Color;
+use gradient::{parse_margin_fill, MarginFill};
 use miette::miette;
 
 use crate::media::{Frame, PixelFormat};
@@ -15,6 +18,7 @@ use crate::Result;
 /// The raw terminal frame may come from any supported [`PixelFormat`], but the decoration path
 /// normalizes into tightly packed RGBA because margin fills, window buttons, and rounded-corner
 /// masking are easier to reason about in a single byte order.
+#[derive(Debug, Clone)]
 pub(super) struct SolidFrame {
     /// Output width in pixels.
     pub(super) width: u32,
@@ -25,6 +29,36 @@ pub(super) struct SolidFrame {
 }
 
 impl SolidFrame {
+    /// Prepare the full-output backdrop once, including the area behind captions and corners.
+    pub(super) fn margin_backdrop(
+        width: u32,
+        height: u32,
+        value: Option<&str>,
+        fallback: libghostty_vt::style::RgbColor,
+    ) -> Result<Self> {
+        let fill = value
+            .and_then(parse_margin_fill)
+            .unwrap_or(MarginFill::Solid(fallback));
+        let gradient = match fill {
+            MarginFill::Solid(color) => return Self::new(width, height, color),
+            MarginFill::Gradient(gradient) => gradient,
+        };
+        let mut frame = Self::new(width, height, gradient.color_at(0.0, 0.0))?;
+        for y in 0..height {
+            for x in 0..width {
+                let color = gradient.pixel_color(x, y, width, height);
+                let offset = frame.offset(x, y);
+                frame.pixels[offset..offset + BYTES_PER_PIXEL].copy_from_slice(&[
+                    color.r,
+                    color.g,
+                    color.b,
+                    OPAQUE_ALPHA,
+                ]);
+            }
+        }
+        Ok(frame)
+    }
+
     /// Allocate a solid-color RGBA frame, checking for integer overflow.
     pub(super) fn new(
         width: u32,
@@ -280,7 +314,7 @@ impl SolidFrame {
         }
     }
 
-    /// Replace pixels outside a rounded rectangle with the surrounding fill color.
+    /// Restore the backdrop outside a rounded rectangle and blend its anti-aliased edge.
     ///
     /// This is a visual mask, not an alpha mask, because current output formats are opaque.
     pub(super) fn apply_rounded_rect_mask(
@@ -290,7 +324,7 @@ impl SolidFrame {
         width: u32,
         height: u32,
         radius: u32,
-        fill: libghostty_vt::style::RgbColor,
+        backdrop: &SolidFrame,
     ) {
         let x1 = x.saturating_add(width).min(self.width);
         let y1 = y.saturating_add(height).min(self.height);
@@ -316,19 +350,16 @@ impl SolidFrame {
                 };
                 let coverage =
                     rounded_corner_coverage(xx, yy, cx, cy, radius as f32, ROUNDED_RECT_AA_SAMPLES);
+                let backdrop_offset = backdrop.offset(xx, yy);
+                let fill = &backdrop.pixels[backdrop_offset..backdrop_offset + BYTES_PER_PIXEL];
                 if coverage <= 0.0 {
                     let offset = self.offset(xx, yy);
-                    self.pixels[offset..offset + BYTES_PER_PIXEL].copy_from_slice(&[
-                        fill.r,
-                        fill.g,
-                        fill.b,
-                        OPAQUE_ALPHA,
-                    ]);
+                    self.pixels[offset..offset + BYTES_PER_PIXEL].copy_from_slice(fill);
                 } else if coverage < 1.0 {
                     let alpha = ((1.0 - coverage) * f32::from(OPAQUE_ALPHA))
                         .round()
                         .clamp(0.0, 255.0) as u8;
-                    self.blend_pixel(xx, yy, fill.r, fill.g, fill.b, alpha);
+                    self.blend_pixel(xx, yy, fill[0], fill[1], fill[2], alpha);
                 }
             }
         }
@@ -421,7 +452,7 @@ const ROUNDED_RECT_AA_SAMPLES: u32 = 4;
 /// to the active theme background rather than failing old tapes that used unsupported color text.
 pub(super) fn parse_hex_color(value: &str) -> Option<libghostty_vt::style::RgbColor> {
     let value = value.trim().strip_prefix('#')?;
-    if value.len() != 6 {
+    if value.len() != 6 || !value.is_ascii() {
         return None;
     }
     Some(rgb(

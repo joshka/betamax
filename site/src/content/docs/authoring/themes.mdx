@@ -57,7 +57,7 @@ These settings are applied after the raw terminal frame is rendered:
 | Setting         | Default          | Purpose                      |
 | --------------- | ---------------- | ---------------------------- |
 | `Margin`        | `0`              | Outer frame margin in pixels |
-| `MarginFill`    | theme background | Outer margin color           |
+| `MarginFill`    | theme background | Solid or linear backdrop     |
 | `WindowBar`     | empty / disabled | Synthetic window bar mode    |
 | `WindowBarSize` | `30`             | Window bar height in pixels  |
 | `BorderRadius`  | `0`              | Rounded-corner mask radius   |
@@ -73,6 +73,28 @@ Set WindowBar Colorful
 Set WindowBarSize 34
 Set BorderRadius 8
 ```
+
+`MarginFill` also supports Betamax's owned `linear(...)` syntax:
+
+```tape
+Set MarginFill "linear(#232640, #0f101a)"
+Set MarginFill "linear(to: bottom-right, #232640, #0f101a)"
+Set MarginFill "linear(angle: 135deg, #4d5b9e 0%, #232640 42%, #0f101a 100%)"
+```
+
+Without a direction, the gradient runs from top to bottom. `to:` points from the first stop toward
+the last and accepts `top`, `top-right`, `right`, `bottom-right`, `bottom`, `bottom-left`, `left`,
+or `top-left`. `angle: <number>deg` points from the first stop toward the last, clockwise from
+upward. Use comma-separated stops, with an optional percentage on every stop. This is not a CSS
+parser; radial gradients and image fills are not supported yet.
+
+The gradient covers the full output, including rounded corners and the caption row, with rounded
+sRGB channel interpolation and fixed ordered dithering to soften GIF banding. A single `#rrggbb`
+color keeps a solid fill. Without `MarginFill`, the backdrop follows the final theme background;
+an empty string disables the margin. Invalid colors or gradients fall back to the active theme
+background. Fill strings are not checked by the syntax-only `betamax validate` command. Setting a
+theme before or after an explicit fill preserves that fill. See
+[Margin fill](../../reference/tape-reference/#margin-fill) for the full syntax.
 
 ## Timing and cursor styling
 

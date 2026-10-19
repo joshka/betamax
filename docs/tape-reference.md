@@ -50,7 +50,7 @@ Common settings:
 | `WaitTimeout`             | duration or number                         | `15s`            | Number values are seconds.                  |
 | `WaitPattern`             | regex string                               | `>$`             | Used by `Wait` without explicit pattern.    |
 | `Margin`                  | number                                     | `0`              | Outer decoration margin in pixels.          |
-| `MarginFill`              | `#rrggbb` string                           | `#102040`        | Invalid colors fall back to theme bg.       |
+| `MarginFill`              | string                                     | theme background | Solid color or linear gradient backdrop.    |
 | `WindowBar`               | `Rings`, `RingsRight`, `Colorful`, or etc. | empty / disabled | Any non-empty value enables the bar.        |
 | `WindowBarSize`           | number                                     | `30`             | Bar height in pixels when enabled.          |
 | `BorderRadius`            | number                                     | `0`              | Rounded-corner mask radius in pixels.       |
@@ -88,6 +88,39 @@ For built-in shell names such as `bash`, `zsh`, and `fish`, Betamax starts a cle
 with startup files and history disabled where possible. Those shells use the VHS-style colored `>`
 prompt by default, so captures do not inherit prompts such as `bash-5.3$` from the host
 environment.
+
+### Margin fill
+
+`MarginFill` accepts a single `#rrggbb` color or Betamax's `linear(...)` gradient syntax:
+
+```tape
+Set Margin 44
+Set MarginFill "linear(#232640, #0f101a)"
+Set MarginFill "linear(to: bottom-right, #232640, #0f101a)"
+Set MarginFill "linear(to: left, #232640, #0f101a)"
+Set MarginFill "linear(angle: 135deg, #232640, #0f101a)"
+Set MarginFill "linear(angle: 135deg, #4d5b9e 0%, #232640 42%, #0f101a 100%)"
+```
+
+`linear(...)` takes an optional direction followed by at least two comma-separated color stops.
+Without a direction, it runs from top to bottom. A `to:` direction points from the first stop to
+the last, and accepts `top`, `top-right`, `right`, `bottom-right`, `bottom`, `bottom-left`, `left`,
+or `top-left`. `angle: <number>deg` is measured clockwise from upward: `90deg` is left to right and
+`135deg` is top-left to bottom-right. A stop is `#rrggbb` or `#rrggbb <position>%`. When positions
+are omitted, they are distributed evenly; when one stop has a position, every stop must have one,
+in strictly ascending order.
+
+This is Betamax syntax, not a CSS parser: it accepts `#rrggbb` colors, `to:` directions, angles,
+and linear stops only. Colors interpolate in sRGB, rounding each channel with a small, fixed ordered
+dither to soften banding in GIFs. The gradient spans the entire output, including rounded window
+corners and the caption row. It does not change the terminal's background or grid.
+
+With no `MarginFill`, the backdrop follows the final selected theme background (`#102040` for the
+default Aardvark Blue theme). An explicit color or gradient is preserved regardless of `Set Theme`
+ordering. `Set MarginFill ""` disables the margin. Invalid colors and malformed gradients fall back
+to the active theme background. `betamax validate` checks tape syntax and command order, so it does
+not reject malformed fill strings. Radial gradients and image fills are not yet supported. See
+`examples/margin-gradient.tape` for a complete example.
 
 ## Commands
 
@@ -342,7 +375,7 @@ whether the tape sets `Margin`:
 To place captions closer to the image edge than the terminal text, add a margin and reduce
 `Padding` by the same amount. For example, replacing `Set Padding 20` with `Set Margin 8` and
 `Set Padding 12` keeps terminal text and the grid where they were and moves the caption to 8 pixels
-from the edge. The margin is drawn in `MarginFill`, the same color as the presentation row, so the
+from the edge. The margin and presentation row share the `MarginFill` backdrop, so the
 terminal gains a thin frame in that color. Lowering `Padding` alone also moves the caption, but
 changes the terminal grid size.
 
