@@ -77,7 +77,8 @@ titles such as `Document contributor workflow` or `Fix state JSON style spans`.
 
 Follow [Pull request descriptions](docs/pr-writing.md): lead with the caller's problem and result,
 use short behavior bullets and captioned evidence when useful, and separate local validation from
-hosted results. Show essential new syntax or API usage in the PR; links supplement the example.
+hosted results. A pull request that adds a feature shows the tape or code that uses it and an
+image of the result, so reviewers see what is new without building it; links supplement these.
 Keep validation compact and link full contracts. Include validation commands run,
 especially `mise run check` or why a narrower check was sufficient.
 
