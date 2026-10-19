@@ -148,10 +148,13 @@ solid backdrop, without a bar or shadow. Run
 `examples/presets-{default,framed,bare,inset,default-0.1}.tape` to render the same terminal scene
 with each baseline.
 
-For dark themes, the backdrop runs from background mixed with 8% white to background mixed with
-25% black; the bar and inset backdrop use the latter surface. For light themes, the gradient uses
-12% black to 4% black, and the bar uses the latter. These defaults follow the final selected theme.
-An explicit `MarginFill` or `WindowBarColor` overrides the derived surface.
+The framed backdrop is a gradient in the theme background's own hue, darker than the window. Its
+top is slightly darker than the background with a little more chroma; its bottom is darker still,
+at 70% of the background's OKLCH lightness for dark themes and 0.10 below it for light themes.
+Neutral backgrounds stay neutral. The bar and inset backdrop use the
+background mixed with 25% black for dark themes and 4% black for light themes. These defaults
+follow the final selected theme. An explicit `MarginFill` or `WindowBarColor` overrides the
+derived surface.
 
 At a displayed width of 800px, the 1200px source's 22px text appears approximately 16px tall.
 Choose a smaller font or larger canvas for denser applications; output scaling is independent.

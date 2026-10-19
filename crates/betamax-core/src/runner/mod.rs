@@ -47,6 +47,7 @@ mod caption;
 mod capture;
 mod keyboard_overlay;
 mod margin;
+mod oklch;
 mod options;
 mod presentation;
 mod preset;

@@ -117,3 +117,27 @@ fn last_default_preset_restores_the_default_baseline_without_erasing_overrides()
     assert_eq!(selected.presentation.style.window_bar, "Colorful");
     assert!(selected.presentation.style.shadow.enabled);
 }
+
+#[test]
+fn framed_gradient_follows_the_background_hue_and_stays_darker_than_the_window() {
+    for (theme, gradient) in [
+        ("Aardvark Ink", "linear(#060d1e, #040714)"),
+        ("Nord", "linear(#232c3f, #151c2a)"),
+        ("Gruvbox Dark", "linear(#212121, #151515)"),
+        ("Gruvbox Light", "linear(#f0e7c2, #d9d0ab)"),
+        ("GitHub Light Default", "linear(#f5f5f5, #dedede)"),
+    ] {
+        let settings = settings(&format!("Set Theme \"{theme}\""));
+        assert_eq!(
+            settings.presentation.style.margin_fill.as_deref(),
+            Some(gradient),
+            "{theme}"
+        );
+    }
+    let inset = settings("Set Preset Inset");
+    assert_eq!(
+        inset.presentation.style.margin_fill.as_deref(),
+        Some("#0b0f17")
+    );
+    assert_eq!(inset.presentation.style.window_bar_color, "#0b0f17");
+}
