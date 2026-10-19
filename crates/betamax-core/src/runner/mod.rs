@@ -54,6 +54,7 @@ mod requirements;
 mod settings;
 mod shadow;
 mod window;
+mod window_shape;
 mod window_title;
 
 #[doc(inline)]

@@ -102,9 +102,11 @@ requirement to preserve these exact files when a better boundary becomes clear.
   its geometry.
 - [`window.rs`](../crates/betamax-core/src/runner/window.rs): aggregate window style, effective
   margin and bar dimensions, buttons, window painting, and delegation to independent effects.
+- [`window_shape.rs`](../crates/betamax-core/src/runner/window_shape.rs): continuous corner geometry,
+  cached outer/inner coverage, and the matching shadow-distance profile.
 - [`border.rs`](../crates/betamax-core/src/runner/border.rs): inset outline configuration, automatic
   contrast, numeric interpretation, coverage composition policy, and border tests. Window chrome
-  delegates drawing; canvas supplies shared rounded coverage and opaque pixel mixing.
+  delegates drawing; prepared window coverage supplies geometry and canvas supplies opaque pixel mixing.
 - [`window_title.rs`](../crates/betamax-core/src/runner/window_title.rs): title configuration, typography,
   automatic contrast, single-line text policy, bounded raster cache, and title behavior tests in
   its `tests` child. Window chrome resolves button clearance before applying the rounded mask.

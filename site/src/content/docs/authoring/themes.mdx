@@ -125,7 +125,8 @@ Set ShadowOpacity 0.55
 `WindowBarColor` accepts a `#rrggbb` string and defaults to the theme background. An explicit
 color takes precedence even if `Set Theme` comes later. Invalid colors, including an empty string,
 fall back to the active theme background. The setting is ignored when the bar is disabled. It changes
-only the bar fill; `BorderRadius` rounds the window's outer corners.
+only the bar fill; `BorderRadius` gives the window continuous outer corners, shared by its border
+and shadow. Window buttons use antialiased circular edges.
 
 The title uses `FontFamily` at 40% of the bar height and stays centered while reserving equal space
 for buttons on either side, with a gap of two button radii. Long text truncates with `…`, and line

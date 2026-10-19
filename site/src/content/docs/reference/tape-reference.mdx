@@ -109,8 +109,9 @@ Keyboard overlay modes are:
 ### Window border
 
 `Set WindowBorder 1` enables a subtle inset outline around the terminal and window bar together.
-It follows `BorderRadius`, without a divider between the bar and terminal. The default width is
-zero (disabled); fractional widths truncate to integer pixels. Negative or non-finite widths and
+It follows the continuous corners of `BorderRadius`, without a divider between the bar and terminal.
+The default width is zero (disabled); fractional widths truncate to integer pixels. Negative or
+non-finite widths and
 non-finite opacity values are errors. Opacity is clamped to 0–1; zero leaves rendering unchanged.
 
 `WindowBorderColor "auto"` (the default) selects white or black for contrast with the final theme
@@ -175,6 +176,13 @@ zero opacity. Allow a margin of at least about `ShadowBlur + abs(ShadowOffset)` 
 clipping: about `37` pixels with the defaults, or `Margin 44` for extra room. Increase the margin
 further if the faint tail is still visible at the edge. The shadow shows best on a gradient or on a
 backdrop lighter than near-black.
+
+### Window corners
+
+`BorderRadius` uses continuous corners: the curve eases into the straight window edges instead of
+joining them with a circular arc. The same outline shapes the window mask, inset border, and shadow.
+The radius clamps to fit small windows; zero keeps square corners. Corner coverage and antialiased
+circular window buttons are prepared once per run, without resizing terminal pixels or the output.
 
 ### Window bar color
 

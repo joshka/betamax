@@ -25,24 +25,27 @@ pub(super) struct Canvas {
 }
 
 impl Canvas {
-    /// Allocate a sparse decoration layer whose transparent pixels are skipped when copied.
+    /// Allocate a straight-alpha decoration layer, composited over opaque output later.
     pub(super) fn transparent(width: u32, height: u32) -> Result<Self> {
         let mut layer = Self::new(width, height, rgb(0, 0, 0))?;
         layer.pixels.fill(0);
         Ok(layer)
     }
 
-    /// Copy opaque pixels from a decoration layer sharing this canvas's output coordinates.
-    pub(super) fn copy_opaque_pixels(&mut self, overlay: &Self) {
-        for (source, target) in overlay
-            .pixels
-            .as_chunks::<BYTES_PER_PIXEL>()
-            .0
-            .iter()
-            .zip(self.pixels.as_chunks_mut::<BYTES_PER_PIXEL>().0)
-        {
-            if source[3] == OPAQUE_ALPHA {
-                target.copy_from_slice(source);
+    /// Composite a cached straight-alpha decoration layer in output coordinates.
+    pub(super) fn composite_overlay(&mut self, overlay: &Self) {
+        for y in 0..overlay.height.min(self.height) {
+            for x in 0..overlay.width.min(self.width) {
+                let offset = overlay.offset(x, y);
+                let [r, g, b, a] = overlay.pixels[offset..offset + 4].try_into().unwrap();
+                if a == 0 {
+                    continue;
+                }
+                if a == OPAQUE_ALPHA {
+                    self.set_pixel(x, y, rgb(r, g, b));
+                } else {
+                    self.blend_pixel(x, y, r, g, b, a);
+                }
             }
         }
     }
@@ -260,39 +263,109 @@ impl Canvas {
         }
     }
 
-    /// Fill a clipped circle using integer distance checks.
+    /// Fill a circle with local path coverage, preserving the integer pixel-center lattice.
+    ///
+    /// Window buttons are prepared once in the cached bar. The half-pixel offset keeps their
+    /// center on the same pixel as the former integer-distance circle without widening the edge.
     pub(super) fn fill_circle(
         &mut self,
         cx: u32,
         cy: u32,
         radius: u32,
         color: libghostty_vt::style::RgbColor,
+    ) -> Result<()> {
+        if radius == 0 {
+            return Ok(());
+        }
+        let size = radius
+            .checked_mul(2)
+            .and_then(|n| n.checked_add(1))
+            .ok_or_else(|| miette!("circle is too large"))?;
+        let center = radius as f32 + 0.5;
+        // Cubics avoid radius-dependent conic flattening before the local coverage transform.
+        let r = radius as f32;
+        let k = r * 0.552_284_8;
+        let mut builder = tiny_skia::PathBuilder::new();
+        builder.move_to(center + r, center);
+        builder.cubic_to(
+            center + r,
+            center + k,
+            center + k,
+            center + r,
+            center,
+            center + r,
+        );
+        builder.cubic_to(
+            center - k,
+            center + r,
+            center - r,
+            center + k,
+            center - r,
+            center,
+        );
+        builder.cubic_to(
+            center - r,
+            center - k,
+            center - k,
+            center - r,
+            center,
+            center - r,
+        );
+        builder.cubic_to(
+            center + k,
+            center - r,
+            center + r,
+            center - k,
+            center + r,
+            center,
+        );
+        builder.close();
+        let path = builder.finish().expect("nonempty circle");
+        let coverage = path_coverage(&path, size, size)?;
+        for y in 0..size {
+            for x in 0..size {
+                let px = i64::from(cx) + i64::from(x) - i64::from(radius);
+                let py = i64::from(cy) + i64::from(y) - i64::from(radius);
+                if px < 0 || py < 0 || px >= i64::from(self.width) || py >= i64::from(self.height) {
+                    continue;
+                }
+                // Reflect the same coverage at each quadrant, independent of scan direction.
+                let mut sum = 0u16;
+                for (mx, my) in [
+                    (x, y),
+                    (size - 1 - x, y),
+                    (x, size - 1 - y),
+                    (size - 1 - x, size - 1 - y),
+                ] {
+                    sum += u16::from(coverage[(my * size + mx) as usize]);
+                }
+                let alpha = ((sum + 2) / 4) as u8;
+                if alpha > 0 {
+                    self.blend_pixel(px as u32, py as u32, color.r, color.g, color.b, alpha);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Apply prepared continuous coverage once against the exact shadowed backdrop sample.
+    pub(super) fn apply_window_mask(
+        &mut self,
+        mask: &super::window_shape::WindowMask,
+        rect: PixelRect,
+        backdrop: &Canvas,
     ) {
-        let radius = radius as i32;
-        for y in -radius..=radius {
-            for x in -radius..=radius {
-                if x * x + y * y > radius * radius {
-                    continue;
+        for y in rect.y..rect.y.saturating_add(rect.height).min(self.height) {
+            for x in rect.x..rect.x.saturating_add(rect.width).min(self.width) {
+                let outside = 1.0 - mask.coverage(x, y);
+                if outside > 0.0 {
+                    self.composite_pixel(x, y, rgb(0, 0, 0), 0.0, backdrop, outside);
                 }
-                let px = cx as i32 + x;
-                let py = cy as i32 + y;
-                if px < 0 || py < 0 || px >= self.width as i32 || py >= self.height as i32 {
-                    continue;
-                }
-                let offset = self.offset(px as u32, py as u32);
-                self.pixels[offset..offset + BYTES_PER_PIXEL].copy_from_slice(&[
-                    color.r,
-                    color.g,
-                    color.b,
-                    OPAQUE_ALPHA,
-                ]);
             }
         }
     }
 
-    /// Restore the backdrop outside a rounded rectangle and blend its anti-aliased edge.
-    ///
-    /// This is a visual mask, not an alpha mask, because current output formats are opaque.
+    #[cfg(test)]
     pub(super) fn apply_rounded_rect_mask(
         &mut self,
         x: u32,
@@ -302,33 +375,16 @@ impl Canvas {
         radius: u32,
         backdrop: &Canvas,
     ) {
-        let x1 = x.saturating_add(width).min(self.width);
-        let y1 = y.saturating_add(height).min(self.height);
         let rect = PixelRect {
             x,
             y,
             width,
             height,
         };
-        for yy in y..y1 {
-            for xx in x..x1 {
-                let coverage = rounded_rect_coverage(rect, radius, xx, yy) as f32;
-                if coverage >= 1.0 {
-                    continue;
-                }
-                let backdrop_offset = backdrop.offset(xx, yy);
-                let fill = &backdrop.pixels[backdrop_offset..backdrop_offset + BYTES_PER_PIXEL];
-                if coverage <= 0.0 {
-                    let offset = self.offset(xx, yy);
-                    self.pixels[offset..offset + BYTES_PER_PIXEL].copy_from_slice(fill);
-                } else if coverage < 1.0 {
-                    let alpha = ((1.0 - coverage) * f32::from(OPAQUE_ALPHA))
-                        .round()
-                        .clamp(0.0, 255.0) as u8;
-                    self.blend_pixel(xx, yy, fill[0], fill[1], fill[2], alpha);
-                }
-            }
-        }
+        let mask = super::window_shape::WindowShape::new(rect, radius)
+            .mask()
+            .unwrap();
+        self.apply_window_mask(&mask, rect, backdrop);
     }
 
     /// Mix an existing pixel with a solid color and a same-coordinate backdrop sample.
@@ -378,6 +434,21 @@ impl Canvas {
     /// Alpha-blend one pixel over the existing frame color.
     pub(super) fn blend_pixel(&mut self, x: u32, y: u32, r: u8, g: u8, b: u8, a: u8) {
         let offset = self.offset(x, y);
+        if a == 0 {
+            return;
+        }
+        if self.pixels[offset + 3] < OPAQUE_ALPHA {
+            let source = u32::from(a);
+            let target = u32::from(self.pixels[offset + 3]);
+            let weight = source * 255 + target * (255 - source);
+            for (channel, value) in [r, g, b].into_iter().enumerate() {
+                self.pixels[offset + channel] = ((u32::from(value) * source * 255
+                    + u32::from(self.pixels[offset + channel]) * target * (255 - source))
+                    / weight) as u8;
+            }
+            self.pixels[offset + 3] = ((weight + 127) / 255) as u8;
+            return;
+        }
         let alpha = u16::from(a);
         let inv_alpha = ALPHA_DENOMINATOR - alpha;
         self.pixels[offset] = ((u16::from(r) * alpha + u16::from(self.pixels[offset]) * inv_alpha)
@@ -432,45 +503,41 @@ pub(super) const fn rgb(r: u8, g: u8, b: u8) -> libghostty_vt::style::RgbColor {
     libghostty_vt::style::RgbColor { r, g, b }
 }
 
-/// Match the existing mask's pixel centers and corner convention exactly.
-pub(super) fn rounded_rect_coverage(rect: PixelRect, radius: u32, x: u32, y: u32) -> f64 {
-    if rect.width == 0
-        || rect.height == 0
-        || x < rect.x
-        || y < rect.y
-        || x >= rect.x.saturating_add(rect.width)
-        || y >= rect.y.saturating_add(rect.height)
-    {
-        return 0.0;
+/// Rasterize a small shape mask at local 4× density, then average pixel areas.
+///
+/// This improves the path rasterizer's precision on tiny curves. Only the reusable shape mask
+/// grows; terminal frames and full decoration canvases never change size.
+pub(super) fn path_coverage(path: &tiny_skia::Path, width: u32, height: u32) -> Result<Vec<u8>> {
+    const SCALE: u32 = 4;
+    let scaled_width = width
+        .checked_mul(SCALE)
+        .ok_or_else(|| miette!("shape is too large"))?;
+    let scaled_height = height
+        .checked_mul(SCALE)
+        .ok_or_else(|| miette!("shape is too large"))?;
+    let mut mask = tiny_skia::Mask::new(scaled_width, scaled_height)
+        .ok_or_else(|| miette!("shape is too large"))?;
+    mask.fill_path(
+        path,
+        tiny_skia::FillRule::Winding,
+        true,
+        tiny_skia::Transform::from_scale(SCALE as f32, SCALE as f32),
+    );
+    let mut coverage = Vec::with_capacity(width as usize * height as usize);
+    for y in 0..height {
+        for x in 0..width {
+            let mut sum = 0u32;
+            for sy in 0..SCALE {
+                for sx in 0..SCALE {
+                    let offset = (y * SCALE + sy) as usize * scaled_width as usize
+                        + (x * SCALE + sx) as usize;
+                    sum += u32::from(mask.data()[offset]);
+                }
+            }
+            coverage.push(((sum + SCALE * SCALE / 2) / (SCALE * SCALE)) as u8);
+        }
     }
-    let radius = radius.min(rect.width / 2).min(rect.height / 2);
-    let right = rect.x + rect.width;
-    let bottom = rect.y + rect.height;
-    let left_corner = x < rect.x + radius;
-    let right_corner = x >= right - radius;
-    let top_corner = y < rect.y + radius;
-    let bottom_corner = y >= bottom - radius;
-    if !(left_corner || right_corner) || !(top_corner || bottom_corner) {
-        return 1.0;
-    }
-    let cx = if left_corner {
-        rect.x + radius
-    } else {
-        right - radius - 1
-    };
-    let cy = if top_corner {
-        rect.y + radius
-    } else {
-        bottom - radius - 1
-    };
-    f64::from(rounded_corner_coverage(
-        x,
-        y,
-        cx as i32,
-        cy as i32,
-        radius as f32,
-        ROUNDED_RECT_AA_SAMPLES,
-    ))
+    Ok(coverage)
 }
 
 /// Estimate how much of one pixel is inside a rounded-rectangle corner circle.
@@ -507,6 +574,58 @@ mod tests {
             frame.pixels[offset + 2],
             frame.pixels[offset + 3],
         ]
+    }
+
+    #[test]
+    fn circle_edges_have_coverage_without_a_halo_or_weight_gain() {
+        for radius in [2, 5, 10] {
+            let size = radius * 2 + 5;
+            let center = radius + 2;
+            let mut frame = Canvas::new(size, size, rgb(0, 0, 0)).unwrap();
+            frame
+                .fill_circle(center, center, radius, rgb(255, 255, 255))
+                .unwrap();
+            let mut area = 0.0;
+            let mut fractional = false;
+            for y in 0..size {
+                for x in 0..size {
+                    let color = pixel(&frame, x, y);
+                    area += f64::from(color[0]) / 255.0;
+                    fractional |= color[0] > 0 && color[0] < 255;
+                    for reflected in [
+                        pixel(&frame, size - 1 - x, y),
+                        pixel(&frame, x, size - 1 - y),
+                    ] {
+                        for (a, b) in color.into_iter().zip(reflected) {
+                            assert!(a.abs_diff(b) <= 1);
+                        }
+                    }
+                    assert_eq!(color[3], 255);
+                }
+            }
+            assert!(fractional);
+            assert!((area - std::f64::consts::PI * f64::from(radius * radius)).abs() < 1.0);
+            assert_eq!(pixel(&frame, center, center), [255; 4]);
+            assert_eq!(pixel(&frame, 0, center), [0, 0, 0, 255]);
+        }
+    }
+
+    #[test]
+    fn cached_circle_edges_composite_over_the_actual_destination() {
+        let mut layer = Canvas::transparent(8, 8).unwrap();
+        layer.fill_circle(1, 1, 3, rgb(240, 80, 40)).unwrap();
+        assert!(layer
+            .pixels
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .any(|p| p[3] > 0 && p[3] < 255));
+        let mut cached = Canvas::new(8, 8, rgb(30, 60, 90)).unwrap();
+        cached.composite_overlay(&layer);
+        let mut direct = Canvas::new(8, 8, rgb(30, 60, 90)).unwrap();
+        direct.fill_circle(1, 1, 3, rgb(240, 80, 40)).unwrap();
+        assert_eq!(cached.pixels, direct.pixels);
+        assert!(cached.pixels.as_chunks::<4>().0.iter().all(|p| p[3] == 255));
     }
 
     #[test]

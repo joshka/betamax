@@ -2,8 +2,9 @@
 
 use miette::miette;
 
-use super::canvas::{rgb, rounded_rect_coverage, Canvas, PixelRect};
+use super::canvas::{rgb, Canvas};
 use super::margin::parse_hex_color;
+use super::window_shape::WindowOutline;
 use crate::Result;
 
 /// Optional inset outline; width zero preserves the original rounded-mask path.
@@ -67,29 +68,18 @@ impl Border {
     pub(super) fn draw(
         &self,
         output: &mut Canvas,
-        rect: PixelRect,
-        radius: u32,
+        outline: &WindowOutline,
         backdrop: &Canvas,
         background: libghostty_vt::style::RgbColor,
     ) {
         let color = self
             .color
             .unwrap_or_else(|| contrasting_border_color(background));
-        let width = self.width;
-        let radius = radius.min(rect.width / 2).min(rect.height / 2);
-        let inset = width
-            .min(rect.width / 2 + rect.width % 2)
-            .min(rect.height / 2 + rect.height % 2);
-        let inner = PixelRect {
-            x: rect.x.saturating_add(inset),
-            y: rect.y.saturating_add(inset),
-            width: rect.width.saturating_sub(inset.saturating_mul(2)),
-            height: rect.height.saturating_sub(inset.saturating_mul(2)),
-        };
+        let rect = outline.rect;
         for y in rect.y..rect.y.saturating_add(rect.height).min(output.height) {
             for x in rect.x..rect.x.saturating_add(rect.width).min(output.width) {
-                let outer = rounded_rect_coverage(rect, radius, x, y);
-                let inner = rounded_rect_coverage(inner, radius.saturating_sub(inset), x, y);
+                let outer = outline.outer.coverage(x, y);
+                let inner = outline.inner.coverage(x, y);
                 let border = (outer - inner).max(0.0) * self.opacity;
                 if outer == 1.0 && border == 0.0 {
                     continue;
@@ -123,6 +113,7 @@ fn contrasting_border_color(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::runner::canvas::PixelRect;
     use crate::runner::settings::Settings;
     use crate::tape::Tape;
 
@@ -144,13 +135,17 @@ mod tests {
         }
         .draw(
             &mut frame,
-            PixelRect {
-                x: 2,
-                y: 2,
-                width: 8,
-                height: 8,
-            },
-            0,
+            &WindowOutline::new(
+                PixelRect {
+                    x: 2,
+                    y: 2,
+                    width: 8,
+                    height: 8,
+                },
+                0,
+                1,
+            )
+            .unwrap(),
             &backdrop,
             rgb(20, 20, 20),
         );
@@ -178,13 +173,17 @@ mod tests {
         }
         .draw(
             &mut original,
-            PixelRect {
-                x: 1,
-                y: 1,
-                width: 10,
-                height: 10,
-            },
-            4,
+            &WindowOutline::new(
+                PixelRect {
+                    x: 1,
+                    y: 1,
+                    width: 10,
+                    height: 10,
+                },
+                4,
+                1,
+            )
+            .unwrap(),
             &backdrop,
             rgb(20, 20, 20),
         );
@@ -204,13 +203,17 @@ mod tests {
         }
         .draw(
             &mut original,
-            PixelRect {
-                x: 1,
-                y: 1,
-                width: 1,
-                height: 1,
-            },
-            50,
+            &WindowOutline::new(
+                PixelRect {
+                    x: 1,
+                    y: 1,
+                    width: 1,
+                    height: 1,
+                },
+                50,
+                1,
+            )
+            .unwrap(),
             &backdrop,
             rgb(20, 20, 20),
         );

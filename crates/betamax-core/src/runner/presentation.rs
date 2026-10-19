@@ -17,6 +17,7 @@ use super::keyboard_overlay::{
 };
 use super::margin::margin_backdrop;
 use super::window::WindowStyle;
+use super::window_shape::WindowOutline;
 use crate::ghostty::{TerminalTheme, TextSettings};
 use crate::media::Frame;
 use crate::Result;
@@ -50,6 +51,8 @@ pub(super) struct Presentation {
     backdrop: Canvas,
     /// Cached bar fill and buttons, prepared with the backdrop after startup settings.
     bar_overlay: Canvas,
+    /// Prepared continuous window and inset-border coverage.
+    outline: Option<WindowOutline>,
     /// Whether the tape uses presentation captions.
     pub(super) caption_overlay: bool,
     /// Optional input-sequence overlay for review media.
@@ -66,6 +69,7 @@ impl Presentation {
             style: WindowStyle::new(&theme),
             backdrop: Canvas::new(0, 0, theme.background)?,
             bar_overlay: Canvas::transparent(0, 0)?,
+            outline: None,
             caption_overlay: false,
             keyboard_overlay: KeyboardOverlaySettings::default(),
             theme,
@@ -86,6 +90,11 @@ impl Presentation {
             width: self.terminal_canvas_width(),
             height: self.terminal_canvas_height() + self.style.window_bar_height(),
         };
+        self.outline = Some(WindowOutline::new(
+            bounds,
+            self.style.border_radius,
+            self.style.border.width,
+        )?);
         self.style.prepare_backdrop(&mut self.backdrop, bounds);
         self.bar_overlay =
             self.style
@@ -202,9 +211,9 @@ impl Presentation {
         output.blit(frame, margin, margin + bar_height)?;
         self.style.draw(
             &mut output,
-            frame,
             &self.backdrop,
             &self.bar_overlay,
+            self.outline.as_ref().expect("prepared window outline"),
             &self.theme,
             &self.text,
             title,
