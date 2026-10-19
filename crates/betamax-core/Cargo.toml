@@ -25,6 +25,7 @@ include = [
 ]
 
 [dependencies]
+color_quant.workspace = true
 cosmic-text.workspace = true
 gif.workspace = true
 image-webp.workspace = true

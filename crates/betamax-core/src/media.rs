@@ -8,6 +8,7 @@
 //! Most users should let [`crate::Runner`] write media outputs from a tape. Use this module when
 //! embedding Betamax's renderer directly or when tests need to inspect/write raw frames.
 
+use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
@@ -25,11 +26,17 @@ mod webp;
 
 pub use webp::{write_webp, write_webp_animation, write_webp_animation_with_progress};
 
+/// Entries in a GIF color table.
+const GIF_PALETTE_SIZE: usize = 256;
+/// Palette index reserved for transparent pixels when any frame has them.
+const GIF_TRANSPARENT_INDEX: u8 = 255;
+/// Minimum NeuQuant training pixels, so its learning loop always has samples to step through.
+const GIF_MIN_TRAINING_PIXELS: usize = 4096;
 /// Number of bytes in one RGBA or BGRA pixel.
 const BYTES_PER_PIXEL: usize = 4;
 /// Width used for numbered PNG sequence frame names.
 const FRAME_INDEX_WIDTH: usize = 5;
-/// Quantization speed passed to the `gif` crate.
+/// NeuQuant sampling factor used when a GIF has more colors than its palette holds.
 ///
 /// The value favors reasonable encode speed for CLI-generated demos. A future benchmark pass can
 /// tune this if GIF quality or encode time becomes a release concern.
@@ -333,21 +340,35 @@ pub fn write_gif_with_progress(
     let file = File::create(path)
         .into_diagnostic()
         .map_err(|error| error.wrap_err(format!("failed to create {}", path.display())))?;
-    let mut encoder =
-        GifEncoder::new(BufWriter::new(file), width, height, &[]).into_diagnostic()?;
-    encoder.set_repeat(Repeat::Infinite).into_diagnostic()?;
-
-    let total = frames.len();
-    for (index, (frame, delay)) in frames.iter().enumerate() {
+    let mut counts = HashMap::new();
+    let mut any_transparent = false;
+    for (frame, _) in frames {
         if frame.width != first.width || frame.height != first.height {
             return Err(miette!("all GIF frames must have the same dimensions").into());
         }
         let mut rgba = frame.rgba()?;
+        any_transparent |= gif_binary_alpha(&mut rgba);
+        GifPalette::count_colors(&mut counts, &rgba);
+    }
+    let mut palette = GifPalette::new(counts, any_transparent);
+
+    let mut encoder =
+        GifEncoder::new(BufWriter::new(file), width, height, palette.rgb()).into_diagnostic()?;
+    encoder.set_repeat(Repeat::Infinite).into_diagnostic()?;
+
+    let total = frames.len();
+    for (index, (frame, delay)) in frames.iter().enumerate() {
+        let mut rgba = frame.rgba()?;
         let transparent = gif_binary_alpha(&mut rgba);
-        let mut gif_frame =
-            GifFrame::from_rgba_speed(width, height, &mut rgba, GIF_QUANTIZATION_SPEED);
-        gif_frame.delay = gif_delay(*delay);
+        let mut gif_frame = GifFrame {
+            width,
+            height,
+            buffer: palette.indices(&rgba).into(),
+            delay: gif_delay(*delay),
+            ..GifFrame::default()
+        };
         if transparent {
+            gif_frame.transparent = Some(GIF_TRANSPARENT_INDEX);
             // Clear before the next frame; otherwise earlier pixels show through its clear areas.
             gif_frame.dispose = DisposalMethod::Background;
         }
@@ -360,6 +381,105 @@ pub fn write_gif_with_progress(
     }
 
     Ok(())
+}
+
+/// One palette shared by every frame of a GIF.
+///
+/// Quantizing each frame separately lets the same source color land on a different palette entry
+/// whenever the rest of the frame changes, so static content such as window dots visibly flickers.
+/// Building the palette from all frames keeps every source color mapped to the same entry.
+struct GifPalette {
+    /// Flat RGB palette, with the transparent slot last when reserved.
+    rgb: Vec<u8>,
+    /// Quantizer used when the animation has more colors than the palette holds.
+    quantizer: Option<color_quant::NeuQuant>,
+    /// Palette index for each opaque source color seen so far.
+    lookup: HashMap<[u8; 3], u8>,
+}
+
+impl GifPalette {
+    /// Add one frame's opaque pixels to per-color pixel counts.
+    ///
+    /// Expects straight-alpha RGBA whose alpha is already binary.
+    fn count_colors(counts: &mut HashMap<[u8; 3], usize>, rgba: &[u8]) {
+        for pixel in rgba.as_chunks::<BYTES_PER_PIXEL>().0 {
+            if pixel[3] == u8::MAX {
+                *counts.entry([pixel[0], pixel[1], pixel[2]]).or_default() += 1;
+            }
+        }
+    }
+
+    /// Build a palette from the pixel counts of every frame.
+    ///
+    /// `transparent` reserves [`GIF_TRANSPARENT_INDEX`] for clear pixels.
+    fn new(counts: HashMap<[u8; 3], usize>, transparent: bool) -> Self {
+        let opaque_colors = GIF_PALETTE_SIZE - usize::from(transparent);
+        let mut colors: Vec<_> = counts.into_iter().collect();
+        colors.sort_unstable();
+
+        if colors.len() <= opaque_colors {
+            let mut rgb = Vec::with_capacity(GIF_PALETTE_SIZE * 3);
+            let mut lookup = HashMap::with_capacity(colors.len());
+            for (index, (color, _)) in (0..=u8::MAX).zip(&colors) {
+                rgb.extend_from_slice(color);
+                lookup.insert(*color, index);
+            }
+            rgb.resize(GIF_PALETTE_SIZE * 3, 0);
+            return Self {
+                rgb,
+                quantizer: None,
+                lookup,
+            };
+        }
+
+        // Weight training samples by the square root of each color's pixel count: common colors
+        // still get the most precise entries, while small details such as dots keep a voice.
+        let mut training = Vec::new();
+        for (color, count) in &colors {
+            for _ in 0..count.isqrt() {
+                training.extend_from_slice(&[color[0], color[1], color[2], u8::MAX]);
+            }
+        }
+        while training.len() < GIF_MIN_TRAINING_PIXELS * BYTES_PER_PIXEL {
+            training.extend_from_within(..);
+        }
+        let quantizer =
+            color_quant::NeuQuant::new(GIF_QUANTIZATION_SPEED, opaque_colors, &training);
+        let mut rgb = quantizer.color_map_rgb();
+        rgb.resize(GIF_PALETTE_SIZE * 3, 0);
+        Self {
+            rgb,
+            quantizer: Some(quantizer),
+            lookup: HashMap::new(),
+        }
+    }
+
+    /// Flat RGB palette for the GIF's global color table.
+    fn rgb(&self) -> &[u8] {
+        &self.rgb
+    }
+
+    /// Map one frame's pixels to palette indices.
+    fn indices(&mut self, rgba: &[u8]) -> Vec<u8> {
+        rgba.as_chunks::<BYTES_PER_PIXEL>()
+            .0
+            .iter()
+            .map(|pixel| {
+                if pixel[3] < u8::MAX {
+                    return GIF_TRANSPARENT_INDEX;
+                }
+                let color = [pixel[0], pixel[1], pixel[2]];
+                *self.lookup.entry(color).or_insert_with(|| {
+                    let quantizer = self
+                        .quantizer
+                        .as_ref()
+                        .expect("exact palettes contain every source color");
+                    u8::try_from(quantizer.index_of(pixel))
+                        .expect("palette has at most 256 entries")
+                })
+            })
+            .collect()
+    }
 }
 
 /// Reduce straight alpha to GIF's single transparent index, returning whether any pixel is clear.
@@ -733,6 +853,44 @@ mod tests {
         let transparent = decoded.transparent.expect("transparent index");
         assert_ne!(decoded.buffer[0], transparent);
         assert_eq!(decoded.buffer[1], transparent);
+        fs::remove_file(&path).into_diagnostic()?;
+        Ok(())
+    }
+
+    #[test]
+    fn gif_keeps_unchanged_colors_stable_across_frames() -> Result<()> {
+        // A fixed dot beside 300 colors that shift every frame, so each frame needs quantizing.
+        let frame = |shift: u8| {
+            let mut pixels = vec![0xe0, 0x6c, 0x75, 255];
+            for index in 0..300_u16 {
+                let [high, low] = index.to_be_bytes();
+                pixels.extend_from_slice(&[low.wrapping_add(shift), high * 100, shift, 255]);
+            }
+            Frame {
+                width: 301,
+                height: 1,
+                stride: 301 * 4,
+                format: PixelFormat::Rgba8,
+                pixels,
+            }
+        };
+        let path = temp_path("betamax-stable-palette.gif");
+        let frames: Vec<_> = (0..4)
+            .map(|step| (frame(step * 60), Duration::from_millis(100)))
+            .collect();
+        write_gif(&path, &frames)?;
+
+        let mut options = gif::DecodeOptions::new();
+        options.set_color_output(gif::ColorOutput::RGBA);
+        let mut decoder = options
+            .read_info(File::open(&path).into_diagnostic()?)
+            .into_diagnostic()?;
+        let mut dots = Vec::new();
+        while let Some(decoded) = decoder.read_next_frame().into_diagnostic()? {
+            dots.push(decoded.buffer[..BYTES_PER_PIXEL].to_vec());
+        }
+        assert_eq!(dots.len(), 4);
+        assert!(dots.windows(2).all(|pair| pair[0] == pair[1]), "{dots:?}");
         fs::remove_file(&path).into_diagnostic()?;
         Ok(())
     }
