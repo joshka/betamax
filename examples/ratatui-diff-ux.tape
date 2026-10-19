@@ -1,4 +1,6 @@
 # Build the pinned merged viewer, then set BETAMAX_DIFF_VIEWER to its executable.
+# Fixed terminal coordinates use the pre-preset baseline.
+Set Preset Default-0.1
 Set Shell "bash"
 Set Width 1340
 Set Height 680
