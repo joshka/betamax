@@ -3,6 +3,7 @@
 use miette::miette;
 
 use super::canvas::{Canvas, PixelRect};
+use super::window_shape::WindowShape;
 use crate::Result;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -66,14 +67,11 @@ impl Shadow {
         if width == 0.0 || height == 0.0 {
             return;
         }
-        let radius = f64::from(radius).min(width / 2.0).min(height / 2.0);
-        let center_x = f64::from(rect.x) + width / 2.0;
-        let center_y = f64::from(rect.y) + height / 2.0 + f64::from(self.offset);
+        let outline = WindowShape::new(rect, radius).shadow_outline();
         for y in 0..backdrop.height {
             for x in 0..backdrop.width {
-                let dx = (f64::from(x) + 0.5 - center_x).abs() - (width / 2.0 - radius);
-                let dy = (f64::from(y) + 0.5 - center_y).abs() - (height / 2.0 - radius);
-                let distance = dx.max(0.0).hypot(dy.max(0.0)) + dx.max(dy).min(0.0) - radius;
+                let distance =
+                    outline.distance(x as f32 + 0.5, y as f32 + 0.5 - self.offset as f32);
                 let alpha =
                     (shadow_coverage(distance, self.blur) * self.opacity * 255.0).round() as u8;
                 backdrop.blend_pixel(x, y, 0, 0, 0, alpha);

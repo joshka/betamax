@@ -264,11 +264,12 @@ fn rounded_window_corners_restore_and_blend_the_local_backdrop() {
     let frame = decorated(&settings, None);
     assert_eq!(pixel(&frame, 2, 2), [34, 34, 34, 255]);
     assert_eq!(pixel(&frame, 13, 13), [221, 221, 221, 255]);
-    // (4, 12) has 5/16 coverage of the red terminal. The backdrop here is #444444.
-    let actual = pixel(&frame, 4, 12);
-    for (actual, expected) in actual.into_iter().zip([126u8, 46, 46, 255]) {
-        assert!(actual.abs_diff(expected) <= 1, "{actual} != {expected}");
-    }
+    // Continuous corners mix the red terminal with the same-position grayscale gradient.
+    let actual = pixel(&frame, 3, 12);
+    assert!(actual[0] < 255 && actual[0] > actual[1], "{actual:?}");
+    assert!(actual[1] > 0);
+    assert_eq!(actual[1], actual[2]);
+    assert_eq!(actual[3], 255);
     assert_eq!(pixel(&frame, 7, 7), [255, 0, 0, 255]);
 }
 

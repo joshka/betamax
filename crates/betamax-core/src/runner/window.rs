@@ -4,8 +4,10 @@ use super::border::Border;
 use super::canvas::{rgb, Canvas, PixelRect};
 use super::margin::parse_hex_color;
 use super::shadow::Shadow;
+use super::window_shape::WindowOutline;
 use super::window_title::WindowTitle;
 use crate::ghostty::{TerminalTheme, TextSettings};
+#[cfg(test)]
 use crate::media::Frame;
 use crate::Result;
 
@@ -124,7 +126,7 @@ impl WindowStyle {
             bar_height,
             color,
         );
-        self.draw_window_buttons(&mut overlay);
+        self.draw_window_buttons(&mut overlay)?;
         Ok(overlay)
     }
 
@@ -133,21 +135,20 @@ impl WindowStyle {
     pub(super) fn draw(
         &self,
         output: &mut Canvas,
-        terminal: &Frame,
         backdrop: &Canvas,
         bar_overlay: &Canvas,
+        outline: &WindowOutline,
         theme: &TerminalTheme,
         text: &TextSettings,
         title: Option<&str>,
     ) -> Result<()> {
-        let margin = self.effective_margin();
         let bar_height = self.window_bar_height();
         let bar = self.bar_color(theme.background);
         if bar_height > 0 {
-            output.copy_opaque_pixels(bar_overlay);
+            output.composite_overlay(bar_overlay);
             let buttons = WindowButtons::new(
                 output.width,
-                margin + bar_height / 2,
+                self.effective_margin() + bar_height / 2,
                 bar_height,
                 &self.window_bar,
             );
@@ -156,27 +157,10 @@ impl WindowStyle {
                 .draw(output, title_bounds, text, theme, bar, title)?;
         }
         if self.border.visible() {
-            self.border.draw(
-                output,
-                PixelRect {
-                    x: margin,
-                    y: margin,
-                    width: terminal.width,
-                    height: terminal.height + bar_height,
-                },
-                self.border_radius,
-                backdrop,
-                theme.background,
-            );
+            self.border
+                .draw(output, outline, backdrop, theme.background);
         } else if self.border_radius > 0 {
-            output.apply_rounded_rect_mask(
-                margin,
-                margin,
-                terminal.width,
-                terminal.height + bar_height,
-                self.border_radius,
-                backdrop,
-            );
+            output.apply_window_mask(&outline.outer, outline.rect, backdrop);
         }
         Ok(())
     }
@@ -219,7 +203,7 @@ impl WindowStyle {
     ///
     /// The current style language treats any non-empty mode as enabled. Modes ending in `Right`
     /// place the buttons on the right; all other values place them on the left.
-    fn draw_window_buttons(&self, output: &mut Canvas) {
+    fn draw_window_buttons(&self, output: &mut Canvas) -> Result<()> {
         let bar_height = self.window_bar_height();
         let cy = self.effective_margin() + bar_height / 2;
         let buttons = WindowButtons::new(output.width, cy, bar_height, &self.window_bar);
@@ -234,8 +218,9 @@ impl WindowStyle {
                 cy,
                 buttons.radius,
                 color,
-            );
+            )?;
         }
+        Ok(())
     }
 }
 
@@ -376,7 +361,7 @@ mod tests {
             assert_eq!(pixel(&output, 8, 8), [0x44, 0x55, 0x66, 255]);
             assert_eq!(pixel(&output, 80, 8), [0x0f, 0x10, 0x1a, 255]);
             let edge = pixel(&output, 12, 9);
-            for (actual, expected) in edge.into_iter().zip([51_u8, 63, 78, 255]) {
+            for (actual, expected) in edge.into_iter().zip([50_u8, 61, 76, 255]) {
                 assert!(actual.abs_diff(expected) <= 1, "rounded edge: {edge:?}");
             }
             // The bar/terminal seam is straight, including at both window edges.
@@ -465,7 +450,11 @@ mod tests {
                         height,
                         settings.presentation.theme.background,
                     );
-                    settings.presentation.style.draw_window_buttons(&mut legacy);
+                    settings
+                        .presentation
+                        .style
+                        .draw_window_buttons(&mut legacy)
+                        .unwrap();
                 }
                 legacy.apply_rounded_rect_mask(
                     margin,
