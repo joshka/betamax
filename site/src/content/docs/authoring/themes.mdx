@@ -83,7 +83,7 @@ These settings are applied after the raw terminal frame is rendered:
 | Setting                   | Default          | Purpose                      |
 | ------------------------- | ---------------- | ---------------------------- |
 | `Margin`                  | `32`             | Outer frame margin in pixels |
-| `MarginFill`              | theme gradient   | Solid or linear backdrop     |
+| `MarginFill`              | theme gradient   | Solid, linear, or clear      |
 | `WindowBar`               | `Colorful`       | Synthetic window bar mode    |
 | `WindowBarSize`           | `30`             | Window bar height in pixels  |
 | `WindowBarColor`          | theme surface    | Window bar fill color        |
@@ -132,6 +132,10 @@ an empty string disables the margin. Invalid colors or gradients fall back to th
 background. Fill strings are not checked by the syntax-only `betamax validate` command. Setting a
 theme before or after an explicit fill preserves that fill. See
 [Margin fill](../../reference/tape-reference/#margin-fill) for the full syntax.
+
+`Set MarginFill transparent` leaves the backdrop clear, so the window and its shadow sit on any page
+background. See [Transparent margin](../../reference/tape-reference/#transparent-margin) for how
+each output format handles it.
 
 `Shadow` is rendered over the full `MarginFill` backdrop after it has resolved its color or
 gradient. `ShadowBlur` follows CSS: sigma is half the blur radius, so the default `28` gives sigma

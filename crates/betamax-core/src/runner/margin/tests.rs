@@ -328,3 +328,55 @@ fn pixel(frame: &Frame, x: u32, y: u32) -> [u8; 4] {
         frame.pixels[offset + 3],
     ]
 }
+
+#[test]
+fn transparent_margin_fill_clears_the_backdrop_around_an_opaque_window() {
+    assert_eq!(
+        parse_margin_fill(" Transparent "),
+        Some(MarginFill::Transparent)
+    );
+    let tape =
+        Tape::parse("Set Preset Framed\nSet Width 200\nSet Height 160\nSet MarginFill transparent")
+            .unwrap();
+    let settings = Settings::from_tape(&tape).unwrap();
+    assert!(settings.presentation.style.transparent_margin());
+    let frame = decorated(&settings, None);
+    let alpha =
+        |x: u32, y: u32| frame.pixels[(y as usize * frame.width as usize + x as usize) * 4 + 3];
+
+    assert_eq!(alpha(0, 0), 0, "margin is clear");
+    assert_eq!(alpha(100, 80), 255, "terminal stays opaque");
+    let below_window = alpha(100, 160 - 32 + 6);
+    assert!(
+        (1..255).contains(&below_window),
+        "shadow is translucent: {below_window}"
+    );
+}
+
+#[test]
+fn coverage_against_a_clear_backdrop_fades_alpha_not_color() {
+    let mut clear = Canvas::transparent(1, 1).unwrap();
+    let mut window = Canvas::new(1, 1, rgb(200, 100, 50)).unwrap();
+    window.composite_pixel(0, 0, rgb(0, 0, 0), 0.0, &clear, 0.25);
+    assert_eq!(window.clone().into_frame().pixels, vec![200, 100, 50, 191]);
+
+    // A translucent shadow sample contributes its color by its own coverage.
+    clear.blend_pixel(0, 0, 0, 0, 0, 128);
+    let mut window = Canvas::new(1, 1, rgb(200, 100, 50)).unwrap();
+    window.composite_pixel(0, 0, rgb(0, 0, 0), 0.0, &clear, 0.5);
+    assert_eq!(window.into_frame().pixels, vec![133, 67, 33, 192]);
+}
+
+#[test]
+fn opaque_margin_fills_keep_every_pixel_opaque() {
+    let tape = Tape::parse("Set Preset Framed\nSet Width 200\nSet Height 160").unwrap();
+    let settings = Settings::from_tape(&tape).unwrap();
+    assert!(!settings.presentation.style.transparent_margin());
+    let frame = decorated(&settings, Some("caption"));
+    assert!(frame
+        .pixels
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .all(|pixel| pixel[3] == 255));
+}

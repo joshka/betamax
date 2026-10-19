@@ -50,7 +50,7 @@ Defaults below describe `Default`, which currently selects `Framed`. See [Preset
 | `WaitTimeout`             | duration or number                                     | `15s`            | Number values are seconds.                  |
 | `WaitPattern`             | regex string                                           | `>$`             | Used by `Wait` without explicit pattern.    |
 | `Margin`                  | number                                                 | `32`             | Outer decoration margin in pixels.          |
-| `MarginFill`              | string                                                 | theme gradient   | Solid color or linear gradient backdrop.    |
+| `MarginFill`              | string                                                 | theme gradient   | Color, linear gradient, or `transparent`.   |
 | `WindowBar`               | `Rings`, `RingsRight`, `Colorful`, or etc.             | `Colorful`       | Left dots; any non-empty value enables bar. |
 | `WindowBarSize`           | number                                                 | `30`             | Bar height in pixels when enabled.          |
 | `WindowBarColor`          | `#rrggbb` string                                       | theme surface    | Invalid colors fall back to theme bg.       |
@@ -215,6 +215,30 @@ margin. Invalid colors and malformed gradients fall back to the active theme bac
 validate` checks tape syntax and command order, so it does not reject malformed fill strings. Radial
 gradients and image fills are not yet supported. See `examples/margin-gradient.tape` for a complete
 example.
+
+#### Transparent margin
+
+`Set MarginFill transparent` leaves the backdrop clear so the output sits on whatever page shows it:
+
+```tape
+Set Preset Framed
+Set MarginFill transparent
+```
+
+The margin, caption row, and the area outside rounded corners are fully transparent. The shadow
+becomes translucent black, so it darkens any page. The window, bar, border, and terminal stay opaque.
+Captions and keyboard labels keep their theme colors, so check them against the page they sit on.
+
+| Output             | Transparency                                                          |
+| ------------------ | --------------------------------------------------------------------- |
+| PNG, `Screenshot`  | Full alpha                                                            |
+| PNG sequence, WebP | Full alpha                                                            |
+| WebM               | Full alpha (VP9 `yuva420p`)                                           |
+| GIF                | One bit: partly transparent pixels, including the shadow, are dropped |
+| MP4                | Rejected before the shell starts; H.264 has no alpha                  |
+
+Use PNG or WebP to keep soft shadows and antialiased corners. See
+`examples/margin-transparent.tape`.
 
 ### Window shadow
 

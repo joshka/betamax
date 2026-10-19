@@ -8,6 +8,8 @@ use crate::Result;
 pub(super) enum MarginFill {
     Solid(libghostty_vt::style::RgbColor),
     Gradient(LinearGradient),
+    /// Leave the backdrop clear so the output sits on whatever page shows it.
+    Transparent,
 }
 
 /// A linear gradient resolved into opaque RGB stops and output-relative geometry.
@@ -168,6 +170,9 @@ fn dither_color(
 /// Invalid fills retain the legacy fallback to the theme background.
 pub(super) fn parse_margin_fill(value: &str) -> Option<MarginFill> {
     let value = value.trim();
+    if value.eq_ignore_ascii_case("transparent") {
+        return Some(MarginFill::Transparent);
+    }
     if let Some(value) = value.strip_prefix("linear(") {
         return parse_linear_gradient(value.strip_suffix(')')?);
     }
@@ -251,6 +256,7 @@ pub(super) fn margin_backdrop(
         .unwrap_or(MarginFill::Solid(fallback));
     let gradient = match fill {
         MarginFill::Solid(color) => return Canvas::new(width, height, color),
+        MarginFill::Transparent => return Canvas::transparent(width, height),
         MarginFill::Gradient(gradient) => gradient,
     };
     let mut frame = Canvas::new(width, height, gradient.color_at(0.0, 0.0))?;

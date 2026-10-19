@@ -47,7 +47,8 @@ pub(super) struct Presentation {
     pub(super) theme: TerminalTheme,
     /// Outer frame decoration settings.
     pub(super) style: WindowStyle,
-    /// Cached opaque margin canvas, prepared after all startup settings have been applied.
+    /// Cached margin canvas, prepared after all startup settings have been applied. Opaque unless
+    /// the margin fill is transparent.
     backdrop: Canvas,
     /// Cached bar fill and buttons, prepared with the backdrop after startup settings.
     bar_overlay: Canvas,

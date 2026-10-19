@@ -15,7 +15,7 @@ use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use gif::{Encoder as GifEncoder, Frame as GifFrame, Repeat};
+use gif::{DisposalMethod, Encoder as GifEncoder, Frame as GifFrame, Repeat};
 use miette::{miette, IntoDiagnostic};
 use serde::Serialize;
 
@@ -343,9 +343,14 @@ pub fn write_gif_with_progress(
             return Err(miette!("all GIF frames must have the same dimensions").into());
         }
         let mut rgba = frame.rgba()?;
+        let transparent = gif_binary_alpha(&mut rgba);
         let mut gif_frame =
             GifFrame::from_rgba_speed(width, height, &mut rgba, GIF_QUANTIZATION_SPEED);
         gif_frame.delay = gif_delay(*delay);
+        if transparent {
+            // Clear before the next frame; otherwise earlier pixels show through its clear areas.
+            gif_frame.dispose = DisposalMethod::Background;
+        }
         encoder.write_frame(&gif_frame).into_diagnostic()?;
         progress.report(MediaProgress {
             kind: MediaProgressKind::Gif,
@@ -355,6 +360,21 @@ pub fn write_gif_with_progress(
     }
 
     Ok(())
+}
+
+/// Reduce straight alpha to GIF's single transparent index, returning whether any pixel is clear.
+///
+/// The encoder would otherwise make every non-zero alpha opaque, turning soft shadows into solid
+/// black. Partially transparent pixels are dropped instead, so GIF keeps only opaque content.
+fn gif_binary_alpha(rgba: &mut [u8]) -> bool {
+    let mut transparent = false;
+    for pixel in rgba.as_chunks_mut::<BYTES_PER_PIXEL>().0 {
+        if pixel[3] < u8::MAX {
+            pixel.copy_from_slice(&[0, 0, 0, 0]);
+            transparent = true;
+        }
+    }
+    transparent
 }
 
 /// Write an MP4 video through `ffmpeg`.
@@ -433,10 +453,21 @@ impl VideoFormat {
     /// Format-specific ffmpeg arguments.
     ///
     /// Input frame sequence arguments are shared by both formats and are assembled by
-    /// [`write_video_inner`].
-    fn args(self) -> &'static [&'static str] {
+    /// [`write_video_inner`]. VP9 keeps an alpha plane only when a frame needs one; H.264 has
+    /// none, so MP4 flattens any transparency.
+    fn args(self, alpha: bool) -> &'static [&'static str] {
         match self {
             Self::Mp4 => &["-pix_fmt", "yuv420p", "-movflags", "+faststart"],
+            Self::Webm if alpha => &[
+                "-c:v",
+                "libvpx-vp9",
+                "-pix_fmt",
+                "yuva420p",
+                "-b:v",
+                "0",
+                "-crf",
+                WEBM_CRF,
+            ],
             Self::Webm => &[
                 "-c:v",
                 "libvpx-vp9",
@@ -541,7 +572,15 @@ fn write_video_inner(
     progress: &mut impl MediaProgressReporter,
 ) -> Result<()> {
     let total = frames.len();
+    let mut alpha = false;
     for (index, (frame, _)) in frames.iter().enumerate() {
+        let rgba = frame.rgba()?;
+        alpha = alpha
+            || rgba
+                .as_chunks::<BYTES_PER_PIXEL>()
+                .0
+                .iter()
+                .any(|p| p[3] < u8::MAX);
         write_png(
             &temp_dir.join(format!(
                 "frame-{index:0width$}.png",
@@ -576,7 +615,7 @@ fn write_video_inner(
     command
         .arg("-frames:v")
         .arg(format!("{output_frames:.0}"))
-        .args(format.args())
+        .args(format.args(alpha))
         .arg(path);
     let output = command
         .output()
@@ -665,6 +704,44 @@ mod tests {
         };
         assert_eq!(frame.rgba()?, vec![3, 2, 1, 4]);
         Ok(())
+    }
+
+    #[test]
+    fn gif_keeps_only_opaque_pixels_and_clears_between_transparent_frames() -> Result<()> {
+        let mut rgba = vec![10, 20, 30, 255, 0, 0, 0, 140, 9, 9, 9, 0];
+        assert!(gif_binary_alpha(&mut rgba));
+        assert_eq!(rgba, vec![10, 20, 30, 255, 0, 0, 0, 0, 0, 0, 0, 0]);
+        let mut opaque = vec![10, 20, 30, 255];
+        assert!(!gif_binary_alpha(&mut opaque));
+
+        let path = temp_path("betamax-transparent.gif");
+        let frame = Frame {
+            width: 2,
+            height: 1,
+            stride: 8,
+            format: PixelFormat::Rgba8,
+            pixels: vec![10, 20, 30, 255, 0, 0, 0, 140],
+        };
+        write_gif(&path, &[(frame, Duration::from_millis(100))])?;
+        let mut options = gif::DecodeOptions::new();
+        options.set_color_output(gif::ColorOutput::Indexed);
+        let mut decoder = options
+            .read_info(File::open(&path).into_diagnostic()?)
+            .into_diagnostic()?;
+        let decoded = decoder.read_next_frame().into_diagnostic()?.unwrap();
+        assert_eq!(decoded.dispose, DisposalMethod::Background);
+        let transparent = decoded.transparent.expect("transparent index");
+        assert_ne!(decoded.buffer[0], transparent);
+        assert_eq!(decoded.buffer[1], transparent);
+        fs::remove_file(&path).into_diagnostic()?;
+        Ok(())
+    }
+
+    #[test]
+    fn webm_keeps_an_alpha_plane_only_when_frames_need_one() {
+        assert!(VideoFormat::Webm.args(true).contains(&"yuva420p"));
+        assert!(VideoFormat::Webm.args(false).contains(&"yuv420p"));
+        assert!(VideoFormat::Mp4.args(true).contains(&"yuv420p"));
     }
 
     #[test]
