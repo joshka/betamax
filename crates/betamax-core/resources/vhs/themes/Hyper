@@ -1,0 +1,22 @@
+# Imported from VHS themes.json (charmbracelet/vhs@55b5fcd) as "Hyper".
+# Author: shivang <https://github.com/ShivangMathur1>
+palette = 0=#000000
+palette = 1=#fe0100
+palette = 2=#33ff00
+palette = 3=#feff00
+palette = 4=#0066ff
+palette = 5=#cc00ff
+palette = 6=#00ffff
+palette = 7=#d0d0d0
+palette = 8=#808080
+palette = 9=#fe0100
+palette = 10=#33ff00
+palette = 11=#feff00
+palette = 12=#0066ff
+palette = 13=#cc00ff
+palette = 14=#00ffff
+palette = 15=#ffffff
+background = #000000
+foreground = #ffffff
+cursor-color = #ffffff
+selection-background = #f81ce5

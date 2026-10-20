@@ -1,0 +1,21 @@
+# Imported from VHS themes.json (charmbracelet/vhs@55b5fcd) as "Sonoran Gothic".
+# Author: d-mckee <https://github.com/d-mckee>
+palette = 0=#867f6e
+palette = 1=#eb6f6f
+palette = 2=#669c50
+palette = 3=#f2d696
+palette = 4=#227b4d
+palette = 5=#a5abda
+palette = 6=#e18f62
+palette = 7=#eaf4de
+palette = 8=#867f6e
+palette = 9=#eb6f6f
+palette = 10=#669c50
+palette = 11=#f2d696
+palette = 12=#227b4d
+palette = 13=#a5abda
+palette = 14=#e18f62
+palette = 15=#eaf4de
+background = #241f17
+foreground = #eaf4de
+cursor-color = #eaf4de

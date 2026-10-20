@@ -1,0 +1,21 @@
+# Imported from VHS themes.json (charmbracelet/vhs@55b5fcd) as "Kanagawa".
+palette = 0=#1f1f28
+palette = 1=#e82424
+palette = 2=#76946a
+palette = 3=#ff9e3b
+palette = 4=#658594
+palette = 5=#957fb8
+palette = 6=#9cabca
+palette = 7=#dcd7ba
+palette = 8=#2a2a37
+palette = 9=#ff5d62
+palette = 10=#98bb6c
+palette = 11=#e6c384
+palette = 12=#7fb4ca
+palette = 13=#d27e99
+palette = 14=#a3d4d5
+palette = 15=#dcd7ba
+background = #1f1f28
+foreground = #dcd7ba
+cursor-color = #dcd7ba
+selection-background = #2a2a37

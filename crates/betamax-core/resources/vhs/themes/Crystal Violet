@@ -1,0 +1,21 @@
+# Imported from VHS themes.json (charmbracelet/vhs@55b5fcd) as "Crystal Violet".
+palette = 0=#0a0a14
+palette = 1=#e63232
+palette = 2=#32cd87
+palette = 3=#eba041
+palette = 4=#5050e6
+palette = 5=#6e14eb
+palette = 6=#2db9e6
+palette = 7=#d2d2d2
+palette = 8=#363b54
+palette = 9=#f7768e
+palette = 10=#41a6b5
+palette = 11=#e0af68
+palette = 12=#7aa2f7
+palette = 13=#bb9af7
+palette = 14=#7dcfff
+palette = 15=#acb0d0
+background = #1e1423
+foreground = #737da0
+cursor-color = #2db9e6
+selection-background = #5050e6

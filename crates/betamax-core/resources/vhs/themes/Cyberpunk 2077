@@ -1,0 +1,21 @@
+# Imported from VHS themes.json (charmbracelet/vhs@55b5fcd) as "CyberPunk2077".
+palette = 0=#272932
+palette = 1=#710000
+palette = 2=#1ac5b0
+palette = 3=#fdf500
+palette = 4=#9381ff
+palette = 5=#742d8b
+palette = 6=#00d0db
+palette = 7=#d1c5c0
+palette = 8=#7b8097
+palette = 9=#c71515
+palette = 10=#40ffe9
+palette = 11=#fff955
+palette = 12=#37ebf3
+palette = 13=#cb1dcd
+palette = 14=#37ebf3
+palette = 15=#c1deff
+background = #272932
+foreground = #e455ae
+cursor-color = #fdf500
+selection-background = #742d8b

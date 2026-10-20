@@ -1,0 +1,21 @@
+# Imported from VHS themes.json (charmbracelet/vhs@55b5fcd) as "Juicy Colors".
+palette = 0=#292a24
+palette = 1=#ff6249
+palette = 2=#68d644
+palette = 3=#fcc223
+palette = 4=#209de5
+palette = 5=#af80ff
+palette = 6=#00d2ff
+palette = 7=#cccccc
+palette = 8=#808080
+palette = 9=#ff6249
+palette = 10=#68d644
+palette = 11=#fcc223
+palette = 12=#209de5
+palette = 13=#af80ff
+palette = 14=#00d2ff
+palette = 15=#f2f2f2
+background = #292a24
+foreground = #cccccc
+cursor-color = #ffffff
+selection-background = #ffffff

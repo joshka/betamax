@@ -45,6 +45,55 @@ SOFTWARE.
 The copied theme files are distributed as data resources so Betamax can render by Ghostty theme name
 without requiring a local Ghostty checkout.
 
+Ghostty generates these files from iTerm2-Color-Schemes (<https://github.com/mbadolato/iTerm2-Color-Schemes>,
+MIT License, Copyright (c) 2011 to Present Mark Badolato). Individual color schemes belong to their
+authors, credited in that project.
+
+## VHS Themes
+
+Betamax includes VHS theme names and palettes under `crates/betamax-core/resources/vhs`, generated
+by `scripts/import-vhs-themes.py` from VHS's `themes.json`. `aliases.json` maps VHS theme names to
+Betamax theme names. `themes/` holds the VHS palettes that have no Ghostty counterpart; each file
+names its original VHS theme and credits its author.
+
+VHS took these themes from atomcorp/themes (<https://github.com/atomcorp/themes>, MIT License,
+Copyright (c) 2019 to Thomas Maxwell Smith), which notes that the copyright and license for each
+individual theme belongs to the author of that theme.
+
+Upstream project:
+
+- <https://github.com/charmbracelet/vhs>
+
+License:
+
+- MIT
+
+Upstream license notice:
+
+```text
+MIT License
+
+Copyright (c) 2022-2023 Charmbracelet, Inc
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
 ## vhs-analyzer Tape Grammar
 
 The docs site tape grammar at `site/src/grammars/tape.tmLanguage.json` is derived from the VHS tape

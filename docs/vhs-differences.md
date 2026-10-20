@@ -60,6 +60,15 @@ VHS ships its own theme set and supports inline JSON themes. Betamax uses copied
 plus inline JSON themes, and the `themes` command lists effective theme names from user Ghostty
 theme directories and bundled resources.
 
+All 348 VHS theme names resolve. VHS's names come from a 2023 snapshot of iTerm2-Color-Schemes,
+which has since renamed most themes, so Betamax maps each old VHS spelling to its current name
+(`tokyonight` loads `TokyoNight`). `betamax themes` lists only current names. Some themes changed
+colors upstream since that snapshot, usually bright black (color 8). The 29 VHS themes with no
+Ghostty counterpart are bundled with VHS's colors under normalized names (`CyberPunk2077` loads
+`Cyberpunk 2077`). Other names match ignoring case, spaces, and punctuation, and unknown names get
+"did you mean" suggestions. `scripts/import-vhs-themes.py` regenerates the alias table and bundled
+VHS themes.
+
 The visible result should be close for common named themes and base16-style JSON themes, but exact
 theme metadata is not identical. Selection colors, cursor text colors, and other theme fields are
 not fully represented in Betamax's current renderer.

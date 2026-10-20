@@ -32,7 +32,7 @@ Defaults below describe `Default`, which currently selects `Framed`. See [Preset
 | Setting                   | Value                                                  | Default          | Notes                                       |
 | ------------------------- | ------------------------------------------------------ | ---------------- | ------------------------------------------- |
 | `Shell`                   | string                                                 | `$SHELL` or `sh` | Shell argv is split with shell-like rules.  |
-| `Theme`                   | theme name or inline JSON string                       | `Aardvark Ink`   | Theme names use Ghostty-style lookup.       |
+| `Theme`                   | theme name or inline JSON string                       | `Aardvark Ink`   | Ghostty or VHS name, any case.              |
 | `FontFamily`              | string                                                 | `JetBrains Mono` | Falls back through the font system.         |
 | `FontSize`                | number                                                 | `22`             | Pixels.                                     |
 | `LetterSpacing`           | number                                                 | `0`              | Additional pixels between cells.            |
@@ -780,4 +780,7 @@ cargo run -- themes --json
 ```
 
 Theme lookup searches user Ghostty theme directories first, then the copied themes in
-`crates/betamax-core/resources/ghostty/themes`.
+`crates/betamax-core/resources/ghostty/themes` and the VHS-only themes in
+`crates/betamax-core/resources/vhs/themes`. A name with no exact match falls back to the VHS alias
+table (`resources/vhs/aliases.json`, so `tokyonight` loads `TokyoNight`), then to a match that
+ignores case, spaces, and punctuation. Unknown names are reported with close suggestions.

@@ -1,0 +1,20 @@
+# Imported from VHS themes.json (charmbracelet/vhs@55b5fcd) as "Retrowave".
+# Author: Chrissy LeMaire <https://github.com/potatoqualitee>
+palette = 0=#181a1f
+palette = 1=#ff16b0
+palette = 2=#929292
+palette = 3=#fcee54
+palette = 4=#46bdff
+palette = 5=#ff92df
+palette = 6=#df81fc
+palette = 7=#ffffff
+palette = 8=#ff16b0
+palette = 9=#f85353
+palette = 10=#fcee54
+palette = 11=#ffffff
+palette = 12=#46bdff
+palette = 13=#ff92df
+palette = 14=#ff901f
+palette = 15=#ffffff
+background = #070825
+foreground = #46bdff

@@ -99,12 +99,16 @@ These tapes parse, but run differently or fail on ordering rules that VHS doesn'
 | Backtick strings or `\` in `"…"`      | Strings follow shell quoting rules              | Single quotes for literal text: `'C:\path'` |
 | `Wait /foo bar/` (regex with a space) | Split into two tokens                           | Quote it: `Wait "/foo bar/"`                |
 | `Output frames.png`                   | Writes one PNG of the final frame               | `Output frames/` for a frames directory     |
-| A theme name such as `nord`           | Error if the name isn't a bundled Ghostty theme | A name from `betamax themes`                |
 
-Theme names are exact and case-sensitive. About 150 VHS theme names have no Ghostty theme with the
-same spelling (for example `catppuccin-mocha`, `tokyonight`, `nord`, and `OneDark`). Most were
-renamed upstream, so `betamax themes` usually lists a close match. Theme JSON works as one quoted
-token.
+All 348 VHS theme names work in `Set Theme`. VHS's theme list is a 2023 snapshot of
+iTerm2-Color-Schemes, which has since renamed most themes, so Betamax maps the old VHS spelling to
+the current name (`tokyonight` loads `TokyoNight`, `catppuccin-mocha` loads `Catppuccin Mocha`).
+`betamax themes` lists only the current names. Some themes changed colors upstream since the VHS
+snapshot, so they can look slightly different: usually bright black (color 8), sometimes more, as
+in the Catppuccin, Rosé Pine, and Ayu themes. The 29 VHS themes with no Ghostty counterpart, such as
+`Ganyu` and `CyberPunk2077` (`Cyberpunk 2077`), are bundled with VHS's colors. Other names are
+matched ignoring case, spaces, and punctuation, and an unknown name is reported with close
+suggestions. Theme JSON works as one quoted token.
 
 Smaller differences:
 
