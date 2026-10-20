@@ -57,7 +57,7 @@ Defaults below describe `Default`, which currently selects `Framed`. See [Preset
 | `Rows`                    | number                                                 | from `Height`    | Terminal rows; sizes the output height.     |
 | `Padding`                 | number                                                 | `0`              | Inner padding before terminal cells.        |
 | `Framerate`               | number                                                 | `50`             | Capture cadence in frames per second.       |
-| `TypingSpeed`             | duration                                               | `50ms`           | Default delay between typed characters.     |
+| `TypingSpeed`             | duration or number                                     | `50ms`           | Typing delay; number values are seconds.    |
 | `PlaybackSpeed`           | number                                                 | `1.0`            | Changes output playback, not PTY timing.    |
 | `LoopOffset`              | number                                                 | `0.0`            | `0..=1` is a fraction; otherwise seconds.   |
 | `CursorBlink`             | bool                                                   | `true`           | Simulates a half-second blink cadence.      |
