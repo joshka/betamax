@@ -22,6 +22,9 @@ pub(crate) struct Outputs {
     pub(crate) pngs: Vec<PathBuf>,
     /// JSON terminal-state primary outputs.
     pub(crate) states: Vec<PathBuf>,
+    /// VHS-compatible plain-text outputs (`.txt` and `.ascii`): one viewport snapshot per visible
+    /// command.
+    pub(crate) texts: Vec<PathBuf>,
     /// WebM primary outputs written through ffmpeg.
     pub(crate) webms: Vec<PathBuf>,
     /// Animated lossless WebP primary outputs.
@@ -42,6 +45,7 @@ impl Outputs {
             || !self.mp4s.is_empty()
             || !self.pngs.is_empty()
             || !self.states.is_empty()
+            || !self.texts.is_empty()
             || !self.webms.is_empty()
             || !self.webps.is_empty()
     }
@@ -56,6 +60,7 @@ impl Outputs {
             .chain(&self.mp4s)
             .chain(&self.pngs)
             .chain(&self.states)
+            .chain(&self.texts)
             .chain(&self.webms)
             .chain(&self.webps)
             .chain(&self.frame_dirs)
@@ -77,6 +82,7 @@ pub(crate) fn classify_outputs(tape: &Tape) -> Result<Outputs> {
                 Some("gif") => outputs.gifs.push(path.clone()),
                 Some("png") => outputs.pngs.push(path.clone()),
                 Some("json") => outputs.states.push(path.clone()),
+                Some("txt" | "ascii") => outputs.texts.push(path.clone()),
                 Some("webp") => outputs.webps.push(path.clone()),
                 Some("webm") => outputs.webms.push(path.clone()),
                 Some("mp4") => outputs.mp4s.push(path.clone()),
@@ -174,6 +180,18 @@ mod tests {
         let outputs = classify_outputs(&tape).unwrap();
 
         assert_eq!(outputs.states, vec![PathBuf::from("terminal.json")]);
+        assert!(outputs.requires_capture());
+    }
+
+    #[test]
+    fn classifies_text_outputs() {
+        let tape = Tape::parse("Output demo.txt Output golden.ASCII").unwrap();
+        let outputs = classify_outputs(&tape).unwrap();
+
+        assert_eq!(
+            outputs.texts,
+            vec![PathBuf::from("demo.txt"), PathBuf::from("golden.ASCII")]
+        );
         assert!(outputs.requires_capture());
     }
 

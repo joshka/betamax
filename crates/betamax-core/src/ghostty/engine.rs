@@ -259,6 +259,10 @@ impl TerminalSession for GhosttySession {
         Ok(frame)
     }
 
+    fn viewport_lines(&mut self) -> Result<Vec<String>> {
+        self.renderer.borrow_mut().viewport_lines(&self.terminal)
+    }
+
     fn viewport_cells(&mut self) -> Result<Vec<Vec<super::state::TerminalCell>>> {
         self.renderer.borrow_mut().viewport_cells(&self.terminal)
     }

@@ -5,6 +5,7 @@ use cosmic_text::{
     Weight,
 };
 use libghostty_vt::render::{CellIterator, RowIterator};
+use libghostty_vt::screen::CellWide;
 use libghostty_vt::style::{RgbColor, Style, Underline};
 use libghostty_vt::terminal::ScrollViewport;
 use libghostty_vt::{RenderState, Terminal};
@@ -249,6 +250,52 @@ impl RasterRenderer {
             "built screen text from libghostty-vt rows"
         );
         Ok(text)
+    }
+
+    /// Return visible rows as plain text with trailing whitespace trimmed.
+    ///
+    /// Unlike [`Self::screen_text`], wide-glyph spacer cells are skipped so each glyph appears
+    /// once, matching what xterm.js `translateToString` reports for VHS text outputs.
+    pub(super) fn viewport_lines(
+        &mut self,
+        terminal: &Terminal<'static, 'static>,
+    ) -> Result<Vec<String>> {
+        let snapshot = self
+            .render_state
+            .update(terminal)
+            .map_err(vt_error("failed to update libghostty-vt render state"))?;
+        let mut lines = Vec::new();
+        let mut row_iter = self
+            .rows
+            .update(&snapshot)
+            .map_err(vt_error("failed to iterate libghostty-vt rows"))?;
+        while let Some(row) = row_iter.next() {
+            let mut line = String::new();
+            let mut cell_iter = self
+                .cells
+                .update(row)
+                .map_err(vt_error("failed to iterate libghostty-vt cells"))?;
+            while let Some(cell) = cell_iter.next() {
+                let wide = cell
+                    .raw_cell()
+                    .and_then(|raw| raw.wide())
+                    .map_err(vt_error("failed to read libghostty-vt cell width"))?;
+                if matches!(wide, CellWide::SpacerTail | CellWide::SpacerHead) {
+                    continue;
+                }
+                let graphemes = cell
+                    .graphemes()
+                    .map_err(vt_error("failed to read libghostty-vt graphemes"))?;
+                if graphemes.is_empty() {
+                    line.push(' ');
+                } else {
+                    line.extend(graphemes);
+                }
+            }
+            line.truncate(line.trim_end().len());
+            lines.push(line);
+        }
+        Ok(lines)
     }
 
     /// Build a compact terminal state snapshot suitable for JSON output and snapshot tests.

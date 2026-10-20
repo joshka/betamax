@@ -20,6 +20,7 @@ source control and publishing stable documentation assets.
 | GIF                | `Output demo.gif`                    | After the tape finishes    | In process      |
 | PNG final frame    | `Output demo.png`                    | After the tape finishes    | In process      |
 | State JSON         | `Output demo.json`                   | After the tape finishes    | In process      |
+| Text snapshots     | `Output demo.txt` or `demo.ascii`    | After the tape finishes    | In process      |
 | MP4                | `Output demo.mp4`                    | After the tape finishes    | `ffmpeg`        |
 | WebM               | `Output demo.webm`                   | After the tape finishes    | `ffmpeg`        |
 | Frame directory    | `Output target/frames`               | After the tape finishes    | In process PNGs |
@@ -30,7 +31,8 @@ source control and publishing stable documentation assets.
 
 Use GIF for documentation and release notes. Use PNG screenshots when a human needs to review a
 single stable state. Use state JSON when a test should compare text, scrollback, cursor metadata,
-and styles without doing pixel comparisons.
+and styles without doing pixel comparisons. Use `.txt` or `.ascii` to keep VHS golden-file tests:
+they append the plain screen text after every shown command.
 
 Use [Presentation overlays](../presentation-overlays/) when generated visual media should explain a
 workflow step or review checkpoint without changing terminal behavior. Captions render on visual

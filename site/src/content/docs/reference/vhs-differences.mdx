@@ -45,7 +45,7 @@ your users see them.
 | `.mp4`           | Encoded with ffmpeg              | Encoded with [ffmpeg][video-encoding]      |
 | `.webm`          | Encoded with ffmpeg              | Encoded with [ffmpeg][video-encoding]      |
 | `.json`          | Not supported                    | [State JSON][state-json] of the final view |
-| `.txt`, `.ascii` | Text dump after each command     | Not supported; use state JSON instead      |
+| `.txt`, `.ascii` | Text dump after each command     | [Same format][text-outputs], viewport only |
 | `Screenshot`     | `.png`                           | `.png` or `.webp`                          |
 
 MP4 and WebM need ffmpeg on `PATH`, and MP4 can't use a transparent margin. See
@@ -74,7 +74,6 @@ familiar `>` instead of your own. Other shells only get a bash-style `PS1`. Beta
 | VHS feature                       | Use instead                                                   |
 | --------------------------------- | ------------------------------------------------------------- |
 | `Source other.tape`               | Copy the commands into the tape                               |
-| `Output demo.txt` or `.ascii`     | `Output demo.json` or `State`, plus `Assert*` commands        |
 | `vhs record`                      | Write the tape by hand, or start from `betamax new`           |
 | `vhs serve`, `vhs publish`        | Not planned; host the rendered files yourself                 |
 | `vhs manual`, `themes --markdown` | The [tape reference](../tape-reference/) and `betamax themes` |
@@ -150,6 +149,9 @@ State help.json
   text as JSON, ready for snapshot tests.
 - `AssertText`, `AssertAbsent`, `AssertCells`, `AssertStyle`, and `AssertState` check text, cell
   ranges, colors, and attributes in the tape itself.
+- `Output demo.txt` and `.ascii` keep VHS golden files working. Betamax skips the snapshots VHS
+  writes for header commands and always dumps the visible screen, where VHS dumps the oldest
+  scrollback rows once output scrolls.
 - When a command fails, Betamax saves a diagnostics bundle with the terminal state at the failure.
 
 See [Terminal testing](../../testing/terminal-testing/) and [State JSON][state-json].
@@ -176,6 +178,7 @@ without post-processing. See [Window styling](../../authoring/window-styling/).
 [tape-files]: ../../authoring/tape-files/
 [video-encoding]: ../../authoring/outputs/#video-encoding
 [state-json]: ../../testing/state-json/
+[text-outputs]: ../tape-reference/#output-path
 [ttyd]: https://github.com/tsl0922/ttyd
 [xterm]: https://xtermjs.org/
 [ghostty]: https://github.com/ghostty-org/ghostty/tree/main/src/terminal
