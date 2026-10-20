@@ -1,0 +1,21 @@
+# Imported from VHS themes.json (charmbracelet/vhs@55b5fcd) as "Cyber Cube".
+palette = 0=#141d2b
+palette = 1=#ff3e3e
+palette = 2=#9fef00
+palette = 3=#ffaf00
+palette = 4=#2e6cff
+palette = 5=#9f00ff
+palette = 6=#2de2b2
+palette = 7=#d5e0ff
+palette = 8=#767676
+palette = 9=#ff8484
+palette = 10=#c5f467
+palette = 11=#ffcc5c
+palette = 12=#5cb2ff
+palette = 13=#cf8dfb
+palette = 14=#5cecc6
+palette = 15=#d5daff
+background = #161c2b
+foreground = #a4b1cd
+cursor-color = #c5d1eb
+selection-background = #c5d1eb

@@ -1,0 +1,20 @@
+# Imported from VHS themes.json (charmbracelet/vhs@55b5fcd) as "Glorious".
+# Author: alex <https://github.com/AlexMailo>
+palette = 0=#1e1e1e
+palette = 1=#be0f17
+palette = 2=#868715
+palette = 3=#cc881a
+palette = 4=#16777a
+palette = 5=#a04b73
+palette = 6=#578e57
+palette = 7=#978771
+palette = 8=#7f7061
+palette = 9=#f73028
+palette = 10=#d5d5d7
+palette = 11=#f7b125
+palette = 12=#4e917c
+palette = 13=#c77089
+palette = 14=#7db669
+palette = 15=#e6d4a3
+background = #201d27
+foreground = #c8c8c9

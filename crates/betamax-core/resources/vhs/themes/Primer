@@ -1,0 +1,19 @@
+# Imported from VHS themes.json (charmbracelet/vhs@55b5fcd) as "Primer".
+palette = 0=#000000
+palette = 1=#ea4a5a
+palette = 2=#34d058
+palette = 3=#ffdf5d
+palette = 4=#2188ff
+palette = 5=#8a63d2
+palette = 6=#15e2e2
+palette = 7=#ecf0f1
+palette = 8=#4f5861
+palette = 9=#fdaeb7
+palette = 10=#bef5cb
+palette = 11=#fff5b1
+palette = 12=#c8e1ff
+palette = 13=#d1bcf9
+palette = 14=#a2ecec
+palette = 15=#ffffff
+background = #1a2b3c
+foreground = #ffffff

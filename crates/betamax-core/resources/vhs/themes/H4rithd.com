@@ -1,0 +1,21 @@
+# Imported from VHS themes.json (charmbracelet/vhs@55b5fcd) as "h4rithd.com".
+palette = 0=#010100
+palette = 1=#cc0000
+palette = 2=#4e9b07
+palette = 3=#c4a000
+palette = 4=#3464a5
+palette = 5=#75517a
+palette = 6=#06989a
+palette = 7=#d3d7cf
+palette = 8=#545752
+palette = 9=#ee282b
+palette = 10=#8be235
+palette = 11=#fde94e
+palette = 12=#729ece
+palette = 13=#ac7ea8
+palette = 14=#35e2e3
+palette = 15=#d3d7cf
+background = #1e1e1e
+foreground = #fffeff
+cursor-color = #ffffff
+selection-background = #ffffff

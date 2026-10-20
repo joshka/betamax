@@ -22,6 +22,7 @@ include = [
     "tests/fixtures/*.vt",
     "tests/fixtures/*.py",
     "resources/ghostty/themes/**",
+    "resources/vhs/**",
 ]
 
 [dependencies]

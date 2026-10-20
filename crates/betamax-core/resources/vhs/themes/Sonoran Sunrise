@@ -1,0 +1,22 @@
+# Imported from VHS themes.json (charmbracelet/vhs@55b5fcd) as "Sonoran Sunrise".
+# Author: d-mckee <https://github.com/d-mckee>
+palette = 0=#f9fae3
+palette = 1=#eb6f6f
+palette = 2=#669c50
+palette = 3=#f2c55c
+palette = 4=#227b4d
+palette = 5=#7189d9
+palette = 6=#e07941
+palette = 7=#665e4b
+palette = 8=#f9fae3
+palette = 9=#eb6f6f
+palette = 10=#669c50
+palette = 11=#f2c55c
+palette = 12=#227b4d
+palette = 13=#7189d9
+palette = 14=#e07941
+palette = 15=#665e4b
+background = #f9fae3
+foreground = #61543e
+cursor-color = #61543e
+selection-background = #a4f017

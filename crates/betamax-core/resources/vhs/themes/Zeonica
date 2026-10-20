@@ -1,0 +1,21 @@
+# Imported from VHS themes.json (charmbracelet/vhs@55b5fcd) as "Zeonica".
+palette = 0=#0c0c0c
+palette = 1=#cc2929
+palette = 2=#21c221
+palette = 3=#d6c315
+palette = 4=#3e31f5
+palette = 5=#d918b9
+palette = 6=#13d4d4
+palette = 7=#b2b2b2
+palette = 8=#686868
+palette = 9=#ff6e6e
+palette = 10=#6bff6b
+palette = 11=#ffff6b
+palette = 12=#737cff
+palette = 13=#ff70ff
+palette = 14=#7fffff
+palette = 15=#ffffff
+background = #01001d
+foreground = #ffffff
+cursor-color = #ffffff
+selection-background = #242272

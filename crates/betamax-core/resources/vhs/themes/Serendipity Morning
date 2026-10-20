@@ -1,0 +1,23 @@
+# Imported from VHS themes.json (charmbracelet/vhs@55b5fcd) as "Serendipity Morning".
+# Author: Michael Andreuzza <https://github.com/michael-andreuzza>
+# Author: Chaphasilor <https://github.com/Chaphasilor>
+palette = 0=#f2e9de
+palette = 1=#d26a5d
+palette = 2=#77aab3
+palette = 3=#c8a299
+palette = 4=#3788be
+palette = 5=#886cdb
+palette = 6=#7397de
+palette = 7=#575279
+palette = 8=#6e6a86
+palette = 9=#d26a5d
+palette = 10=#77aab3
+palette = 11=#c8a299
+palette = 12=#3788be
+palette = 13=#886cdb
+palette = 14=#7397de
+palette = 15=#575279
+background = #fffaf3
+foreground = #575279
+cursor-color = #9893a5
+selection-background = #f4efea

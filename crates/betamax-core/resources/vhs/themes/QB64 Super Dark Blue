@@ -1,0 +1,22 @@
+# Imported from VHS themes.json (charmbracelet/vhs@55b5fcd) as "QB64 Super Dark Blue".
+# Author: jmmv <https://github.com/jmmv>
+palette = 0=#000000
+palette = 1=#98220e
+palette = 2=#157e15
+palette = 3=#808000
+palette = 4=#054663
+palette = 5=#631563
+palette = 6=#00485c
+palette = 7=#989898
+palette = 8=#626262
+palette = 9=#d8624e
+palette = 10=#55ce55
+palette = 11=#ffa700
+palette = 12=#457693
+palette = 13=#934593
+palette = 14=#00586c
+palette = 15=#d8d8d8
+background = #000027
+foreground = #d8d8d8
+cursor-color = #d8d8d8
+selection-background = #00586c

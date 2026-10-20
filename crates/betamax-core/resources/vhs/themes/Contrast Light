@@ -1,0 +1,21 @@
+# Imported from VHS themes.json (charmbracelet/vhs@55b5fcd) as "Contrast Light".
+palette = 0=#2e1742
+palette = 1=#bf0000
+palette = 2=#77b01b
+palette = 3=#857e39
+palette = 4=#0d6bad
+palette = 5=#8700ff
+palette = 6=#41c2d0
+palette = 7=#e6e6e6
+palette = 8=#462366
+palette = 9=#ff0000
+palette = 10=#99c252
+palette = 11=#a39b46
+palette = 12=#008ccc
+palette = 13=#af87ff
+palette = 14=#46d1e0
+palette = 15=#ffffff
+background = #ffffff
+foreground = #051840
+cursor-color = #000000
+selection-background = #b5d5ff

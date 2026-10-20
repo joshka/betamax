@@ -1,0 +1,21 @@
+# Imported from VHS themes.json (charmbracelet/vhs@55b5fcd) as "Unholy".
+palette = 0=#808080
+palette = 1=#d16969
+palette = 2=#608b4e
+palette = 3=#fdd877
+palette = 4=#65aef7
+palette = 5=#ae81ff
+palette = 6=#9cdcfe
+palette = 7=#ffffff
+palette = 8=#808080
+palette = 9=#d16969
+palette = 10=#b5cea8
+palette = 11=#dcdcaa
+palette = 12=#569cd6
+palette = 13=#ae81ff
+palette = 14=#9cdcfe
+palette = 15=#ffffff
+background = #202020
+foreground = #f8f8f2
+cursor-color = #f8f8f0
+selection-background = #616161

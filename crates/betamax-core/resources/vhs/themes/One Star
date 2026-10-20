@@ -1,0 +1,20 @@
+# Imported from VHS themes.json (charmbracelet/vhs@55b5fcd) as "OneStar".
+# Author: jos3s <https://github.com/jos3s>
+palette = 0=#000000
+palette = 1=#d13b3b
+palette = 2=#0dbc79
+palette = 3=#dfdf44
+palette = 4=#2472c8
+palette = 5=#c42cc4
+palette = 6=#33a0bb
+palette = 7=#f1f1f1
+palette = 8=#666666
+palette = 9=#fa4b4b
+palette = 10=#23d18b
+palette = 11=#fcfc5c
+palette = 12=#3b8eea
+palette = 13=#d861d8
+palette = 14=#29b8db
+palette = 15=#fafafa
+background = #0e0e0e
+foreground = #e4e4e4

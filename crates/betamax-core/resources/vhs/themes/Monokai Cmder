@@ -1,0 +1,22 @@
+# Imported from VHS themes.json (charmbracelet/vhs@55b5fcd) as "Monokai Cmder".
+# Author: vdurante <https://github.com/vdurante/windows-terminal-monokai-cmder>
+palette = 0=#272822
+palette = 1=#a70334
+palette = 2=#74aa04
+palette = 3=#b6b649
+palette = 4=#01549e
+palette = 5=#89569c
+palette = 6=#1a83a6
+palette = 7=#cacaca
+palette = 8=#7c7c7c
+palette = 9=#f3044b
+palette = 10=#8dd006
+palette = 11=#cccc81
+palette = 12=#0383f5
+palette = 13=#a87db8
+palette = 14=#58c2e5
+palette = 15=#ffffff
+background = #272822
+foreground = #cacaca
+cursor-color = #ffffff
+selection-background = #cccc81

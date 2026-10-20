@@ -1,0 +1,23 @@
+# Imported from VHS themes.json (charmbracelet/vhs@55b5fcd) as "Serendipity Midnight".
+# Author: Michael Andreuzza <https://github.com/michael-andreuzza>
+# Author: Chaphasilor <https://github.com/Chaphasilor>
+palette = 0=#232534
+palette = 1=#ee8679
+palette = 2=#9ccfd8
+palette = 3=#f8d2c9
+palette = 4=#5ba2d0
+palette = 5=#a78bfa
+palette = 6=#94b8ff
+palette = 7=#dee0ef
+palette = 8=#8d8f9e
+palette = 9=#ee8679
+palette = 10=#9ccfd8
+palette = 11=#f8d2c9
+palette = 12=#5ba2d0
+palette = 13=#a78bfa
+palette = 14=#94b8ff
+palette = 15=#dee0ef
+background = #1c1e2d
+foreground = #dee0ef
+cursor-color = #6b6d7c
+selection-background = #2c2e3d
