@@ -1,73 +1,180 @@
 ---
 title: Differences from VHS
-description: What Betamax keeps, changes, and intentionally omits.
+description: How Betamax differs from VHS, what it adds, and what to change when moving tapes.
 ---
 
-Betamax supports VHS-style [tape files][tape-files] with typed input, waits, themes, frame styling,
-GIF output, and screenshots. This page lists the differences to consider when moving tapes from VHS.
+Betamax exists because of [VHS](https://github.com/charmbracelet/vhs). VHS made terminal demos
+something you write as a script and check into a repository, and it has rendered countless README
+GIFs, including years of [Ratatui](https://ratatui.rs) demos. It's still a great tool. Betamax keeps
+its [tape format][tape-files] so those tapes keep working, and takes a different architecture so it
+can grow into terminal testing and richer presentation over time.
 
-## Summary
+This page explains what Betamax does differently and why, what it adds, and what to check when
+moving tapes from VHS. It was last compared against VHS 0.12.1.
 
-| Area            | VHS                          | Betamax                                                  |
-| --------------- | ---------------------------- | -------------------------------------------------------- |
-| Terminal stack  | Browser terminal stack       | PTY plus `libghostty-vt`, rendered in process            |
-| GIF and PNG     | Supported                    | Supported in process                                     |
-| MP4 and WebM    | Supported                    | Supported through [ffmpeg][video-encoding]               |
-| State snapshots | Not a primary feature        | JSON viewport, scrollback, cursor, and styles            |
-| `Source`        | Executes included tapes      | Parsed, then rejected with a clear not-implemented error |
-| `record`        | Records interactive sessions | Intentionally not implemented                            |
-| `serve`         | Starts a server workflow     | Intentionally not implemented                            |
-| `publish`       | Upload/share workflow        | Intentionally not implemented                            |
+## How it works
 
-## Same authoring ideas
+VHS records a tape by running several programs together. It starts [ttyd][ttyd] to serve the shell
+over a web socket, drives [xterm.js][xterm] in headless Chrome to display it, takes screenshots of
+the browser page, and passes them to ffmpeg to encode every output, GIF and PNG included. That's a
+clever reuse of mature parts, but each part has to be installed and kept in step, and the terminal
+state lives inside a browser page that the tape can only see through screenshots and text scraping.
 
-The core tape flow should feel familiar if you know VHS:
+Betamax runs a tape in one process. It starts the shell on a PTY, parses its output with
+[`libghostty-vt`][ghostty], the terminal core from [Ghostty][ghostty-app], and renders frames
+itself. GIF, WebP, PNG, and state JSON need only the `betamax` binary; ffmpeg is needed only for MP4
+and WebM. Because the parsed terminal state is right there, a tape can wait on it, assert on it, and
+save it as JSON. That is what makes the [testing features](#betamax-additions) possible, and it
+gives new features one place to live instead of several programs to coordinate.
+
+The terminal emulator matters as much as the plumbing. Both tools run your real shell; what differs
+is the emulator interpreting its output. xterm.js is a terminal built for the browser, best known as
+the integrated terminal in VS Code. `libghostty-vt` is the core of [Ghostty][ghostty-app], a native
+terminal that aims for thorough, standards-faithful coverage of modern escape sequences. A tape
+renders what a native terminal would show, so TUIs that use newer terminal features look the way
+your users see them.
+
+## Outputs
+
+| `Output` path    | VHS                              | Betamax                                    |
+| ---------------- | -------------------------------- | ------------------------------------------ |
+| `.gif`           | Encoded with ffmpeg              | Encoded in process                         |
+| `.webp`          | Not supported                    | Animated WebP, encoded in process          |
+| `.png`           | Directory of PNG frames          | One PNG of the final frame                 |
+| `frames/`        | Directory of PNG frames          | Directory of PNG frames                    |
+| `.mp4`           | Encoded with ffmpeg              | Encoded with [ffmpeg][video-encoding]      |
+| `.webm`          | Encoded with ffmpeg              | Encoded with [ffmpeg][video-encoding]      |
+| `.json`          | Not supported                    | [State JSON][state-json] of the final view |
+| `.txt`, `.ascii` | Text dump after each command     | Not supported; use state JSON instead      |
+| `Screenshot`     | `.png`                           | `.png` or `.webp`                          |
+
+MP4 and WebM need ffmpeg on `PATH`, and MP4 can't use a transparent margin. See
+[Outputs](../../authoring/outputs/) for installation notes and choosing a format.
+
+## What carries over
+
+The core tape flow is the same:
 
 - `Output` declares artifacts.
-- `Set` controls dimensions, theme, timing, typography, and frame styling.
-- `Type`, `Enter`, key commands, `Sleep`, and waits drive the terminal.
+- `Set` controls size, theme, timing, typography, and frame styling.
+- `Type`, `Enter`, key commands, `Sleep`, and `Wait` drive the terminal. `Wait`, `Wait+Line`, and
+  `Wait+Screen` keep the VHS defaults: pattern `>$` and a 15s timeout.
 - `Hide` and `Show` keep setup or teardown out of the final animation.
-- `Screenshot` writes checkpoint PNGs.
+- `Screenshot` writes checkpoint images.
+- `Env` and `Require` prepare the environment.
 
-Betamax also keeps the simple recording-shell idea. Common shells are started in a cleaner
-recording environment where possible so the default prompt is stable and VHS-like instead of a
-host-specific shell prompt.
+Betamax starts bash, zsh, and fish with the same clean recording setup as VHS, so the prompt is the
+familiar `>` instead of your own. Other shells only get a bash-style `PS1`. Betamax sets
+`TERM=xterm-256color` and `COLORTERM=truecolor` and removes `NO_COLOR`; `Env` overrides all of them.
 
-## Intentional omissions
+## Not supported
 
-`record`, `serve`, and `publish` are not planned for the first stable release. Betamax focuses on
-local rendering and terminal testing.
+| VHS feature                       | Use instead                                                   |
+| --------------------------------- | ------------------------------------------------------------- |
+| `Source other.tape`               | Copy the commands into the tape                               |
+| `ScrollUp`, `ScrollDown`          | `MouseScroll Up 3`, which sends wheel input to the program    |
+| `Set Rows`, `Set Columns`         | `Set Width` and `Set Height`, or `Resize C R` mid-tape        |
+| `Set MarginFill path/to/img.png`  | A color, `transparent`, or `linear(a, b)`                     |
+| `Output demo.txt` or `.ascii`     | `Output demo.json` or `State`, plus `Assert*` commands        |
+| `vhs record`                      | Write the tape by hand, or start from `betamax new`           |
+| `vhs serve`, `vhs publish`        | Not planned; host the rendered files yourself                 |
+| `vhs manual`, `themes --markdown` | The [tape reference](../tape-reference/) and `betamax themes` |
 
-`Source` is parsed because existing VHS tapes may contain it. Betamax fails explicitly when running
-such a tape so users get a targeted migration error instead of an unknown command or silent skip.
+`record`, `serve`, and `publish` are out of scope for the first stable release: Betamax focuses on
+local rendering and terminal testing. The `--publish` flag is still accepted so existing scripts get
+a clear error. `Source` is parsed for the same reason: a tape that uses it fails with a targeted
+message instead of an unknown command or a silent skip.
 
-## Betamax additions
+## Same syntax, different behavior
 
-State JSON is the main addition. `Output demo.json` writes final terminal state, and
-`State checkpoint.json` writes state at a specific point in the tape. The format includes plain text
-for easy assertions plus compact styled spans for style-aware snapshot tests.
+These tapes parse, but run differently or fail on ordering rules that VHS doesn't enforce.
 
-See [Terminal testing](../../testing/terminal-testing/) and
-[State JSON](../../testing/state-json/) for that workflow.
+| VHS tape uses                         | What happens in Betamax                         | Change it to                                |
+| ------------------------------------- | ----------------------------------------------- | ------------------------------------------- |
+| No `Set Shell`                        | Your `$SHELL` runs instead of bash              | `Set Shell bash`                            |
+| `Set TypingSpeed 0.1` (bare number)   | Error: expects a duration                       | `Set TypingSpeed 100ms`                     |
+| `Set LoopOffset 20` (bare number)     | Read as 20 seconds, not 20%                     | `Set LoopOffset 20%`                        |
+| `Set` after `Type` or other commands  | Error; VHS warns and ignores it                 | Move every `Set` to the top                 |
+| `Env` or `Require` after commands     | Error; VHS hoists or skips them                 | Move them to the top                        |
+| `Type "a" "b"` (several strings)      | Only the first string is typed, then an error   | One string: `Type "a b"`                    |
+| Backtick strings or `\` in `"…"`      | Strings follow shell quoting rules              | Single quotes for literal text: `'C:\path'` |
+| `Wait /foo bar/` (regex with a space) | Split into two tokens                           | Quote it: `Wait "/foo bar/"`                |
+| `Output frames.png`                   | Writes one PNG of the final frame               | `Output frames/` for a frames directory     |
+| A theme name such as `nord`           | Error if the name isn't a bundled Ghostty theme | A name from `betamax themes`                |
+
+Theme names are exact and case-sensitive. About 150 VHS theme names have no Ghostty theme with the
+same spelling (for example `catppuccin-mocha`, `tokyonight`, `nord`, and `OneDark`). Most were
+renamed upstream, so `betamax themes` usually lists a close match. Theme JSON works as one quoted
+token.
+
+Smaller differences:
+
+- **Key repeats.** `Enter 3` and similar repeats wait one frame between presses, not `TypingSpeed`.
+- **Waits.** A bare `Wait` pattern is a substring match; `/…/` is a regular expression.
+- **Clipboard.** `Copy` and `Paste` use a clipboard private to the tape. Betamax never reads or
+  writes your system clipboard.
+- **Screenshots.** `Screenshot` captures after output settles, not on the next frame.
+- **CLI.** Run tapes with `betamax run demo.tape`. `-o` adds an output to the ones in the tape;
+  VHS's `-o` replaces them.
 
 ## Presentation defaults
 
 Betamax renders tapes with the `Framed` preset unless they select another: Aardvark Ink, 1200×720,
-22px text, zero terminal padding, and a rounded window with left dots, a gradient backdrop, an
-outline, and a shadow. Add `Set Preset Default-0.1` to restore Betamax 0.1 defaults, or
+22px text, zero terminal padding and letter spacing, a 32px margin with a gradient from the theme
+background, and a rounded window with a `Colorful` bar, an outline, and a shadow. VHS defaults to
+1200×600, 60px padding, no margin, and no window bar.
+
+Add `Set Preset Default-0.1` to restore Betamax 0.1 defaults, which are close to VHS's sizing, or
 `Set Preset Bare` to remove decoration while keeping the current sizing and typography. Neither
 makes rendered pixels identical to VHS. See [Presets](../tape-reference/#presets).
 
-Betamax also adds window styling settings that VHS tapes do not use: `Preset`, gradient and
-transparent `MarginFill` values, `WindowBarColor`, `WindowTitle`, `WindowTitleFromTerminal`,
-`WindowBorder`, and `Shadow`. See [Window styling](../../authoring/window-styling/).
+## Betamax additions
 
-## Video tradeoff
+### Test the terminal, not just record it
 
-MP4 and WebM use [ffmpeg][video-encoding], so video output requires it on `PATH`. Betamax handles
-GIF, PNG, screenshots, terminal parsing, rendering, and state JSON in process.
+A VHS tape produces media; checking that a program behaved correctly means looking at the GIF.
+Betamax tapes can assert on the terminal while they run, so the same tape that renders a demo can
+fail CI when the program regresses.
 
-Use [Outputs](../../authoring/outputs/) for installation notes and output selection guidance.
+```text
+Type "my-tool --help"
+Enter
+Wait /Usage/
+AssertText "--verbose"
+State help.json
+```
+
+- `State checkpoint.json` and `Output demo.json` write the viewport, scrollback, cursor, and styled
+  text as JSON, ready for snapshot tests.
+- `AssertText`, `AssertAbsent`, `AssertCells`, `AssertStyle`, and `AssertState` check text, cell
+  ranges, colors, and attributes in the tape itself.
+- When a command fails, Betamax saves a diagnostics bundle with the terminal state at the failure.
+
+See [Terminal testing](../../testing/terminal-testing/) and [State JSON][state-json].
+
+### Drive full-screen programs
+
+TUIs need more input than typed text. `MouseMove`, `MouseDown`, `MouseUp`, and `MouseScroll` send
+mouse input with modifiers, and `Resize C R` changes the terminal size mid-tape to exercise resize
+handling. Keys also cover `Home`, `End`, `F1` to `F25`, and any `Ctrl`/`Alt`/`Shift` combination,
+such as `Ctrl+Tab`.
+
+### Explain what's happening
+
+`Caption` shows narration under the terminal, `WindowTitle` changes the title bar, and
+`Set KeyboardOverlay` shows key chips as keys are pressed, so viewers can follow along without
+reading every keystroke.
+
+### Style the window
+
+Presets, gradient and transparent `MarginFill` values, `WindowBarColor`, `WindowTitle`,
+`WindowTitleColor`, `WindowTitleFromTerminal`, `WindowBorder`, and `Shadow` make polished demos
+without post-processing. See [Window styling](../../authoring/window-styling/).
 
 [tape-files]: ../../authoring/tape-files/
 [video-encoding]: ../../authoring/outputs/#video-encoding
+[state-json]: ../../testing/state-json/
+[ttyd]: https://github.com/tsl0922/ttyd
+[xterm]: https://xtermjs.org/
+[ghostty]: https://github.com/ghostty-org/ghostty/tree/main/src/terminal
+[ghostty-app]: https://ghostty.org/
