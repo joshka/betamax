@@ -437,11 +437,27 @@ Supported output paths:
 - `.mp4`: MP4 written through `ffmpeg`.
 - `.webm`: WebM written through `ffmpeg`.
 - `.json`: final terminal-state JSON.
+- `.txt` or `.ascii`: VHS-compatible plain-text snapshots of the screen, one after each command
+  (see [Text outputs](#text-outputs)).
 - no extension: directory of numbered PNG frames.
 
 `Output` paths are returned from `Runner::run_artifacts` in deterministic output-kind order, not
 source order. Inline `Screenshot` and `State` commands are checkpoint outputs and are not included
 in that primary output list.
+
+#### Text outputs
+
+`Output demo.txt` and `Output demo.ascii` write the same format as VHS, so VHS golden files compare
+byte for byte. After each command that runs while the tape is shown, Betamax appends the visible
+screen: one line per terminal row, trailing whitespace trimmed, blank rows kept. A line of 80 `─`
+characters follows each snapshot. Styles and the cursor are dropped, wide characters appear once,
+and the alternate screen is written while an app has it active.
+
+`Hide` and the commands after it add nothing until `Show`, which adds a snapshot. `Set`, `Output`,
+and `Require` never add one. Two choices differ from VHS: VHS also writes a snapshot for each
+header command after `Output`, and once output scrolls it dumps the oldest scrollback rows instead
+of the screen. Betamax skips the header and always writes the visible screen. Each `Output` gets
+its own file, where VHS keeps only the last text output.
 
 ### `Require <program>`
 

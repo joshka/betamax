@@ -440,9 +440,16 @@ support the opt-in; an unsupported backend returns an error instead of silently 
 
 ### `Output <path>`
 
-Adds a primary output. Supported extensions are `.gif`, `.png`, `.json`, `.mp4`, and `.webm`.
-An extensionless output path is treated as a directory for numbered PNG frames. Unsupported
-extensions fail before shell startup.
+Adds a primary output. Supported extensions are `.gif`, `.webp`, `.png`, `.json`, `.txt`, `.ascii`,
+`.mp4`, and `.webm`. An extensionless output path is treated as a directory for numbered PNG
+frames. Unsupported extensions fail before shell startup.
+
+`.txt` and `.ascii` write VHS-compatible text snapshots. After each command that runs while the tape
+is shown, Betamax appends the visible screen (one line per row, trailing whitespace trimmed) and a
+line of 80 `─` characters. Styles and the cursor are dropped, wide characters appear once, and the
+alternate screen is written while it is active. `Hide` suppresses snapshots until `Show`, which adds
+one; `Set`, `Output`, and `Require` never add one. VHS golden files compare byte for byte, except
+that VHS also snapshots header commands and dumps the oldest scrollback rows once output scrolls.
 
 ### `Require <program>`
 

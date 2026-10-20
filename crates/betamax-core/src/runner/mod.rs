@@ -56,6 +56,7 @@ mod pty;
 mod requirements;
 mod settings;
 mod shadow;
+mod text_output;
 mod window;
 mod window_shape;
 mod window_title;
@@ -69,6 +70,7 @@ pub use options::RunOptions;
 use pty::PtySession;
 use requirements::validate_required_programs;
 use settings::Settings;
+use text_output::TextOutput;
 
 use self::capture::{assign_title, collect_title_changes, protect_title_holds};
 use crate::ghostty::{CaptureRequest, GhosttyFrameCapture, PixelSize, TerminalGrid};
@@ -143,6 +145,23 @@ pub trait TerminalSession {
     ///
     /// Returns an error when the terminal backend cannot expose visible text.
     fn screen_text(&mut self) -> Result<String>;
+
+    /// Return visible rows as plain text, one string per row with trailing whitespace trimmed.
+    ///
+    /// Wide glyphs appear once, without a filler for their continuation cell. The default derives
+    /// rows from [`TerminalSession::screen_text`], which cannot tell continuation cells from
+    /// spaces; backends that can should override it.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the terminal backend cannot expose visible text.
+    fn viewport_lines(&mut self) -> Result<Vec<String>> {
+        Ok(self
+            .screen_text()?
+            .lines()
+            .map(|line| line.trim_end().to_string())
+            .collect())
+    }
 
     /// Return structured terminal state for JSON output and snapshot assertions.
     ///
@@ -529,6 +548,7 @@ where
         let mut session = PtySession::spawn(&settings)?;
         tracing::trace!("spawned PTY session");
         let mut capture = CaptureState::default();
+        let mut text_output = TextOutput::new(outputs.texts.clone());
         let mut clipboard = String::new();
         tracing::debug!("draining PTY shell startup output");
         session.drain_into(&mut terminal, SHELL_STARTUP_IDLE)?;
@@ -545,14 +565,17 @@ where
                 kind = command_kind(command),
             );
             let _enter = span.enter();
-            if let Err(error) = self.run_capture_command(
-                command,
-                &settings,
-                &mut session,
-                &mut terminal,
-                &mut capture,
-                &mut clipboard,
-            ) {
+            if let Err(error) = self
+                .run_capture_command(
+                    command,
+                    &settings,
+                    &mut session,
+                    &mut terminal,
+                    &mut capture,
+                    &mut clipboard,
+                )
+                .and_then(|()| text_output.after_command(command, capture.visible, &mut terminal))
+            {
                 let diagnostics =
                     save_failure(&mut terminal, &settings, &capture, index + 1, &error);
                 let summary = format!(
@@ -602,6 +625,9 @@ where
                 format_args!("generating png {}", path.display()),
             );
             write_png(&path, &frame)?;
+            self.progress(ANSI_GREEN, format_args!("wrote {}", path.display()));
+        }
+        for path in text_output.write()? {
             self.progress(ANSI_GREEN, format_args!("wrote {}", path.display()));
         }
         for path in outputs.states {

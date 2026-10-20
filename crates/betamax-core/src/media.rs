@@ -697,7 +697,7 @@ fn write_video_with_progress(
 /// Ensure the parent directory for a file output exists.
 ///
 /// Relative paths in the current directory have no parent to create and are accepted as-is.
-fn ensure_parent_dir(path: &Path) -> Result<()> {
+pub(crate) fn ensure_parent_dir(path: &Path) -> Result<()> {
     if let Some(parent) = path
         .parent()
         .filter(|parent| !parent.as_os_str().is_empty())
