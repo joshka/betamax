@@ -4,7 +4,6 @@
 //! Feature modules own decoration and overlay behavior; this module owns startup dispatch and
 //! diagnostics for unknown settings and incorrect value kinds.
 
-use std::env;
 use std::ffi::OsString;
 use std::path::Path;
 use std::time::Duration;
@@ -16,6 +15,7 @@ use super::keyboard_overlay::{parse_keyboard_overlay_location, parse_keyboard_ov
 use super::presentation::Presentation;
 use super::preset::Preset;
 use crate::ghostty::TerminalTheme;
+use crate::shell::DEFAULT_SHELL;
 use crate::tape::{Command, Tape, Value, WaitPattern};
 use crate::wait::regex_source;
 use crate::Result;
@@ -164,7 +164,7 @@ impl Settings {
     pub(super) fn from_tape_in(tape: &Tape, tape_dir: Option<&Path>) -> Result<Self> {
         let theme = TerminalTheme::default();
         let mut settings = Self {
-            shell: vec![env::var_os("SHELL").unwrap_or_else(|| OsString::from("sh"))],
+            shell: vec![OsString::from(DEFAULT_SHELL)],
             columns: 0,
             rows: 0,
             framerate: DEFAULT_FRAMERATE,
@@ -577,6 +577,14 @@ mod tests {
             settings.presentation.keyboard_overlay.location,
             KeyboardOverlayLocation::CaptionRow
         );
+    }
+
+    #[test]
+    fn shell_defaults_to_bash_regardless_of_host_shell() {
+        let tape = Tape::parse("Type \"ls\"\n").unwrap();
+        let settings = Settings::from_tape(&tape).unwrap();
+
+        assert_eq!(settings.shell, [OsString::from("bash")]);
     }
 
     #[test]
