@@ -243,6 +243,9 @@ impl Settings {
             ("Padding", Value::Number(padding)) => self.presentation.text.padding = *padding as u32,
             ("Framerate", Value::Number(framerate)) => self.framerate = *framerate as u16,
             ("TypingSpeed", Value::Duration(duration)) => self.typing_delay = *duration,
+            ("TypingSpeed", Value::Number(seconds)) => {
+                self.typing_delay = seconds_duration(*seconds)?
+            }
             ("PlaybackSpeed", Value::Number(playback_speed)) => {
                 self.playback_speed = (*playback_speed).max(MIN_PLAYBACK_SPEED);
             }
@@ -300,8 +303,8 @@ impl Settings {
                     parse_keyboard_overlay_location(location)?;
             }
             ("WaitTimeout", Value::Duration(wait_timeout)) => self.wait_timeout = *wait_timeout,
-            ("WaitTimeout", Value::Number(wait_timeout)) => {
-                self.wait_timeout = Duration::from_secs_f64(*wait_timeout);
+            ("WaitTimeout", Value::Number(seconds)) => {
+                self.wait_timeout = seconds_duration(*seconds)?
             }
             ("WaitPattern", Value::String(wait_pattern)) => {
                 let wait_pattern = regex_source(wait_pattern);
@@ -513,13 +516,19 @@ fn setting_expected_type(key: &str) -> &'static str {
         | "ShadowBlur"
         | "ShadowOffset"
         | "ShadowOpacity" => "number",
-        "TypingSpeed" => "duration",
+        "TypingSpeed" => "duration or number of seconds",
         "CursorBlink" | "Shadow" | "WindowTitleFromTerminal" => "bool",
         "KeyboardOverlay" => "Off, Keys, Input, or All",
         "KeyboardOverlayLocation" => "CaptionRow, TopLeft, TopRight, BottomLeft, or BottomRight",
-        "WaitTimeout" => "duration or number",
+        "WaitTimeout" => "duration or number of seconds",
         _ => "known value",
     }
+}
+
+/// Convert a bare-number duration setting to seconds, matching VHS.
+fn seconds_duration(seconds: f64) -> Result<Duration> {
+    Duration::try_from_secs_f64(seconds)
+        .map_err(|_| miette!("duration must be zero or positive: `{seconds}`").into())
 }
 
 /// Name the parsed tape value kind for diagnostics.
@@ -590,6 +599,32 @@ Set Theme "Aardvark Blue""#,
         Settings::from_tape(&Tape::parse(source).unwrap())
             .unwrap_err()
             .to_string()
+    }
+
+    #[test]
+    fn bare_typing_speed_and_wait_timeout_are_seconds() {
+        for (source, typing_delay) in [
+            ("Set TypingSpeed 0.1", Duration::from_millis(100)),
+            ("Set TypingSpeed 0", Duration::ZERO),
+            ("Set TypingSpeed 100ms", Duration::from_millis(100)),
+        ] {
+            let settings = Settings::from_tape(&Tape::parse(source).unwrap()).unwrap();
+            assert_eq!(settings.typing_delay, typing_delay, "{source:?}");
+        }
+        let settings = Settings::from_tape(&Tape::parse("Set WaitTimeout 2.5").unwrap()).unwrap();
+        assert_eq!(settings.wait_timeout, Duration::from_millis(2500));
+    }
+
+    #[test]
+    fn rejects_negative_bare_duration_settings() {
+        for source in ["Set TypingSpeed -0.1", "Set WaitTimeout -1"] {
+            assert!(
+                grid_error(source).contains("must be zero or positive"),
+                "{source:?}"
+            );
+        }
+        assert!(grid_error("Set TypingSpeed fast")
+            .contains("Set TypingSpeed expects duration or number of seconds"));
     }
 
     #[test]

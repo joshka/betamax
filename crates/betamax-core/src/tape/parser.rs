@@ -476,12 +476,12 @@ fn parse_duration_tokens(
 /// Parse a duration literal.
 ///
 /// Bare numbers are seconds. Supported suffixes are milliseconds (`ms`), seconds (`s`), and minutes
-/// (`m`). Negative durations are rejected because they would make execution timing ambiguous.
+/// (`m`). Zero is allowed. Negative durations are rejected because they would make execution timing
+/// ambiguous.
 ///
 /// # Errors
 ///
-/// Returns an error when the value is not numeric, uses an unsupported suffix, or is zero or
-/// negative.
+/// Returns an error when the value is not numeric, uses an unsupported suffix, or is negative.
 pub fn parse_duration(value: &str) -> Result<Duration> {
     if let Some(ms) = value.strip_suffix("ms") {
         return Ok(Duration::from_secs_f64(
@@ -496,10 +496,9 @@ pub fn parse_duration(value: &str) -> Result<Duration> {
         let minutes = parse_duration_number(value, minutes)?;
         return Ok(Duration::from_secs_f64(minutes * SECONDS_PER_MINUTE));
     }
-    if let Ok(seconds) = value.parse::<f64>() {
-        return Ok(Duration::from_secs_f64(seconds));
-    }
-    Err(miette!("invalid duration `{value}`").into())
+    Ok(Duration::from_secs_f64(parse_duration_number(
+        value, value,
+    )?))
 }
 
 /// Parse a duration represented as separate value and unit tokens.
@@ -522,8 +521,8 @@ fn parse_duration_number(original: &str, value: &str) -> Result<f64> {
     let number = value
         .parse::<f64>()
         .map_err(|_| miette!("invalid duration `{original}`"))?;
-    if number.is_sign_negative() {
-        return Err(miette!("duration must be positive: `{original}`").into());
+    if number.is_sign_negative() || !number.is_finite() {
+        return Err(miette!("duration must be zero or positive: `{original}`").into());
     }
     Ok(number)
 }
@@ -901,6 +900,32 @@ Wait+Screen ready WindowTitle final"#,
                 Command::Sleep(Duration::from_secs(1)),
             ]
         );
+    }
+
+    #[test]
+    fn parses_bare_speed_override_as_seconds() {
+        let tape = Tape::parse(r#"Type@0.1 "x" Sleep 0"#).unwrap();
+        assert_eq!(
+            tape.commands,
+            vec![
+                Command::Type {
+                    text: "x".to_string(),
+                    delay: Some(Duration::from_millis(100)),
+                },
+                Command::Sleep(Duration::ZERO),
+            ]
+        );
+    }
+
+    #[test]
+    fn rejects_negative_and_non_finite_durations() {
+        for source in [r#"Type@-1 "x""#, "Sleep -0.5", "Sleep inf"] {
+            let error = Tape::parse(source).unwrap_err().to_string();
+            assert!(
+                error.contains("must be zero or positive"),
+                "{source:?}: {error}"
+            );
+        }
     }
 
     #[test]
