@@ -64,7 +64,7 @@ Defaults below describe `Default`, which currently selects `Framed`. See [Preset
 | `WaitTimeout`             | duration or number                                     | `15s`            | Number values are seconds.                  |
 | `WaitPattern`             | regex string                                           | `>$`             | Used by `Wait` without explicit pattern.    |
 | `Margin`                  | number                                                 | `32`             | Outer decoration margin in pixels.          |
-| `MarginFill`              | string                                                 | theme gradient   | Color, linear gradient, or `transparent`.   |
+| `MarginFill`              | string                                                 | theme gradient   | Color, gradient, image, or `transparent`.   |
 | `WindowBar`               | `Rings`, `RingsRight`, `Colorful`, or etc.             | `Colorful`       | Left dots; any non-empty value enables bar. |
 | `WindowBarSize`           | number                                                 | `30`             | Bar height in pixels when enabled.          |
 | `WindowBarColor`          | `#rrggbb` string                                       | theme surface    | Invalid colors fall back to theme bg.       |
@@ -202,7 +202,8 @@ Output remains opaque.
 
 ### Margin fill
 
-`MarginFill` accepts a single color or Betamax's `linear(...)` gradient syntax. A color is
+`MarginFill` accepts a single color, Betamax's `linear(...)` gradient syntax, or an
+[image](#image-margin). A color is
 `#rrggbb`, `#rrggbbaa` with alpha last as in CSS, or `transparent`:
 
 ```tape
@@ -231,7 +232,7 @@ With no explicit `MarginFill`, the backdrop follows the selected preset and fina
 color or gradient is preserved regardless of `Set Theme` ordering. `Set MarginFill ""` disables the
 margin. Invalid colors and malformed gradients fall back to the active theme background. `betamax
 validate` checks tape syntax and command order, so it does not reject malformed fill strings. Radial
-gradients and image fills are not yet supported. See `examples/margin-gradient.tape` for a complete
+gradients are not supported. See `examples/margin-gradient.tape` for a complete
 example.
 
 #### Transparent margin
@@ -262,6 +263,40 @@ Captions and keyboard labels keep their theme colors, so check them against the 
 
 Use PNG or WebP to keep soft shadows and antialiased corners. See
 `examples/margin-transparent.tape`.
+
+#### Image margin
+
+`MarginFill` also takes a picture. A bare path works as in VHS and stretches the image to the
+output size. `image(<path>)` keeps the aspect ratio and takes an optional fit:
+
+```tape
+Set MarginFill "backdrop.png"
+Set MarginFill "image(backdrop.png)"
+Set MarginFill "image(backdrop.png, contain)"
+```
+
+| Fit       | Behavior                                                                      |
+| --------- | ----------------------------------------------------------------------------- |
+| `cover`   | Default. Scale to fill the output; crop the overflow equally from both sides. |
+| `contain` | Scale to fit inside the output, centered; the theme background fills the gap. |
+| `tile`    | Repeat at native size from the top-left corner.                               |
+| `stretch` | Scale each axis to the output size, as a bare path does.                      |
+
+Any value that is not empty, a `#` color, `linear(...)`, or `transparent` is an image path.
+Relative paths resolve against the working directory first, as in VHS, then against the tape's
+directory, so a tape and its picture can move together. `~/` expands to the home directory. PNG,
+JPEG, and WebP files are supported, detected from their contents; each side may be up to 16384
+pixels. The image is decoded and resampled with Lanczos3 once per run.
+
+Unlike invalid colors, image problems stop the run before the shell starts: a missing file names
+every place it looked, an undecodable file reports the decoder error, and a malformed `image(...)`
+lists the accepted forms. `betamax validate` does not open images.
+
+The image covers the same area as a gradient, including the caption row and the area outside
+rounded corners. The shadow, captions, and keyboard chips draw over it unchanged, so prefer calm,
+low-detail pictures behind text. A picture with alpha keeps it and follows the transparency rules
+above. GIF output shares one 256-color palette between the picture and the terminal, so detailed
+photos band; use MP4, WebM, or WebP for those. See `examples/margin-image.tape`.
 
 ### Window shadow
 

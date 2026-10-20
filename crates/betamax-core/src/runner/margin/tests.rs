@@ -100,6 +100,7 @@ fn linear_margin_fill_uses_its_angle_as_the_first_to_last_stop_direction() {
         3,
         Some("linear(angle: 90deg, #000000, #ffffff)"),
         rgb(255, 0, 0),
+        None,
     )
     .unwrap()
     .into_frame();
@@ -111,6 +112,7 @@ fn linear_margin_fill_uses_its_angle_as_the_first_to_last_stop_direction() {
         3,
         Some("linear(angle: 0deg, #000000, #ffffff)"),
         rgb(255, 0, 0),
+        None,
     )
     .unwrap()
     .into_frame();
@@ -121,7 +123,6 @@ fn linear_margin_fill_uses_its_angle_as_the_first_to_last_stop_direction() {
 #[test]
 fn invalid_margin_fills_fall_back_to_the_final_theme_background() {
     for value in [
-        "red",
         "#12345",
         "#12é34",
         "#1é234",
@@ -211,6 +212,7 @@ fn gradient_endpoints_handle_single_pixel_axes() {
             height,
             Some(&format!("linear({direction}, #000000, #ffffff)")),
             rgb(255, 0, 0),
+            None,
         )
         .unwrap()
         .into_frame();
@@ -233,6 +235,7 @@ fn gradient_dither_is_fixed_and_preserves_endpoints() {
         settings.presentation.height,
         settings.presentation.style.margin_fill.as_deref(),
         settings.presentation.theme.background,
+        None,
     )
     .unwrap()
     .into_frame();
@@ -339,7 +342,7 @@ fn transparent_margin_fill_clears_the_backdrop_around_an_opaque_window() {
         Tape::parse("Set Preset Framed\nSet Width 200\nSet Height 160\nSet MarginFill transparent")
             .unwrap();
     let settings = Settings::from_tape(&tape).unwrap();
-    assert!(settings.presentation.style.margin_has_alpha());
+    assert!(settings.presentation.margin_has_alpha());
     let frame = decorated(&settings, None);
     let alpha =
         |x: u32, y: u32| frame.pixels[(y as usize * frame.width as usize + x as usize) * 4 + 3];
@@ -371,7 +374,7 @@ fn coverage_against_a_clear_backdrop_fades_alpha_not_color() {
 fn opaque_margin_fills_keep_every_pixel_opaque() {
     let tape = Tape::parse("Set Preset Framed\nSet Width 200\nSet Height 160").unwrap();
     let settings = Settings::from_tape(&tape).unwrap();
-    assert!(!settings.presentation.style.margin_has_alpha());
+    assert!(!settings.presentation.margin_has_alpha());
     let frame = decorated(&settings, Some("caption"));
     assert!(frame
         .pixels
@@ -394,12 +397,13 @@ fn margin_fill_accepts_css_ordered_alpha() {
         parse_margin_fill("#12345600"),
         Some(MarginFill::Solid(FillColor::CLEAR))
     );
-    assert!(parse_margin_fill("#0f101aff").unwrap().is_opaque());
+    assert_eq!(
+        parse_margin_fill("#0f101aff"),
+        Some(MarginFill::Solid(FillColor::opaque(rgb(15, 16, 26))))
+    );
     for invalid in ["#0f101a8", "#0f101agg", "#0f101a800"] {
         assert_eq!(parse_margin_fill(invalid), None, "{invalid}");
     }
-    let fade = parsed_gradient("linear(#4d5b9e, transparent)");
-    assert!(!MarginFill::Gradient(fade).is_opaque());
 }
 
 #[test]
@@ -431,7 +435,7 @@ fn translucent_solid_fill_keeps_its_alpha_in_the_backdrop() {
     )
     .unwrap();
     let settings = Settings::from_tape(&tape).unwrap();
-    assert!(settings.presentation.style.margin_has_alpha());
+    assert!(settings.presentation.margin_has_alpha());
     let frame = decorated(&settings, None);
     assert_eq!(frame.pixels[..4], [15, 16, 26, 128]);
 }

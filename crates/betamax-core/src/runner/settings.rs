@@ -6,6 +6,7 @@
 
 use std::env;
 use std::ffi::OsString;
+use std::path::Path;
 use std::time::Duration;
 
 use miette::miette;
@@ -43,9 +44,9 @@ const CURSOR_BLINK_PHASES: usize = 2;
 
 /// Startup execution settings and the presentation configuration for one tape run.
 ///
-/// Values are produced by [`Settings::from_tape`]. Callers should not construct this type manually
-/// because `columns` and `rows` are derived from several pixel/text settings after all tape
-/// commands have been applied.
+/// Values are produced by [`Settings::from_tape_in`]. Callers should not construct this type
+/// manually because `columns` and `rows` are derived from several pixel/text settings after all
+/// tape commands have been applied.
 #[derive(Debug, Clone)]
 pub(super) struct Settings {
     /// Shell command and optional explicit arguments from `Set Shell`.
@@ -78,6 +79,12 @@ pub(super) struct Settings {
 }
 
 impl Settings {
+    /// [`Settings::from_tape_in`] without a tape directory.
+    #[cfg(test)]
+    pub(super) fn from_tape(tape: &Tape) -> Result<Self> {
+        Self::from_tape_in(tape, None)
+    }
+
     /// Build execution settings by applying startup commands in tape order.
     ///
     /// The Default preset selects Framed; explicit settings override the selected preset.
@@ -88,7 +95,10 @@ impl Settings {
     /// runtime commands are intentionally ignored because they are handled by output classification
     /// and command execution. This keeps startup settings deterministic and avoids side effects
     /// while validating tape configuration.
-    pub(super) fn from_tape(tape: &Tape) -> Result<Self> {
+    ///
+    /// Relative asset paths such as a `MarginFill` image resolve against the working directory,
+    /// then `tape_dir`.
+    pub(super) fn from_tape_in(tape: &Tape, tape_dir: Option<&Path>) -> Result<Self> {
         let theme = TerminalTheme::default();
         let mut settings = Self {
             shell: vec![env::var_os("SHELL").unwrap_or_else(|| OsString::from("sh"))],
@@ -121,7 +131,7 @@ impl Settings {
 
         preset.resolve_surfaces(&mut settings.presentation);
         settings.apply_terminal_grid();
-        settings.presentation.prepare_backdrop()?;
+        settings.presentation.prepare_backdrop(tape_dir)?;
         Ok(settings)
     }
 

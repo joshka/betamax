@@ -28,6 +28,7 @@ include = [
 color_quant.workspace = true
 cosmic-text.workspace = true
 gif.workspace = true
+image.workspace = true
 image-webp.workspace = true
 libghostty-vt.workspace = true
 miette.workspace = true

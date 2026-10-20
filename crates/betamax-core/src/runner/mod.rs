@@ -33,6 +33,7 @@
 //! # }
 //! ```
 
+use std::path::PathBuf;
 use std::thread;
 use std::time::Duration;
 
@@ -241,6 +242,8 @@ pub struct Runner<C = GhosttyFrameCapture> {
     capture: C,
     /// Optional sink for deterministic media-writing progress.
     media_progress: Box<dyn MediaProgressReporter>,
+    /// Directory of the tape file, used as a fallback base for relative asset paths.
+    tape_dir: Option<PathBuf>,
 }
 
 impl<C> std::fmt::Debug for Runner<C> {
@@ -253,6 +256,7 @@ impl<C> std::fmt::Debug for Runner<C> {
                 "media_progress",
                 &std::any::type_name::<Box<dyn MediaProgressReporter>>(),
             )
+            .field("tape_dir", &self.tape_dir)
             .finish()
     }
 }
@@ -264,6 +268,7 @@ impl Runner<GhosttyFrameCapture> {
             options,
             capture: GhosttyFrameCapture,
             media_progress: Box::new(NoMediaProgress),
+            tape_dir: None,
         }
     }
 }
@@ -353,6 +358,7 @@ impl<C> Runner<C> {
             options,
             capture,
             media_progress: Box::new(NoMediaProgress),
+            tape_dir: None,
         }
     }
 
@@ -362,6 +368,17 @@ impl<C> Runner<C> {
     /// progress bars without making terminal UI a core dependency.
     pub fn with_media_progress(mut self, progress: impl MediaProgressReporter + 'static) -> Self {
         self.media_progress = Box::new(progress);
+        self
+    }
+
+    /// Set the directory of the tape file being run.
+    ///
+    /// Relative asset paths in the tape, such as a `MarginFill` image, resolve against the working
+    /// directory first, as VHS does, and then against this directory, so a tape and its assets can
+    /// render from anywhere.
+    #[must_use]
+    pub fn with_tape_dir(mut self, tape_dir: impl Into<PathBuf>) -> Self {
+        self.tape_dir = Some(tape_dir.into());
         self
     }
 }
@@ -439,8 +456,8 @@ where
     /// PTY bytes into the terminal so hidden cleanup commands can affect final state without
     /// appearing in GIF/video output.
     fn run_with_capture(&mut self, tape: &Tape, outputs: Outputs) -> Result<RunArtifacts> {
-        let mut settings = Settings::from_tape(tape)?;
-        if settings.presentation.style.margin_has_alpha() {
+        let mut settings = Settings::from_tape_in(tape, self.tape_dir.as_deref())?;
+        if settings.presentation.margin_has_alpha() {
             if let Some(path) = outputs.mp4s.first() {
                 return Err(miette!(
                     "MP4 cannot carry MarginFill transparency: {}; use PNG, WebP, WebM, or GIF output",
@@ -802,7 +819,7 @@ where
     /// fail with a targeted error if output classification did not already route the tape to
     /// capture.
     fn run_without_capture(&mut self, tape: &Tape) -> Result<RunArtifacts> {
-        let settings = Settings::from_tape(tape)?;
+        let settings = Settings::from_tape_in(tape, self.tape_dir.as_deref())?;
         tracing::debug!(
             commands = tape.commands.len(),
             "starting non-captured tape run",

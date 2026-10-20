@@ -84,25 +84,42 @@ impl Canvas {
         }
     }
 
+    /// Wrap tightly packed straight-alpha RGBA8 pixels, zeroing the color of clear pixels.
+    pub(super) fn from_rgba(width: u32, height: u32, mut pixels: Vec<u8>) -> Result<Self> {
+        if pixels.len() != buffer_len(width, height)? {
+            return Err(miette!("RGBA buffer does not match {width}x{height}").into());
+        }
+        for pixel in pixels.as_chunks_mut::<BYTES_PER_PIXEL>().0 {
+            if pixel[3] == 0 {
+                pixel.fill(0);
+            }
+        }
+        Ok(Self {
+            width,
+            height,
+            pixels,
+        })
+    }
+
+    /// Whether any pixel is not fully opaque.
+    pub(super) fn has_alpha(&self) -> bool {
+        self.pixels
+            .as_chunks::<BYTES_PER_PIXEL>()
+            .0
+            .iter()
+            .any(|pixel| pixel[3] != OPAQUE_ALPHA)
+    }
+
     /// Allocate a solid-color RGBA frame, checking for integer overflow.
     pub(super) fn new(
         width: u32,
         height: u32,
         color: libghostty_vt::style::RgbColor,
     ) -> Result<Self> {
-        let len = usize::try_from(width)
-            .ok()
-            .and_then(|width| {
-                usize::try_from(height)
-                    .ok()
-                    .and_then(|height| width.checked_mul(height))
-            })
-            .and_then(|pixels| pixels.checked_mul(BYTES_PER_PIXEL))
-            .ok_or_else(|| miette!("frame is too large"))?;
         let mut frame = Self {
             width,
             height,
-            pixels: vec![0; len],
+            pixels: vec![0; buffer_len(width, height)?],
         };
         frame.fill_rect(0, 0, width, height, color);
         Ok(frame)
@@ -581,6 +598,19 @@ const ROUNDED_RECT_AA_SAMPLES: u32 = 4;
 /// Construct an RGB color.
 pub(super) const fn rgb(r: u8, g: u8, b: u8) -> libghostty_vt::style::RgbColor {
     libghostty_vt::style::RgbColor { r, g, b }
+}
+
+/// Byte length of a tightly packed RGBA8 buffer, checking for integer overflow.
+fn buffer_len(width: u32, height: u32) -> Result<usize> {
+    usize::try_from(width)
+        .ok()
+        .and_then(|width| {
+            usize::try_from(height)
+                .ok()
+                .and_then(|height| width.checked_mul(height))
+        })
+        .and_then(|pixels| pixels.checked_mul(BYTES_PER_PIXEL))
+        .ok_or_else(|| miette!("frame is too large").into())
 }
 
 /// Rasterize a small shape mask at local 4× density, then average pixel areas.
