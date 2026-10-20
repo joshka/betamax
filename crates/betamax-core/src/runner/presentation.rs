@@ -4,6 +4,7 @@
 //! owns its own metrics and drawing; this module resolves their shared bounds and drawing order.
 
 use std::borrow::Cow;
+use std::path::Path;
 use std::time::Duration;
 
 use super::canvas::{Canvas, PixelRect};
@@ -16,7 +17,7 @@ use super::keyboard_overlay::{
     KeyboardOverlayLocation, KeyboardOverlayMode, KeyboardOverlaySettings, VerticalAnchor,
     KEYBOARD_OVERLAY_CORNER_INSET, KEYBOARD_OVERLAY_LINE_HEIGHT, KEYBOARD_OVERLAY_TEXT_OFFSET_Y,
 };
-use super::margin::{margin_backdrop, parse_margin_fill};
+use super::margin::margin_backdrop;
 use super::window::WindowStyle;
 use super::window_shape::WindowOutline;
 use crate::ghostty::{TerminalTheme, TextSettings};
@@ -54,6 +55,8 @@ pub(super) struct Presentation {
     /// Cached margin canvas, prepared after all startup settings have been applied. Opaque unless
     /// the margin fill is transparent.
     backdrop: Canvas,
+    /// Whether the margin fill left any backdrop pixel translucent, so outputs need alpha.
+    margin_has_alpha: bool,
     /// Cached bar fill and buttons, prepared with the backdrop after startup settings.
     bar_overlay: Canvas,
     /// Cached shell fill, including decoration outside the terminal rectangle.
@@ -78,6 +81,7 @@ impl Presentation {
             text: TextSettings::default(),
             style: WindowStyle::new(&theme),
             backdrop: Canvas::new(0, 0, theme.background)?,
+            margin_has_alpha: false,
             bar_overlay: Canvas::transparent(0, 0)?,
             window_canvas: Canvas::transparent(0, 0)?,
             outline: None,
@@ -89,7 +93,9 @@ impl Presentation {
     }
 
     /// Prepare the backdrop once after all startup settings have been applied.
-    pub(super) fn prepare_backdrop(&mut self) -> Result<()> {
+    ///
+    /// `tape_dir` is a fallback base for relative `MarginFill` image paths.
+    pub(super) fn prepare_backdrop(&mut self, tape_dir: Option<&Path>) -> Result<()> {
         if self.terminal_canvas_width() == 0 || self.terminal_canvas_height() == 0 {
             return Err(miette::miette!(
                 "Width and Height leave no terminal canvas; increase the dimensions or use Set Preset Bare"
@@ -100,7 +106,9 @@ impl Presentation {
             self.height,
             self.style.margin_fill.as_deref(),
             self.theme.background,
+            tape_dir,
         )?;
+        self.margin_has_alpha = self.backdrop.has_alpha();
         let bounds = PixelRect {
             x: self.style.effective_margin(),
             y: self.style.effective_margin(),
@@ -171,13 +179,7 @@ impl Presentation {
     /// the whole reserved row, so it stays put as captions change and chips appear.
     fn prepare_gif_row_plate(&self, shell: PixelRect) -> Result<Option<(Canvas, PixelRect)>> {
         let row_height = self.presentation_overlay_height().min(self.height);
-        let margin_is_opaque = self
-            .style
-            .margin_fill
-            .as_deref()
-            .and_then(parse_margin_fill)
-            .is_none_or(|fill| fill.is_opaque());
-        if row_height == 0 || margin_is_opaque {
+        if row_height == 0 || !self.margin_has_alpha {
             return Ok(None);
         }
         // Match the window's horizontal extent and its inset from the image edge, so the plate
@@ -232,6 +234,10 @@ impl Presentation {
     }
 
     /// Width of the terminal canvas before margin and window-bar decoration.
+    pub(super) fn margin_has_alpha(&self) -> bool {
+        self.margin_has_alpha
+    }
+
     pub(super) fn terminal_canvas_width(&self) -> u32 {
         self.width
             .saturating_sub(self.style.effective_margin().saturating_mul(2))

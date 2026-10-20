@@ -113,7 +113,8 @@ requirement to preserve these exact files when a better boundary becomes clear.
   automatic contrast, single-line text policy, bounded raster cache, and title behavior tests in
   its `tests` child. Window chrome resolves button clearance before applying the rounded mask.
 - [`margin.rs`](../crates/betamax-core/src/runner/margin.rs): fill parsing, gradient projection and
-  sampling, dithering, and backdrop rendering.
+  sampling, dithering, and backdrop rendering. Its `image_fill` child owns image syntax, path
+  resolution, decoding, and fitting.
 - [`caption.rs`](../crates/betamax-core/src/runner/caption.rs): caption text semantics, typography,
   height requirements, and the single-line shaping, truncation, and drawing mechanism reused by
   window titles.

@@ -74,7 +74,6 @@ familiar `>` instead of your own. Other shells only get a bash-style `PS1`. Beta
 | `Source other.tape`               | Copy the commands into the tape                               |
 | `ScrollUp`, `ScrollDown`          | `MouseScroll Up 3`, which sends wheel input to the program    |
 | `Set Rows`, `Set Columns`         | `Set Width` and `Set Height`, or `Resize C R` mid-tape        |
-| `Set MarginFill path/to/img.png`  | A color, `transparent`, or `linear(a, b)`                     |
 | `Output demo.txt` or `.ascii`     | `Output demo.json` or `State`, plus `Assert*` commands        |
 | `vhs record`                      | Write the tape by hand, or start from `betamax new`           |
 | `vhs serve`, `vhs publish`        | Not planned; host the rendered files yourself                 |
@@ -167,7 +166,7 @@ reading every keystroke.
 
 ### Style the window
 
-Presets, gradient and transparent `MarginFill` values, `WindowBarColor`, `WindowTitle`,
+Presets, gradient, image, and transparent `MarginFill` values, `WindowBarColor`, `WindowTitle`,
 `WindowTitleColor`, `WindowTitleFromTerminal`, `WindowBorder`, and `Shadow` make polished demos
 without post-processing. See [Window styling](../../authoring/window-styling/).
 

@@ -1,7 +1,10 @@
-//! Linear margin fills: owned syntax, geometry, stops, and deterministic sRGB sampling.
+//! Margin fills: owned syntax, linear-gradient geometry and deterministic sRGB sampling, and
+//! image backdrops (see [`image_fill`]).
 //!
 //! Fill colors carry straight alpha. Opaque stop pairs interpolate in sRGB; pairs with alpha
 //! interpolate premultiplied so a fade to clear does not darken toward the clear stop's color.
+
+use std::path::Path;
 
 use super::canvas::{rgb, Canvas};
 use crate::Result;
@@ -11,19 +14,6 @@ use crate::Result;
 pub(super) enum MarginFill {
     Solid(FillColor),
     Gradient(LinearGradient),
-}
-
-impl MarginFill {
-    /// Whether every backdrop pixel is opaque, so outputs need no alpha channel.
-    pub(super) fn is_opaque(&self) -> bool {
-        match self {
-            Self::Solid(color) => color.alpha == u8::MAX,
-            Self::Gradient(gradient) => gradient
-                .stops
-                .iter()
-                .all(|stop| stop.color.alpha == u8::MAX),
-        }
-    }
 }
 
 /// A straight-alpha fill color. `transparent` is fully clear black.
@@ -298,12 +288,19 @@ fn parse_gradient_position(value: &str) -> Option<f64> {
 }
 
 /// Prepare the full-output backdrop once, including the area behind captions and corners.
+///
+/// Image fills resolve relative paths against the working directory, then `tape_dir`. Missing or
+/// undecodable images are errors; invalid colors and gradients fall back to the theme background.
 pub(super) fn margin_backdrop(
     width: u32,
     height: u32,
     value: Option<&str>,
     fallback: libghostty_vt::style::RgbColor,
+    tape_dir: Option<&Path>,
 ) -> Result<Canvas> {
+    if let Some(image) = value.map(MarginImage::parse).transpose()?.flatten() {
+        return image.backdrop(width, height, tape_dir, fallback);
+    }
     let fill = value
         .and_then(parse_margin_fill)
         .unwrap_or(MarginFill::Solid(FillColor::opaque(fallback)));
@@ -361,5 +358,8 @@ pub(super) fn parse_hex_color(value: &str) -> Option<libghostty_vt::style::RgbCo
     ))
 }
 
+mod image_fill;
 #[cfg(test)]
 mod tests;
+
+use image_fill::MarginImage;

@@ -3,7 +3,7 @@
 //! The CLI command is intentionally thin: it reads tape source, appends an optional CLI-provided
 //! output path, builds runner options, and delegates execution to the library API.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use betamax_core::media::{MediaProgress, MediaProgressKind, MediaProgressReporter};
 use betamax_core::runner::{RunOptions, Runner};
@@ -58,6 +58,12 @@ impl Run {
             quiet: self.quiet,
         };
         let mut runner = Runner::new(options);
+        if self.input.is_file() {
+            let tape_dir = Path::new(self.input.filename())
+                .parent()
+                .unwrap_or(Path::new(""));
+            runner = runner.with_tape_dir(tape_dir);
+        }
         if !self.quiet {
             runner = runner.with_media_progress(CliMediaProgress::default());
         }

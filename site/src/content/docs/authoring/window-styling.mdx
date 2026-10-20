@@ -67,12 +67,13 @@ frame follows; set `MarginFill` or `WindowBarColor` to choose colors yourself. T
 ## Margin and backdrop
 
 `Margin` is the space between the window and the image edge. `MarginFill` paints it with a color,
-a linear gradient, or nothing at all:
+a linear gradient, a picture, or nothing at all:
 
 ```tape
 Set Margin 44
 Set MarginFill "#232640"
 Set MarginFill "linear(to: bottom-right, #4d5b9e 0%, #232640 42%, #0f101a 100%)"
+Set MarginFill "image(backdrop.jpg)"
 Set MarginFill transparent
 ```
 
@@ -81,8 +82,15 @@ Set MarginFill transparent
 
 Gradients are `linear(...)` with an optional direction and two or more stops. Without a direction
 they run top to bottom; `to: <side-or-corner>` and `angle: <n>deg` change that. Stops may carry
-percentages, and if one does, they all must. This is Betamax syntax, not CSS: no radial gradients
-or images. See [Margin fill](../../reference/tape-reference/#margin-fill) for the grammar.
+percentages, and if one does, they all must. This is Betamax syntax, not CSS: no radial
+gradients. See [Margin fill](../../reference/tape-reference/#margin-fill) for the grammar.
+
+### Images
+
+A bare path such as `Set MarginFill "backdrop.jpg"` stretches the picture over the output, as VHS
+does. `image(backdrop.jpg)` keeps its aspect ratio and crops to cover; add `contain`, `tile`, or
+`stretch` as a second argument to change that. Relative paths are tried from the working directory,
+then beside the tape. See [Image margin](../../reference/tape-reference/#image-margin).
 
 ### Transparency
 
