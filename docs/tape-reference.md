@@ -748,8 +748,26 @@ compact styled spans. See [State JSON](state-json.md) for the full format.
 
 ### `Source <path>.tape`
 
-Parsed for language compatibility but intentionally not executed. Running a tape containing
-`Source` currently returns an explicit not-implemented error.
+`Source other.tape` inlines the commands of another tape at that point, as VHS does. Use it to share
+setup across tapes:
+
+```tape
+Output demo.gif
+Source shared/setup.tape
+Type "make demo"
+```
+
+- A relative path resolves against the directory of the tape that contains the `Source` line, then
+  against the current directory. VHS resolves only against the current directory.
+- `Output` commands in the sourced tape are dropped with a warning, so they cannot replace the
+  parent's outputs. Every other command is kept.
+- Sourced `Set`, `Env`, and `Require` commands follow the usual ordering rule. Put `Source` before
+  the first runtime command if the sourced tape configures anything.
+- Sourced tapes can use `Source` themselves; a cycle is an error. VHS rejects nested `Source`.
+- Errors inside a sourced tape name that tape and line, then the line that sourced it.
+- The path must end in `.tape`, and the file must exist and not be empty.
+- `Tape::parse` rejects `Source` because it has no file to resolve paths against. Rust callers
+  use `Tape::parse_file` or `Tape::parse_with_sources`.
 
 ### Key commands
 

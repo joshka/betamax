@@ -48,7 +48,13 @@ impl Run {
             println!("{ANSI_BLUE}running {}{ANSI_RESET}", self.input.filename());
         }
         let source = self.input.clone().contents().into_diagnostic()?;
-        let mut tape = Tape::parse(&source)?;
+        let tape_path = self
+            .input
+            .is_file()
+            .then(|| Path::new(self.input.filename()));
+        let mut tape = Tape::parse_with_sources(&source, tape_path, &mut |warning| {
+            eprintln!("warning: {warning}");
+        })?;
         if let Some(output) = &self.output {
             tape.add_output(output.clone());
         }

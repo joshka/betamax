@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use miette::miette;
@@ -21,13 +21,107 @@ const MIN_FUNCTION_KEY: u8 = 1;
 /// Maximum function-key number accepted by the tape syntax.
 const MAX_FUNCTION_KEY: u8 = 25;
 
+/// Maximum `Source` nesting depth, a backstop behind cycle detection.
+const MAX_SOURCE_DEPTH: usize = 16;
+
 /// Parse a VHS-style tape source string into commands.
 ///
 /// The parser is kept separate from the public command model so the syntax cursor, token
-/// lookahead, and validation rules do not obscure what a parsed tape represents.
-pub(super) fn parse_tape(source: &str) -> Result<Tape> {
-    let mut commands = Vec::new();
+/// lookahead, and validation rules do not obscure what a parsed tape represents. Without a
+/// [`SourceContext`], `Source` is an error because there is no file to resolve paths against.
+pub(super) fn parse_tape(source: &str, context: Option<SourceContext<'_>>) -> Result<Tape> {
+    let mut parsed = Parsed::default();
+    match context {
+        Some(mut context) => {
+            let (canonical, display) = context.tape_path.map_or_else(
+                || (PathBuf::from("<stdin>"), "<stdin>".to_string()),
+                |path| {
+                    let canonical =
+                        std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+                    (canonical, path.display().to_string())
+                },
+            );
+            context.stack.push(Frame {
+                canonical,
+                display,
+                source_line: 0,
+            });
+            parse_lines(source, &mut parsed, Some(&mut context))?;
+        }
+        None => parse_lines(source, &mut parsed, None)?,
+    }
+    validate_command_order(&parsed.commands, &parsed.origins)?;
+    Ok(Tape {
+        commands: parsed.commands,
+    })
+}
 
+/// File context used to expand `Source` commands.
+pub(super) struct SourceContext<'a> {
+    /// Path of the top-level tape, or `None` for stdin.
+    tape_path: Option<&'a Path>,
+    /// Directory that relative `Source` paths resolve against first.
+    base_dir: PathBuf,
+    /// Open tapes, outermost first, for cycle detection and error locations.
+    stack: Vec<Frame>,
+    /// Receives warnings such as a dropped `Output` in a sourced tape.
+    warn: &'a mut dyn FnMut(String),
+}
+
+impl<'a> SourceContext<'a> {
+    /// Build a context for a tape at `tape_path`, or for stdin when `None`.
+    pub(super) fn new(tape_path: Option<&'a Path>, warn: &'a mut dyn FnMut(String)) -> Self {
+        let base_dir = tape_path
+            .and_then(Path::parent)
+            .map_or_else(PathBuf::new, Path::to_path_buf);
+        Self {
+            tape_path,
+            base_dir,
+            stack: Vec::new(),
+            warn,
+        }
+    }
+
+    /// Describe where a command on `line` of the current sourced tape came from.
+    fn origin(&self, line: usize) -> Option<String> {
+        let (current, parents) = self.stack.split_last()?;
+        if parents.is_empty() {
+            return None;
+        }
+        let mut origin = format!("{} line {line}", current.display);
+        for parent in parents.iter().rev() {
+            origin.push_str(&format!(
+                ", sourced at {} line {}",
+                parent.display, parent.source_line
+            ));
+        }
+        Some(origin)
+    }
+}
+
+/// One open tape in the `Source` chain.
+struct Frame {
+    /// Canonical path used for cycle detection.
+    canonical: PathBuf,
+    /// Path as shown in diagnostics.
+    display: String,
+    /// Line of the `Source` command currently being expanded in this tape.
+    source_line: usize,
+}
+
+/// Commands plus, for commands from sourced tapes, where they came from.
+#[derive(Default)]
+struct Parsed {
+    commands: Vec<Command>,
+    origins: Vec<Option<String>>,
+}
+
+/// Parse every line of `source`, expanding `Source` commands when a context is available.
+fn parse_lines(
+    source: &str,
+    parsed: &mut Parsed,
+    mut context: Option<&mut SourceContext<'_>>,
+) -> Result<()> {
     for (line_index, line) in source.lines().enumerate() {
         let line_number = line_index + 1;
         let trimmed = line.trim();
@@ -37,11 +131,153 @@ pub(super) fn parse_tape(source: &str) -> Result<Tape> {
 
         let tokens = shell_words::split(trimmed)
             .map_err(|err| miette!("line {line_number}: failed to tokenize tape line: {err}"))?;
-        parse_tokens(line_number, &tokens, &mut commands)?;
+        let mut line_commands = Vec::new();
+        parse_tokens(line_number, &tokens, &mut line_commands)?;
+
+        for command in line_commands {
+            let Some(context) = context.as_deref_mut() else {
+                if let Command::Source(_) = command {
+                    return Err(miette!(
+                        "line {line_number}: `Source` needs a tape file to resolve paths; \
+                         use `Tape::parse_file`"
+                    )
+                    .into());
+                }
+                parsed.commands.push(command);
+                parsed.origins.push(None);
+                continue;
+            };
+            let nested = context.stack.len() > 1;
+            match command {
+                Command::Source(path) => {
+                    expand_source(line_number, &path, parsed, context)?;
+                }
+                Command::Output(path) if nested => {
+                    let origin = context.origin(line_number).unwrap_or_default();
+                    (context.warn)(format!(
+                        "ignoring `Output {}` from sourced tape ({origin})",
+                        path.display()
+                    ));
+                }
+                command => {
+                    parsed.commands.push(command);
+                    parsed.origins.push(context.origin(line_number));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Inline the tape named by a `Source` command on `line_number`.
+fn expand_source(
+    line_number: usize,
+    path: &Path,
+    parsed: &mut Parsed,
+    context: &mut SourceContext<'_>,
+) -> Result<()> {
+    let at = |context: &SourceContext<'_>| {
+        context.stack.last().map_or_else(
+            || format!("line {line_number}"),
+            |frame| format!("{} line {line_number}", frame.display),
+        )
+    };
+    if path.extension().and_then(|ext| ext.to_str()) != Some("tape") {
+        return Err(miette!(
+            "{}: `Source {}` must name a file with a .tape extension",
+            at(context),
+            path.display()
+        )
+        .into());
+    }
+    let resolved = resolve_source_path(path, &context.base_dir).ok_or_else(|| {
+        miette!(
+            "{}: `Source {}` not found relative to the tape or the current directory",
+            at(context),
+            path.display()
+        )
+    })?;
+    let canonical = std::fs::canonicalize(&resolved).unwrap_or_else(|_| resolved.clone());
+    if let Some(frame) = context.stack.last_mut() {
+        frame.source_line = line_number;
+    }
+    if let Some(start) = context
+        .stack
+        .iter()
+        .position(|frame| frame.canonical == canonical)
+    {
+        let chain: Vec<String> = context.stack[start..]
+            .iter()
+            .map(|frame| format!("{} line {}", frame.display, frame.source_line))
+            .chain(std::iter::once(resolved.display().to_string()))
+            .collect();
+        return Err(miette!("Source cycle: {}", chain.join(" -> ")).into());
+    }
+    if context.stack.len() >= MAX_SOURCE_DEPTH {
+        return Err(miette!(
+            "{}: `Source` nesting is deeper than {MAX_SOURCE_DEPTH} tapes",
+            at(context)
+        )
+        .into());
+    }
+    let source = std::fs::read_to_string(&resolved).map_err(|err| {
+        miette!(
+            "{}: failed to read {}: {err}",
+            at(context),
+            resolved.display()
+        )
+    })?;
+    if source.is_empty() {
+        return Err(miette!(
+            "{}: sourced tape {} is empty",
+            at(context),
+            resolved.display()
+        )
+        .into());
     }
 
-    validate_command_order(&commands)?;
-    Ok(Tape { commands })
+    let sourced_at = at(context);
+    let display = resolved.display().to_string();
+    let base_dir = std::mem::replace(
+        &mut context.base_dir,
+        resolved
+            .parent()
+            .map_or_else(PathBuf::new, Path::to_path_buf),
+    );
+    context.stack.push(Frame {
+        canonical,
+        display: display.clone(),
+        source_line: 0,
+    });
+    let result = parse_lines(&source, parsed, Some(context));
+    context.stack.pop();
+    context.base_dir = base_dir;
+    result.map_err(|err| {
+        let message = err.to_string();
+        // Name the sourced tape on bare line errors; extend the chain on errors from deeper tapes.
+        if message.starts_with("line ") {
+            miette!("{display} {message} (sourced at {sourced_at})").into()
+        } else if let Some(chain) = message
+            .strip_suffix(')')
+            .filter(|m| m.contains("(sourced at "))
+        {
+            miette!("{chain}, sourced at {sourced_at})").into()
+        } else {
+            err
+        }
+    })
+}
+
+/// Resolve a `Source` path against the sourcing tape's directory, then the current directory.
+fn resolve_source_path(path: &Path, base_dir: &Path) -> Option<PathBuf> {
+    if path.is_absolute() {
+        return path.is_file().then(|| path.to_path_buf());
+    }
+    let relative_to_tape = base_dir.join(path);
+    if relative_to_tape.is_file() {
+        return Some(relative_to_tape);
+    }
+    path.is_file().then(|| path.to_path_buf())
 }
 
 /// Parse one tokenized tape line into one or more commands.
@@ -699,18 +935,23 @@ fn parse_wait_pattern(line_number: usize, pattern: &str) -> Result<WaitPattern> 
 ///
 /// This keeps PTY setup deterministic: environment variables, required programs, and settings are
 /// all known before the shell is spawned or capture is configured.
-fn validate_command_order(commands: &[Command]) -> Result<()> {
+fn validate_command_order(commands: &[Command], origins: &[Option<String>]) -> Result<()> {
     let mut saw_runtime_command = false;
-    for command in commands {
+    for (command, origin) in commands.iter().zip(origins) {
+        let from = origin
+            .as_ref()
+            .map(|origin| format!(" (from {origin})"))
+            .unwrap_or_default();
         match command {
             Command::Set { key, .. } | Command::Env { key, .. } if saw_runtime_command => {
-                return Err(
-                    miette!("`{key}` must be configured before runtime tape commands").into(),
-                );
+                return Err(miette!(
+                    "`{key}`{from} must be configured before runtime tape commands"
+                )
+                .into());
             }
             Command::Require(program) if saw_runtime_command => {
                 return Err(miette!(
-                    "`Require {program}` must appear before runtime tape commands"
+                    "`Require {program}`{from} must appear before runtime tape commands"
                 )
                 .into());
             }
@@ -1067,5 +1308,200 @@ Wait+Screen ready WindowTitle final"#,
         assert!(tape
             .outputs()
             .any(|path| path == PathBuf::from("docs.gif").as_path()));
+    }
+
+    /// Write `files` into a fresh temporary directory and return its path.
+    fn tape_dir(name: &str, files: &[(&str, &str)]) -> PathBuf {
+        let dir =
+            std::env::temp_dir().join(format!("betamax-source-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        for (path, contents) in files {
+            let path = dir.join(path);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, contents).unwrap();
+        }
+        dir
+    }
+
+    fn parse_dir(dir: &Path, warnings: &mut Vec<String>) -> Result<Tape> {
+        Tape::parse_file(&dir.join("main.tape"), &mut |warning| {
+            warnings.push(warning)
+        })
+    }
+
+    #[test]
+    fn source_inlines_header_settings_and_drops_output() {
+        let dir = tape_dir(
+            "inline",
+            &[
+                (
+                    "main.tape",
+                    "Output demo.gif\nSource lib/setup.tape\nType \"hi\"",
+                ),
+                (
+                    "lib/setup.tape",
+                    "Output setup.gif\nSet Width 640\nRequire git",
+                ),
+            ],
+        );
+        let mut warnings = Vec::new();
+        let tape = parse_dir(&dir, &mut warnings).unwrap();
+        assert_eq!(
+            tape.commands,
+            [
+                Command::Output("demo.gif".into()),
+                Command::Set {
+                    key: "Width".into(),
+                    value: Value::Number(640.0)
+                },
+                Command::Require("git".into()),
+                Command::Type {
+                    text: "hi".into(),
+                    delay: None
+                },
+            ]
+        );
+        assert_eq!(warnings.len(), 1);
+        assert!(warnings[0].contains("Output setup.gif"), "{warnings:?}");
+        assert!(
+            warnings[0].contains("setup.tape line 1, sourced at"),
+            "{warnings:?}"
+        );
+    }
+
+    #[test]
+    fn source_resolves_nested_paths_relative_to_each_tape() {
+        let dir = tape_dir(
+            "nested",
+            &[
+                ("main.tape", "Source a/one.tape"),
+                ("a/one.tape", "Source b/two.tape\nType \"one\""),
+                ("a/b/two.tape", "Type \"two\""),
+            ],
+        );
+        let tape = parse_dir(&dir, &mut Vec::new()).unwrap();
+        assert_eq!(tape.commands.len(), 2);
+        assert!(matches!(&tape.commands[0], Command::Type { text, .. } if text == "two"));
+    }
+
+    #[test]
+    fn source_falls_back_to_the_current_directory() {
+        // Cargo runs unit tests from the package root, and the empty directory has no `src/`.
+        let dir = tape_dir("cwd", &[("main.tape", "")]);
+        let path = Path::new("src/tape/parser.rs");
+        assert_eq!(resolve_source_path(path, &dir), Some(path.to_path_buf()));
+        assert_eq!(
+            resolve_source_path(Path::new("main.tape"), &dir),
+            Some(dir.join("main.tape"))
+        );
+    }
+
+    #[test]
+    fn source_after_runtime_commands_rejects_settings_with_their_origin() {
+        let dir = tape_dir(
+            "order",
+            &[
+                ("main.tape", "Type \"x\"\nSource setup.tape"),
+                ("setup.tape", "\nSet Width 640"),
+            ],
+        );
+        let error = parse_dir(&dir, &mut Vec::new()).unwrap_err().to_string();
+        assert!(error.contains("`Width` (from "), "{error}");
+        assert!(error.contains("setup.tape line 2, sourced at "), "{error}");
+        assert!(error.contains("main.tape line 2)"), "{error}");
+    }
+
+    #[test]
+    fn source_errors_point_into_the_sourced_tape() {
+        let dir = tape_dir(
+            "inner-error",
+            &[
+                ("main.tape", "\n\nSource setup.tape"),
+                ("setup.tape", "Type \"ok\"\nBogus"),
+            ],
+        );
+        let error = parse_dir(&dir, &mut Vec::new()).unwrap_err().to_string();
+        assert!(
+            error.contains("setup.tape line 2: unsupported tape command `Bogus`"),
+            "{error}"
+        );
+        assert!(
+            error.contains("(sourced at ") && error.contains("main.tape line 3)"),
+            "{error}"
+        );
+    }
+
+    #[test]
+    fn source_errors_list_every_sourcing_tape() {
+        let dir = tape_dir(
+            "inner-chain",
+            &[
+                ("main.tape", "Source a.tape"),
+                ("a.tape", "\nSource b.tape"),
+                ("b.tape", "Bogus"),
+            ],
+        );
+        let error = parse_dir(&dir, &mut Vec::new()).unwrap_err().to_string();
+        assert!(error.contains("b.tape line 1: unsupported"), "{error}");
+        assert!(error.contains("a.tape line 2, sourced at "), "{error}");
+        assert!(error.ends_with("main.tape line 1)"), "{error}");
+    }
+
+    #[test]
+    fn source_rejects_cycles_missing_empty_and_non_tape_files() {
+        let cases = [
+            (
+                "cycle",
+                vec![
+                    ("main.tape", "Source a.tape"),
+                    ("a.tape", "Source main.tape"),
+                ],
+                "Source cycle: ",
+            ),
+            (
+                "self",
+                vec![("main.tape", "Source main.tape")],
+                "Source cycle: ",
+            ),
+            (
+                "missing",
+                vec![("main.tape", "Source nope.tape")],
+                "not found",
+            ),
+            (
+                "empty",
+                vec![("main.tape", "Source empty.tape"), ("empty.tape", "")],
+                "is empty",
+            ),
+            (
+                "ext",
+                vec![
+                    ("main.tape", "Source notes.txt"),
+                    ("notes.txt", "Type \"x\""),
+                ],
+                ".tape extension",
+            ),
+        ];
+        for (name, files, expected) in cases {
+            let dir = tape_dir(name, &files);
+            let error = parse_dir(&dir, &mut Vec::new()).unwrap_err().to_string();
+            assert!(error.contains(expected), "{name}: {error}");
+        }
+        let dir = tape_dir(
+            "cycle-chain",
+            &[
+                ("main.tape", "Source a.tape"),
+                ("a.tape", "\nSource main.tape"),
+            ],
+        );
+        let error = parse_dir(&dir, &mut Vec::new()).unwrap_err().to_string();
+        assert!(error.contains("main.tape line 1 -> "), "{error}");
+        assert!(error.contains("a.tape line 2 -> "), "{error}");
+    }
+
+    #[test]
+    fn source_without_a_file_context_is_an_error() {
+        let error = Tape::parse("Source other.tape").unwrap_err().to_string();
+        assert!(error.contains("Tape::parse_file"), "{error}");
     }
 }

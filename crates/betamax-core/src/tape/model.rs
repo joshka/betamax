@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use crate::Result;
@@ -36,10 +36,50 @@ impl Tape {
     /// # Errors
     ///
     /// Returns an error when tokenization fails, a command is unknown, a required argument is
-    /// missing, a duration or regex is invalid, or startup-affecting commands appear after runtime
-    /// commands.
+    /// missing, a duration or regex is invalid, startup-affecting commands appear after runtime
+    /// commands, or the tape uses `Source`, which needs [`Tape::parse_file`] or
+    /// [`Tape::parse_with_sources`] to resolve paths.
     pub fn parse(source: &str) -> Result<Self> {
-        super::parser::parse_tape(source)
+        super::parser::parse_tape(source, None)
+    }
+
+    /// Read and parse the tape at `path`, inlining `Source` commands.
+    ///
+    /// See [`Tape::parse_with_sources`] for how `Source` is expanded. `warn` receives non-fatal
+    /// diagnostics, such as an `Output` dropped from a sourced tape.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the file cannot be read or [`Tape::parse_with_sources`] fails.
+    pub fn parse_file(path: &Path, warn: &mut dyn FnMut(String)) -> Result<Self> {
+        let source = std::fs::read_to_string(path)
+            .map_err(|err| miette::miette!("failed to read {}: {err}", path.display()))?;
+        Self::parse_with_sources(&source, Some(path), warn)
+    }
+
+    /// Parse tape source read from `tape_path` (or stdin when `None`), inlining `Source` commands.
+    ///
+    /// Each `Source other.tape` is replaced by the commands of that tape, which may itself use
+    /// `Source`. A relative path resolves against the directory of the tape that contains the
+    /// `Source` line, then the current directory. `Output` commands in sourced tapes are dropped
+    /// with a warning so they cannot replace the parent's outputs. The command-order rule applies
+    /// to the expanded stream, so a sourced tape that sets `Set`, `Env`, or `Require` must be
+    /// sourced before the first runtime command.
+    ///
+    /// # Errors
+    ///
+    /// Returns the [`Tape::parse`] errors, plus errors for a `Source` path that is missing, empty,
+    /// not a `.tape` file, part of a cycle, or nested more than 16 tapes deep. Errors inside a
+    /// sourced tape name that tape and its line, followed by where it was sourced.
+    pub fn parse_with_sources(
+        source: &str,
+        tape_path: Option<&Path>,
+        warn: &mut dyn FnMut(String),
+    ) -> Result<Self> {
+        super::parser::parse_tape(
+            source,
+            Some(super::parser::SourceContext::new(tape_path, warn)),
+        )
     }
 
     /// Iterate over top-level `Output` paths in source order.
@@ -65,10 +105,10 @@ impl Tape {
 
 /// Parsed tape command.
 ///
-/// The enum is intentionally close to the textual tape language. Some variants, such as
-/// [`Command::Source`], are parsed for language compatibility even though the current runner
-/// returns a targeted "not implemented" error for them. Use [`Tape::parse`] to construct commands
-/// from source text and [`crate::Runner`] to execute them.
+/// The enum is intentionally close to the textual tape language. [`Command::Source`] only
+/// appears in tapes built by hand: [`Tape::parse_file`] inlines sourced tapes, [`Tape::parse`]
+/// rejects `Source`, and the runner returns an error if it meets one. Use [`Tape::parse`] to
+/// construct commands from source text and [`crate::Runner`] to execute them.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command {
     /// Primary output requested by the tape or CLI.
@@ -169,7 +209,7 @@ pub enum Command {
     Caption(String),
     /// Change the displayed window title in tape order, without changing terminal state.
     WindowTitle(String),
-    /// Parsed placeholder for VHS `Source`; execution is intentionally not implemented yet.
+    /// VHS `Source`; [`Tape::parse_file`] replaces it with the sourced tape's commands.
     Source(PathBuf),
     /// Capture an immediate PNG screenshot without changing the primary outputs.
     Screenshot(PathBuf),

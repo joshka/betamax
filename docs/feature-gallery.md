@@ -53,7 +53,7 @@ its values. The table distinguishes representative behavior from exhaustive para
 | `Caption`                          | Clean/caption/key-chip checkpoints: equal state, distinct bottom pixels      |
 | `Screenshot`                       | Named PNG checkpoints, including while hidden                                |
 | `State`                            | Exact text, styles, cursor, scrollback and alternate-screen pairs            |
-| `Source`                           | Explicitly unsupported; documented runtime error, no misleading demo         |
+| `Source`                           | Inlined at parse time; parser tests and `examples/source.tape`               |
 
 ### Settings
 
