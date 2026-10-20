@@ -12,6 +12,8 @@ use clap_stdin::FileOrStdin;
 use indicatif::{ProgressBar, ProgressStyle};
 use miette::{IntoDiagnostic, Result};
 
+use super::warnings::print_tape_warning;
+
 const ANSI_RESET: &str = "\x1b[0m";
 const ANSI_BLUE: &str = "\x1b[34m";
 
@@ -53,7 +55,9 @@ impl Run {
             .is_file()
             .then(|| Path::new(self.input.filename()));
         let mut tape = Tape::parse_with_sources(&source, tape_path, &mut |warning| {
-            eprintln!("warning: {warning}");
+            if !self.quiet {
+                print_tape_warning(self.input.filename(), &warning);
+            }
         })?;
         if let Some(output) = &self.output {
             tape.add_output(output.clone());

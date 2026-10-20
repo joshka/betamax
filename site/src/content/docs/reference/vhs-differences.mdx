@@ -83,17 +83,20 @@ a clear error.
 
 ## Same syntax, different behavior
 
-These tapes parse, but run differently or fail on ordering rules that VHS doesn't enforce.
+These tapes parse, but run differently or print a warning that VHS doesn't.
 
 | VHS tape uses                         | What happens in Betamax                         | Change it to                                |
 | ------------------------------------- | ----------------------------------------------- | ------------------------------------------- |
-| `Set` after `Type` or other commands  | Error; VHS warns and ignores it                 | Move every `Set` to the top                 |
-| `Env` or `Require` after commands     | Error; VHS hoists or skips them                 | Move them to the top                        |
-| `Type "a" "b"` (several strings)      | Only the first string is typed, then an error   | One string: `Type "a b"`                    |
+| `Env` or `Require` after commands     | Warns; `Require` is checked, VHS skips it       | Move them to the top                        |
+| `Type "a" "b"` (several strings)      | Types `a b`, as VHS does, and warns             | One string: `Type "a b"`                    |
+| `Env` before a `Set`                  | `Set` applies; VHS ignores it                   | Nothing                                     |
 | Backtick strings or `\` in `"…"`      | Strings follow shell quoting rules              | Single quotes for literal text: `'C:\path'` |
 | `Wait /foo bar/` (regex with a space) | Split into two tokens                           | Quote it: `Wait "/foo bar/"`                |
 | `Output frames.png`                   | Writes one PNG of the final frame               | `Output frames/` for a frames directory     |
-| `Source` after commands, with `Set`   | Error; VHS warns and ignores the `Set`          | Move `Source` to the top                    |
+
+A `Set` after runtime commands works as in VHS: `Set TypingSpeed` applies from that point, and other
+settings are ignored with a warning. See
+[Startup commands after runtime commands](../tape-reference/#startup-commands-after-runtime-commands).
 
 All 348 VHS theme names work in `Set Theme`. VHS's theme list is a 2023 snapshot of
 iTerm2-Color-Schemes, which has since renamed most themes, so Betamax maps the old VHS spelling to

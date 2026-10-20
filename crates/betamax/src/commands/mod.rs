@@ -11,6 +11,7 @@ mod list_themes;
 mod new;
 mod run;
 mod validate;
+mod warnings;
 
 use list_themes::ListThemes;
 use new::New;

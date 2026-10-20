@@ -182,10 +182,20 @@ impl Settings {
         let preset = Preset::from_tape(tape)?;
         preset.apply(&mut settings.presentation)?;
 
-        for command in &tape.commands {
+        for command in tape.startup_commands() {
             match command {
                 Command::Env { key, value } => settings.env.push((key.clone(), value.clone())),
                 Command::Set { key, value } if key != "Preset" => settings.apply_set(key, value)?,
+                _ => {}
+            }
+        }
+        for command in &tape.commands[tape.header_len()..] {
+            match command {
+                // Runtime `Set TypingSpeed` is applied as the run reaches it; validate it now so a
+                // bad value fails before the shell starts.
+                Command::Set { key, value } if key == "TypingSpeed" => {
+                    typing_delay(value)?;
+                }
                 Command::Caption(text) if !text.trim().is_empty() => {
                     settings.presentation.caption_overlay = true;
                 }
@@ -242,9 +252,8 @@ impl Settings {
             }
             ("Padding", Value::Number(padding)) => self.presentation.text.padding = *padding as u32,
             ("Framerate", Value::Number(framerate)) => self.framerate = *framerate as u16,
-            ("TypingSpeed", Value::Duration(duration)) => self.typing_delay = *duration,
-            ("TypingSpeed", Value::Number(seconds)) => {
-                self.typing_delay = seconds_duration(*seconds)?
+            ("TypingSpeed", Value::Duration(_) | Value::Number(_)) => {
+                self.typing_delay = typing_delay(value)?
             }
             ("PlaybackSpeed", Value::Number(playback_speed)) => {
                 self.playback_speed = (*playback_speed).max(MIN_PLAYBACK_SPEED);
@@ -544,6 +553,20 @@ fn setting_expected_type(key: &str) -> &'static str {
 }
 
 /// Convert a bare-number duration setting to seconds, matching VHS.
+/// Resolve a `Set TypingSpeed` value, in the header or at runtime.
+pub(super) fn typing_delay(value: &Value) -> Result<Duration> {
+    match value {
+        Value::Duration(duration) => Ok(*duration),
+        Value::Number(seconds) => seconds_duration(*seconds),
+        other => Err(miette!(
+            "Set TypingSpeed expects {}, got {}",
+            setting_expected_type("TypingSpeed"),
+            value_kind(other)
+        )
+        .into()),
+    }
+}
+
 fn seconds_duration(seconds: f64) -> Result<Duration> {
     Duration::try_from_secs_f64(seconds)
         .map_err(|_| miette!("duration must be zero or positive: `{seconds}`").into())
@@ -625,6 +648,32 @@ Set Theme "Aardvark Blue""#,
         Settings::from_tape(&Tape::parse(source).unwrap())
             .unwrap_err()
             .to_string()
+    }
+
+    #[test]
+    fn startup_commands_after_runtime_commands_follow_vhs() {
+        let settings = grid(
+            "Set Width 800\nSet TypingSpeed 10ms\nType hi\nSet Width 1600\nSet TypingSpeed 90ms\nSet Shell \"zsh -f\"\nEnv FOO bar",
+        );
+
+        assert_eq!(settings.presentation.width, 800, "late Width is ignored");
+        assert_eq!(
+            settings.typing_delay,
+            Duration::from_millis(10),
+            "late TypingSpeed applies at runtime, not at startup"
+        );
+        assert_eq!(
+            settings.shell,
+            [OsString::from("zsh"), OsString::from("-f")],
+            "late Shell applies to the whole tape"
+        );
+        assert_eq!(settings.env, [("FOO".to_string(), "bar".to_string())]);
+    }
+
+    #[test]
+    fn rejects_invalid_runtime_typing_speed_before_startup() {
+        assert!(grid_error("Type hi\nSet TypingSpeed fast")
+            .contains("Set TypingSpeed expects duration or number of seconds"));
     }
 
     #[test]

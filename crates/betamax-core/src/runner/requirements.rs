@@ -8,7 +8,7 @@ use miette::miette;
 use crate::tape::{Command, Tape};
 use crate::Result;
 
-/// Validate all `Require` commands before any PTY side effects occur.
+/// Validate all `Require` commands, wherever they appear, before any PTY side effects occur.
 pub(super) fn validate_required_programs(tape: &Tape) -> Result<()> {
     for command in &tape.commands {
         if let Command::Require(program) = command {

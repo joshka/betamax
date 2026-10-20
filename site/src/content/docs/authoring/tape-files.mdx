@@ -47,8 +47,10 @@ Wait+Screen "hello"
 <aside class="bm-manual-note">
   <p class="bm-note-label">Notes</p>
   <p>
-    Startup commands must appear before runtime commands because Betamax needs the shell,
-    terminal dimensions, theme, environment, and output requirements before PTY startup.
+    Put startup commands before runtime commands because Betamax needs the shell, terminal
+    dimensions, theme, environment, and output requirements before PTY startup. Later startup
+    commands follow VHS and warn; see
+    <a href="../../reference/tape-reference/#startup-commands-after-runtime-commands">the tape reference</a>.
   </p>
 </aside>
 </section>

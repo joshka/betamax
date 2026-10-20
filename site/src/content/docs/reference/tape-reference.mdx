@@ -18,10 +18,29 @@ errors fail before the PTY is spawned.
 - Lines whose trimmed form starts with `#` are comments.
 - Tokens are parsed with shell-like quoting and escaping through `shell_words`.
 - One physical line may contain more than one command, such as `Type "echo hi" Enter`.
-- Startup commands must appear before runtime commands.
+- Startup commands belong before runtime commands.
 
 Startup commands are `Output`, `Require`, `Set`, and `Env`. Runtime commands include typing, keys,
 waits, sleeps, captions, screenshots, state checkpoints, `Hide`, `Show`, `Copy`, and `Paste`.
+
+### Startup commands after runtime commands
+
+The header is the leading run of `Output`, `Require`, `Set`, and `Env` commands; the first other
+command starts the runtime section. Put startup commands in the header. Betamax accepts them later
+for VHS compatibility, with the same effect as VHS:
+
+| Command after runtime commands | Effect                                          | Warning |
+| ------------------------------ | ----------------------------------------------- | ------- |
+| `Set TypingSpeed`              | Applies to later `Type` commands                | No      |
+| `Set Shell`                    | Applies to the whole tape                       | Yes     |
+| Any other `Set`                | Ignored                                         | Yes     |
+| `Env`                          | Applies to the whole tape from shell start      | Yes     |
+| `Require`                      | Checked before the shell starts                 | Yes     |
+| `Output`                       | Applies to the whole tape                       | No      |
+
+Warnings go to stderr as `warning: <tape>:<line>: <message>`. `betamax run --quiet` hides them.
+`betamax validate` prints them and still succeeds; `betamax validate --strict` fails when any tape
+has warnings.
 
 ## Outputs
 
@@ -112,7 +131,8 @@ Set Rows 24
 Each axis is sized one way. Set only `Rows` and the width still comes from `Width`, the preset, or
 the default. Setting `Width` and `Columns`, or `Height` and `Rows`, is an error. A preset's size is
 a default, so cells replace it without an error. Both values are whole numbers in `1..=65535` and,
-like other settings, must appear before runtime commands. Each captured run prints the resolved
+like other settings, belong in the [header](#startup-commands-after-runtime-commands). Each
+captured run prints the resolved
 grid and output size, for example `terminal 80x24 cells, output 1104x622 px`.
 
 `Set Columns` and `Set Rows` choose the starting grid and size the output around it. `Resize C R`
@@ -262,7 +282,7 @@ corners and the caption row. It does not change the terminal's background or gri
 With no explicit `MarginFill`, the backdrop follows the selected preset and final theme. An explicit
 color or gradient is preserved regardless of `Set Theme` ordering. `Set MarginFill ""` disables the
 margin. Invalid colors and malformed gradients fall back to the active theme background. `betamax
-validate` checks tape syntax and command order, so it does not reject malformed fill strings. Radial
+validate` checks tape syntax, so it does not reject malformed fill strings. Radial
 gradients are not supported. See `examples/margin-gradient.tape` for a complete
 example.
 
@@ -454,12 +474,16 @@ that VHS also snapshots header commands and dumps the oldest scrollback rows onc
 ### `Require <program>`
 
 Fails early if a program is not present on `PATH`. This is useful for tapes that call optional
-tools such as `git`, `rg`, `cargo`, or `ffmpeg`. The check runs before output files are written.
+tools such as `git`, `rg`, `cargo`, or `ffmpeg`. The check runs before output files are written,
+including for a `Require` placed after runtime commands, which also warns.
 
 ### `Set <name> <value>`
 
-Applies one setting from the table above. `Set` commands must appear before runtime commands because
-they affect shell startup, PTY size, capture timing, rendering, or output decoration.
+Applies one setting from the table above. Put `Set` commands before runtime commands because they
+affect shell startup, PTY size, capture timing, rendering, or output decoration. After runtime
+commands, `Set TypingSpeed` changes the delay for later `Type` commands, `Set Shell` still applies to
+the whole tape, and other settings are ignored with a warning. See
+[Startup commands after runtime commands](#startup-commands-after-runtime-commands).
 
 The shell starts in the directory where `betamax` was run, not the tape file's directory.
 
@@ -476,13 +500,16 @@ See [Following app titles](#following-app-titles) for precedence and output timi
 
 Adds or overrides an environment variable for the spawned shell. Betamax applies its terminal
 defaults first, then tape `Env` values, so a tape can intentionally override variables such as
-`TERM`, `COLORTERM`, `NO_COLOR`, or application-specific flags.
+`TERM`, `COLORTERM`, `NO_COLOR`, or application-specific flags. An `Env` after runtime commands
+still applies from shell start, with a warning.
 
 ### `Type[@duration] <text>`
 
 Types text into the PTY one Unicode scalar at a time. `Type@25ms "hello"` overrides the default
-typing speed for that command. Use `Type` for printable text and key commands for terminal control
-keys such as arrows, tab, delete, and interrupt.
+typing speed for that command; otherwise the most recent `Set TypingSpeed` applies. Several strings
+are joined with one space, as in VHS: `Type "echo" "hi"` types `echo hi` and warns. Use `Type` for
+printable text and key commands for terminal control keys such as arrows, tab, delete, and
+interrupt.
 
 ### Key commands
 
@@ -683,8 +710,9 @@ Type "make demo"
   against the current directory. VHS resolves only against the current directory.
 - `Output` commands in the sourced tape are dropped with a warning, so they cannot replace the
   parent's outputs. Every other command is kept.
-- Sourced `Set`, `Env`, and `Require` commands follow the usual ordering rule. Put `Source` before
-  the first runtime command if the sourced tape configures anything.
+- Sourced `Set`, `Env`, and `Require` commands follow the usual
+  [ordering rule](#startup-commands-after-runtime-commands). Put `Source` before the first runtime
+  command if the sourced tape configures anything.
 - Sourced tapes can use `Source` themselves; a cycle is an error. VHS rejects nested `Source`.
 - Errors inside a sourced tape name that tape and line, then the line that sourced it.
 - The path must end in `.tape`, and the file must exist and not be empty.
@@ -702,6 +730,7 @@ Betamax currently exposes these CLI commands:
 | `betamax run -`                    | Read a tape from standard input                        |
 | `betamax run -o out.gif demo.tape` | Append one CLI-provided output to the tape             |
 | `betamax validate <path-or-glob>`  | Parse tapes without starting shells or writing outputs |
+| `betamax validate --strict <path>` | Also fail when a tape has warnings                     |
 | `betamax themes`                   | List theme names available to `Set Theme`              |
 | `betamax themes --json`            | Print theme names as JSON                              |
 | `betamax themes --markdown`        | Print theme names as Markdown bullets                  |
