@@ -119,6 +119,7 @@ pub(crate) fn classify_outputs(tape: &Tape) -> Result<Outputs> {
             },
             Command::Wait { .. }
             | Command::Mouse { .. }
+            | Command::ScrollViewport { .. }
             | Command::Resize { .. }
             | Command::Assert(_) => outputs.needs_capture = true,
             _ => {}

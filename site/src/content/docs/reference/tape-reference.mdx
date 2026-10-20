@@ -466,6 +466,26 @@ Supported named keys are `Escape`, `Backspace`, `Delete`, `Insert`, `Down`, `Ent
 `Tab`, `Left`, `Right`, `Up`, `PageUp`, `PageDown`, `Home`, `End`, and `F1` through `F25`.
 Single-character key tokens are accepted for modified combinations such as `Ctrl+C`.
 
+### `ScrollUp[@duration] [count]` and `ScrollDown[@duration] [count]`
+
+Move the terminal viewport through scrollback, one row at a time, without sending input to the
+program. `count` defaults to `1`, and `@duration` sets the pause after each row; the frame interval
+applies when it is absent. These match VHS's commands of the same name.
+
+```tape
+ScrollUp 10
+ScrollDown@50ms 4
+```
+
+Scrolling stops at the oldest scrollback row and at the live screen. While the viewport is scrolled
+back, new output does not pull it down; `Type`, key commands, and `Paste` return it to the bottom
+before sending input, as Ghostty and VHS do. The alternate screen has no scrollback, so these
+commands do nothing there. `Wait+Screen`, `AssertText`, screenshots, and the `viewport` fields in
+state JSON all read the rows currently shown.
+
+Use `MouseScroll` instead when the program should handle scrolling, such as a TUI with its own
+scroll region.
+
 ### `Sleep <duration>`
 
 Pauses tape execution while continuing to drain PTY output and capture frames. Durations accept

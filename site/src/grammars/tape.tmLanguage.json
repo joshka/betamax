@@ -78,7 +78,7 @@
     },
     "command": {
       "name": "keyword.control.command.tape",
-      "match": "\\b(?:Type|Sleep|Hide|Show|Copy|Paste|Caption|WindowTitle|Resize|AssertText|AssertAbsent|AssertCells|AssertStyle)\\b"
+      "match": "\\b(?:Type|Sleep|Hide|Show|Copy|Paste|ScrollUp|ScrollDown|Caption|WindowTitle|Resize|AssertText|AssertAbsent|AssertCells|AssertStyle)\\b"
     },
     "key": {
       "comment": "Named keys with optional modifiers, or a modifier combination with a single-character key such as Ctrl+C.",

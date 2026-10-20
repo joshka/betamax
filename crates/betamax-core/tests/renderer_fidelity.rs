@@ -9,6 +9,7 @@ use betamax_core::ghostty::{
     TerminalState, TerminalTheme, TextSettings,
 };
 use betamax_core::media::{write_gif, write_png, Frame};
+use betamax_core::TerminalSession;
 
 const COLUMNS: u16 = 32;
 const ROWS: u16 = 10;
@@ -539,6 +540,68 @@ fn alternate_screen_restores_primary_pixels_cursor_and_scrollback() {
         restored.pixels,
         "reading scrollback must restore the viewport"
     );
+}
+
+#[test]
+fn viewport_scroll_moves_through_scrollback_and_holds_across_output() {
+    let mut terminal = session();
+    terminal.write_vt(b"\x1b[?25l");
+    for index in 0..14 {
+        terminal.write_vt(format!("line {index:02}\r\n").as_bytes());
+    }
+    let bottom = terminal.capture_frame().unwrap();
+
+    terminal.scroll_viewport(-3).unwrap();
+    let state = terminal.terminal_state().unwrap();
+    assert_eq!(
+        state.viewport_text,
+        "line 02\nline 03\nline 04\nline 05\nline 06\nline 07\nline 08\nline 09\nline 10\nline 11\n"
+    );
+    assert_eq!(
+        state.scrollback_rows, 5,
+        "scrolling does not change history"
+    );
+    assert_eq!(
+        top_row(&mut terminal),
+        "line 02",
+        "state reads must keep the scrolled viewport"
+    );
+    assert_ne!(terminal.capture_frame().unwrap().pixels, bottom.pixels);
+
+    // Like Ghostty and xterm.js, new output does not pull a scrolled viewport down.
+    terminal.write_vt(b"line 14\r\n");
+    assert_eq!(top_row(&mut terminal), "line 02");
+
+    // Both ends clamp.
+    terminal.scroll_viewport(-100).unwrap();
+    assert_eq!(top_row(&mut terminal), "line 00");
+    terminal.scroll_viewport(100).unwrap();
+    assert_eq!(top_row(&mut terminal), "line 06");
+
+    terminal.scroll_viewport(-2).unwrap();
+    terminal.scroll_viewport_to_bottom();
+    assert_eq!(top_row(&mut terminal), "line 06");
+}
+
+fn top_row(terminal: &mut GhosttySession) -> String {
+    let text = terminal.screen_text().unwrap();
+    text.lines()
+        .next()
+        .unwrap_or_default()
+        .trim_end()
+        .to_owned()
+}
+
+#[test]
+fn viewport_scroll_is_a_no_op_on_the_alternate_screen() {
+    let mut terminal = session();
+    for index in 0..14 {
+        terminal.write_vt(format!("line {index:02}\r\n").as_bytes());
+    }
+    terminal.write_vt(LAYOUT.as_bytes());
+    let alternate = terminal.capture_frame().unwrap();
+    terminal.scroll_viewport(-3).unwrap();
+    assert_eq!(terminal.capture_frame().unwrap().pixels, alternate.pixels);
 }
 
 #[test]

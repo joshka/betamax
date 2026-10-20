@@ -3,6 +3,7 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
+use libghostty_vt::terminal::ScrollViewport;
 use libghostty_vt::{Terminal, TerminalOptions};
 
 use super::mouse::MouseInput;
@@ -277,6 +278,15 @@ impl TerminalSession for GhosttySession {
 
     fn mouse_input(&mut self, event: MouseEvent, modifiers: KeyModifiers) -> Result<Vec<u8>> {
         self.mouse.encode(&self.terminal, event, modifiers)
+    }
+
+    fn scroll_viewport(&mut self, rows: isize) -> Result<()> {
+        self.terminal.scroll_viewport(ScrollViewport::Delta(rows));
+        Ok(())
+    }
+
+    fn scroll_viewport_to_bottom(&mut self) {
+        self.terminal.scroll_viewport(ScrollViewport::Bottom);
     }
 
     fn screen_text(&mut self) -> Result<String> {

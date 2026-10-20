@@ -534,12 +534,33 @@ reports the most recently pressed button still held.
 
 Out-of-bounds coordinates, pressing an already-held button, and releasing a button that is not held
 fail the tape. With reporting disabled, input produces no PTY bytes while pointer/button state
-still updates. Betamax does not emulate a terminal window's local selection or scrolling.
+still updates. Betamax does not emulate a terminal window's local selection; use `ScrollUp` and
+`ScrollDown` to move the viewport through scrollback.
 
 Use an output wait after each action to synchronize with application redraw. Mouse commands do not
 accept `@duration`; use `Sleep` separately for recording pacing. Mouse input requires a terminal
 backend even when the tape requests no media. Custom `TerminalSession` implementations can opt in
 by implementing `mouse_input`; its default reports unsupported input when a mouse command runs.
+
+### `ScrollUp[@duration] [count]` and `ScrollDown[@duration] [count]`
+
+Move the terminal viewport through scrollback, one row at a time, without sending input to the
+program. `count` defaults to `1`, and `@duration` sets the pause after each row; the frame interval
+applies when it is absent. These match VHS's commands of the same name.
+
+```tape
+ScrollUp 10
+ScrollDown@50ms 4
+```
+
+Scrolling stops at the oldest scrollback row and at the live screen. While the viewport is scrolled
+back, new output does not pull it down; `Type`, key commands, and `Paste` return it to the bottom
+before sending input, as Ghostty and VHS do. The alternate screen has no scrollback, so these
+commands do nothing there. `Wait+Screen`, `AssertText`, screenshots, and the `viewport` fields in
+state JSON all read the rows currently shown.
+
+Use `MouseScroll` instead when the program should handle scrolling, such as a TUI with its own
+scroll region.
 
 ### `Resize <columns> <rows>`
 

@@ -59,6 +59,8 @@ The core tape flow is the same:
 - `Set` controls size, theme, timing, typography, and frame styling.
 - `Type`, `Enter`, key commands, `Sleep`, and `Wait` drive the terminal. `Wait`, `Wait+Line`, and
   `Wait+Screen` keep the VHS defaults: pattern `>$` and a 15s timeout.
+- `ScrollUp` and `ScrollDown` move the viewport through scrollback; typing returns it to the
+  bottom.
 - `Hide` and `Show` keep setup or teardown out of the final animation.
 - `Screenshot` writes checkpoint images.
 - `Env` and `Require` prepare the environment.
@@ -72,7 +74,6 @@ familiar `>` instead of your own. Other shells only get a bash-style `PS1`. Beta
 | VHS feature                       | Use instead                                                   |
 | --------------------------------- | ------------------------------------------------------------- |
 | `Source other.tape`               | Copy the commands into the tape                               |
-| `ScrollUp`, `ScrollDown`          | `MouseScroll Up 3`, which sends wheel input to the program    |
 | `Set Rows`, `Set Columns`         | `Set Width` and `Set Height`, or `Resize C R` mid-tape        |
 | `Output demo.txt` or `.ascii`     | `Output demo.json` or `State`, plus `Assert*` commands        |
 | `vhs record`                      | Write the tape by hand, or start from `betamax new`           |
