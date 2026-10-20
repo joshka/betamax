@@ -533,7 +533,7 @@ where
             theme: settings.presentation.theme.clone(),
         })?;
         tracing::trace!("opened Ghostty frame capture");
-        let explicit_title_follow = tape.commands.iter().any(|command| {
+        let explicit_title_follow = tape.startup_commands().any(|command| {
             matches!(command, Command::Set { key, .. } if key == "WindowTitleFromTerminal")
         });
         if !terminal.supports_title_capture() && !explicit_title_follow {
@@ -556,8 +556,14 @@ where
         tracing::trace!("drained PTY shell startup output");
 
         let command_count = tape.commands.len();
+        let header_len = tape.header_len();
         for (index, command) in tape.commands.iter().enumerate() {
             self.progress_command(index + 1, command_count, command);
+            if let Command::Set { key, value } = command {
+                if index >= header_len && key == "TypingSpeed" {
+                    settings.typing_delay = settings::typing_delay(value)?;
+                }
+            }
             let span = tracing::debug_span!(
                 "tape_command",
                 index = index + 1,

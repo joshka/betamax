@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
+use super::TapeWarning;
 use crate::Result;
 
 /// Parsed tape source.
@@ -15,8 +16,7 @@ pub struct Tape {
     ///
     /// Configuration commands such as [`Command::Set`], [`Command::Env`], [`Command::Require`],
     /// and [`Command::Output`] are kept in this same stream because they are ordered in the input
-    /// language. [`Tape::parse`](super::Tape::parse) validates that settings which affect process
-    /// startup appear before runtime commands.
+    /// language. See [`Tape::header_len`] for how their position changes what they do.
     pub commands: Vec<Command>,
 }
 
@@ -28,30 +28,29 @@ impl Tape {
     /// `#` are ignored. A single physical line may contain multiple commands, for example
     /// `Type "echo hi" Enter Sleep 1s`.
     ///
-    /// This parser validates syntax, known command names, duration literals, regex literals, and
-    /// the ordering rule that startup-affecting commands cannot appear after runtime commands. It
+    /// This parser validates syntax, known command names, duration literals, and regex literals. It
     /// deliberately does not validate executable availability, output extension support, theme
     /// names, or whether a parsed command has an implementation in the runner.
     ///
     /// # Errors
     ///
     /// Returns an error when tokenization fails, a command is unknown, a required argument is
-    /// missing, a duration or regex is invalid, startup-affecting commands appear after runtime
-    /// commands, or the tape uses `Source`, which needs [`Tape::parse_file`] or
-    /// [`Tape::parse_with_sources`] to resolve paths.
+    /// missing, a duration or regex is invalid, or the tape uses `Source`, which needs
+    /// [`Tape::parse_file`] or [`Tape::parse_with_sources`] to resolve paths. Warnings are
+    /// discarded; use [`Tape::parse_with_sources`] to receive them.
     pub fn parse(source: &str) -> Result<Self> {
         super::parser::parse_tape(source, None)
     }
 
     /// Read and parse the tape at `path`, inlining `Source` commands.
     ///
-    /// See [`Tape::parse_with_sources`] for how `Source` is expanded. `warn` receives non-fatal
-    /// diagnostics, such as an `Output` dropped from a sourced tape.
+    /// See [`Tape::parse_with_sources`] for how `Source` is expanded and which warnings `warn`
+    /// receives.
     ///
     /// # Errors
     ///
     /// Returns an error when the file cannot be read or [`Tape::parse_with_sources`] fails.
-    pub fn parse_file(path: &Path, warn: &mut dyn FnMut(String)) -> Result<Self> {
+    pub fn parse_file(path: &Path, warn: &mut dyn FnMut(TapeWarning)) -> Result<Self> {
         let source = std::fs::read_to_string(path)
             .map_err(|err| miette::miette!("failed to read {}: {err}", path.display()))?;
         Self::parse_with_sources(&source, Some(path), warn)
@@ -62,9 +61,13 @@ impl Tape {
     /// Each `Source other.tape` is replaced by the commands of that tape, which may itself use
     /// `Source`. A relative path resolves against the directory of the tape that contains the
     /// `Source` line, then the current directory. `Output` commands in sourced tapes are dropped
-    /// with a warning so they cannot replace the parent's outputs. The command-order rule applies
-    /// to the expanded stream, so a sourced tape that sets `Set`, `Env`, or `Require` must be
-    /// sourced before the first runtime command.
+    /// with a warning so they cannot replace the parent's outputs. [`Tape::header_len`] applies to
+    /// the expanded stream, so a sourced tape's `Set`, `Env`, and `Require` act as header commands
+    /// only when `Source` comes before the first runtime command.
+    ///
+    /// `warn` receives non-fatal warnings in command order: a dropped sourced `Output`, startup
+    /// commands after runtime commands (see [`Tape::header_len`]), and `Type` with several
+    /// strings. Warnings never change parse success.
     ///
     /// # Errors
     ///
@@ -74,12 +77,59 @@ impl Tape {
     pub fn parse_with_sources(
         source: &str,
         tape_path: Option<&Path>,
-        warn: &mut dyn FnMut(String),
+        warn: &mut dyn FnMut(TapeWarning),
     ) -> Result<Self> {
         super::parser::parse_tape(
             source,
             Some(super::parser::SourceContext::new(tape_path, warn)),
         )
+    }
+
+    /// Number of leading header commands.
+    ///
+    /// The header is the leading run of `Output`, `Set`, `Env`, and `Require` commands; the first
+    /// other command starts the runtime section. This is the one place the rule lives. Following
+    /// VHS, startup commands after the header are accepted but behave differently:
+    ///
+    /// - `Set TypingSpeed` takes effect from its position for later `Type` commands.
+    /// - `Set Shell`, `Env`, and `Require` apply to the whole tape, as if written in the header.
+    /// - Any other `Set` is ignored.
+    /// - `Output` applies to the whole tape wherever it appears.
+    ///
+    /// [`Tape::parse_with_sources`] warns about each of these except `TypingSpeed` and `Output`.
+    pub fn header_len(&self) -> usize {
+        self.commands
+            .iter()
+            .position(|command| {
+                !matches!(
+                    command,
+                    Command::Output(_)
+                        | Command::Set { .. }
+                        | Command::Env { .. }
+                        | Command::Require(_)
+                )
+            })
+            .unwrap_or(self.commands.len())
+    }
+
+    /// Iterate over the commands that configure the run before the shell starts.
+    ///
+    /// This is every header command plus the startup commands that apply to the whole tape from
+    /// later positions. See [`Tape::header_len`].
+    pub fn startup_commands(&self) -> impl Iterator<Item = &Command> {
+        let header_len = self.header_len();
+        self.commands
+            .iter()
+            .enumerate()
+            .filter(move |(index, command)| {
+                *index < header_len
+                    || match command {
+                        Command::Set { key, .. } => key == "Shell",
+                        Command::Env { .. } | Command::Require(_) | Command::Output(_) => true,
+                        _ => false,
+                    }
+            })
+            .map(|(_, command)| command)
     }
 
     /// Iterate over top-level `Output` paths in source order.

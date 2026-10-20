@@ -4,6 +4,7 @@ use std::time::Duration;
 use miette::miette;
 use regex::Regex;
 
+use super::diagnostics::{LateSettingEffect, TapeWarning, TapeWarningKind};
 use super::{
     Assertion, Command, Key, KeyCode, KeyModifiers, MouseButton, MouseEvent, ScrollDirection, Tape,
     Value, ViewportDirection, WaitPattern, WaitTarget,
@@ -29,10 +30,10 @@ const MAX_SOURCE_DEPTH: usize = 16;
 /// The parser is kept separate from the public command model so the syntax cursor, token
 /// lookahead, and validation rules do not obscure what a parsed tape represents. Without a
 /// [`SourceContext`], `Source` is an error because there is no file to resolve paths against.
-pub(super) fn parse_tape(source: &str, context: Option<SourceContext<'_>>) -> Result<Tape> {
+pub(super) fn parse_tape(source: &str, mut context: Option<SourceContext<'_>>) -> Result<Tape> {
     let mut parsed = Parsed::default();
-    match context {
-        Some(mut context) => {
+    match context.as_mut() {
+        Some(context) => {
             let (canonical, display) = context.tape_path.map_or_else(
                 || (PathBuf::from("<stdin>"), "<stdin>".to_string()),
                 |path| {
@@ -46,14 +47,23 @@ pub(super) fn parse_tape(source: &str, context: Option<SourceContext<'_>>) -> Re
                 display,
                 source_line: 0,
             });
-            parse_lines(source, &mut parsed, Some(&mut context))?;
+            parse_lines(source, &mut parsed, Some(context))?;
         }
         None => parse_lines(source, &mut parsed, None)?,
     }
-    validate_command_order(&parsed.commands, &parsed.origins)?;
-    Ok(Tape {
+    let tape = Tape {
         commands: parsed.commands,
-    })
+    };
+    let mut warnings = parsed.warnings;
+    warnings.extend(late_startup_warnings(&tape, &parsed.locations));
+    // Report in command order; the sort is stable, so same-position warnings keep parse order.
+    warnings.sort_by_key(|(index, _)| *index);
+    if let Some(context) = context {
+        for (_, warning) in warnings {
+            (context.warn)(warning);
+        }
+    }
+    Ok(tape)
 }
 
 /// File context used to expand `Source` commands.
@@ -64,13 +74,13 @@ pub(super) struct SourceContext<'a> {
     base_dir: PathBuf,
     /// Open tapes, outermost first, for cycle detection and error locations.
     stack: Vec<Frame>,
-    /// Receives warnings such as a dropped `Output` in a sourced tape.
-    warn: &'a mut dyn FnMut(String),
+    /// Receives warnings, such as a dropped `Output` in a sourced tape.
+    warn: &'a mut dyn FnMut(TapeWarning),
 }
 
 impl<'a> SourceContext<'a> {
     /// Build a context for a tape at `tape_path`, or for stdin when `None`.
-    pub(super) fn new(tape_path: Option<&'a Path>, warn: &'a mut dyn FnMut(String)) -> Self {
+    pub(super) fn new(tape_path: Option<&'a Path>, warn: &'a mut dyn FnMut(TapeWarning)) -> Self {
         let base_dir = tape_path
             .and_then(Path::parent)
             .map_or_else(PathBuf::new, Path::to_path_buf);
@@ -109,11 +119,19 @@ struct Frame {
     source_line: usize,
 }
 
-/// Commands plus, for commands from sourced tapes, where they came from.
+/// Commands, where each came from, and warnings keyed by the command index they precede.
 #[derive(Default)]
 struct Parsed {
     commands: Vec<Command>,
-    origins: Vec<Option<String>>,
+    locations: Vec<String>,
+    warnings: Vec<(usize, TapeWarning)>,
+}
+
+/// Describe `line` of the current tape: `line 4` at top level, or the full `Source` chain.
+fn location(context: Option<&SourceContext<'_>>, line: usize) -> String {
+    context
+        .and_then(|context| context.origin(line))
+        .unwrap_or_else(|| format!("line {line}"))
 }
 
 /// Parse every line of `source`, expanding `Source` commands when a context is available.
@@ -132,7 +150,16 @@ fn parse_lines(
         let tokens = shell_words::split(trimmed)
             .map_err(|err| miette!("line {line_number}: failed to tokenize tape line: {err}"))?;
         let mut line_commands = Vec::new();
-        parse_tokens(line_number, &tokens, &mut line_commands)?;
+        let mut line_warnings = Vec::new();
+        parse_tokens(line_number, &tokens, &mut line_commands, &mut line_warnings)?;
+        let at = location(context.as_deref(), line_number);
+        for kind in line_warnings {
+            let warning = TapeWarning {
+                location: at.clone(),
+                kind,
+            };
+            parsed.warnings.push((parsed.commands.len(), warning));
+        }
 
         for command in line_commands {
             let Some(context) = context.as_deref_mut() else {
@@ -144,7 +171,7 @@ fn parse_lines(
                     .into());
                 }
                 parsed.commands.push(command);
-                parsed.origins.push(None);
+                parsed.locations.push(at.clone());
                 continue;
             };
             let nested = context.stack.len() > 1;
@@ -153,15 +180,15 @@ fn parse_lines(
                     expand_source(line_number, &path, parsed, context)?;
                 }
                 Command::Output(path) if nested => {
-                    let origin = context.origin(line_number).unwrap_or_default();
-                    (context.warn)(format!(
-                        "ignoring `Output {}` from sourced tape ({origin})",
-                        path.display()
-                    ));
+                    let warning = TapeWarning {
+                        location: at.clone(),
+                        kind: TapeWarningKind::SourcedOutputIgnored { path },
+                    };
+                    parsed.warnings.push((parsed.commands.len(), warning));
                 }
                 command => {
                     parsed.commands.push(command);
-                    parsed.origins.push(context.origin(line_number));
+                    parsed.locations.push(at.clone());
                 }
             }
         }
@@ -285,7 +312,12 @@ fn resolve_source_path(path: &Path, base_dir: &Path) -> Option<PathBuf> {
 /// The cursor-based loop is what allows command chaining on a single line. Each branch is
 /// responsible for consuming only the tokens that belong to that command; if it consumes too much,
 /// the next command silently disappears, so the tests focus on chained-command examples.
-fn parse_tokens(line_number: usize, tokens: &[String], commands: &mut Vec<Command>) -> Result<()> {
+fn parse_tokens(
+    line_number: usize,
+    tokens: &[String],
+    commands: &mut Vec<Command>,
+    warnings: &mut Vec<TapeWarningKind>,
+) -> Result<()> {
     let mut cursor = 0usize;
     while cursor < tokens.len() {
         let token = &tokens[cursor];
@@ -358,12 +390,25 @@ fn parse_tokens(line_number: usize, tokens: &[String], commands: &mut Vec<Comman
                 cursor += 1;
             }
             "Type" => {
-                let text = required_token(line_number, tokens, cursor, "text to type")?;
-                commands.push(Command::Type {
-                    text: text.to_string(),
-                    delay,
-                });
+                let mut text =
+                    required_token(line_number, tokens, cursor, "text to type")?.to_string();
                 cursor += 1;
+                // VHS joins several strings with one space: `Type "a" "b"` types `a b`.
+                let mut strings = 1;
+                while let Some(token) = tokens.get(cursor).filter(|token| !is_command_token(token))
+                {
+                    text.push(' ');
+                    text.push_str(token);
+                    strings += 1;
+                    cursor += 1;
+                }
+                if strings > 1 {
+                    warnings.push(TapeWarningKind::TypeJoinedStrings {
+                        strings,
+                        text: text.clone(),
+                    });
+                }
+                commands.push(Command::Type { text, delay });
             }
             _ if name == "Wait" || name.starts_with("Wait+") => {
                 let target = parse_wait_target(line_number, name)?;
@@ -931,38 +976,41 @@ fn parse_wait_pattern(line_number: usize, pattern: &str) -> Result<WaitPattern> 
     Ok(WaitPattern::Contains(pattern.to_string()))
 }
 
-/// Enforce that startup-affecting commands appear before runtime commands.
+/// Warn about startup commands that follow runtime commands.
 ///
-/// This keeps PTY setup deterministic: environment variables, required programs, and settings are
-/// all known before the shell is spawned or capture is configured.
-fn validate_command_order(commands: &[Command], origins: &[Option<String>]) -> Result<()> {
-    let mut saw_runtime_command = false;
-    for (command, origin) in commands.iter().zip(origins) {
-        let from = origin
-            .as_ref()
-            .map(|origin| format!(" (from {origin})"))
-            .unwrap_or_default();
-        match command {
-            Command::Set { key, .. } | Command::Env { key, .. } if saw_runtime_command => {
-                return Err(miette!(
-                    "`{key}`{from} must be configured before runtime tape commands"
-                )
-                .into());
-            }
-            Command::Require(program) if saw_runtime_command => {
-                return Err(miette!(
-                    "`Require {program}`{from} must appear before runtime tape commands"
-                )
-                .into());
-            }
-            Command::Output(_)
-            | Command::Set { .. }
-            | Command::Env { .. }
-            | Command::Require(_) => {}
-            _ => saw_runtime_command = true,
-        }
-    }
-    Ok(())
+/// VHS accepts these, so Betamax does too. [`Tape::header_len`] and [`Tape::startup_commands`]
+/// define what each one does; this only reports them.
+fn late_startup_warnings(tape: &Tape, locations: &[String]) -> Vec<(usize, TapeWarning)> {
+    let header_len = tape.header_len();
+    tape.commands
+        .iter()
+        .zip(locations)
+        .enumerate()
+        .skip(header_len)
+        .filter_map(|(index, (command, location))| {
+            let kind = match command {
+                Command::Set { key, .. } if key == "TypingSpeed" => return None,
+                Command::Set { key, .. } => TapeWarningKind::LateSetting {
+                    key: key.clone(),
+                    effect: if key == "Shell" {
+                        LateSettingEffect::WholeTape
+                    } else {
+                        LateSettingEffect::Ignored
+                    },
+                },
+                Command::Env { key, .. } => TapeWarningKind::LateEnv { key: key.clone() },
+                Command::Require(program) => TapeWarningKind::LateRequire {
+                    program: program.clone(),
+                },
+                _ => return None,
+            };
+            let warning = TapeWarning {
+                location: location.clone(),
+                kind,
+            };
+            Some((index, warning))
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -983,13 +1031,20 @@ Wait+Screen ready WindowTitle final"#,
             tape.commands.last(),
             Some(&Command::WindowTitle("final".into()))
         );
-        for source in [
-            "WindowTitle",
-            "WindowTitle@1s title",
-            "WindowTitle title Set WindowTitle late",
-        ] {
+        for source in ["WindowTitle", "WindowTitle@1s title"] {
             assert!(Tape::parse(source).is_err(), "{source}");
         }
+        let (_, warnings) = parse_warnings("WindowTitle title Set WindowTitle late");
+        assert!(matches!(
+            warnings[..],
+            [TapeWarning {
+                kind: TapeWarningKind::LateSetting {
+                    effect: LateSettingEffect::Ignored,
+                    ..
+                },
+                ..
+            }]
+        ));
     }
 
     #[test]
@@ -1252,10 +1307,82 @@ Wait+Screen ready WindowTitle final"#,
         );
     }
 
+    /// Parse without a tape file and collect warnings.
+    fn parse_warnings(source: &str) -> (Tape, Vec<TapeWarning>) {
+        let mut warnings = Vec::new();
+        let tape =
+            Tape::parse_with_sources(source, None, &mut |warning| warnings.push(warning)).unwrap();
+        (tape, warnings)
+    }
+
+    fn late(location: &str, kind: TapeWarningKind) -> TapeWarning {
+        TapeWarning {
+            location: location.to_string(),
+            kind,
+        }
+    }
+
     #[test]
-    fn rejects_settings_after_runtime_commands() {
-        let err = Tape::parse("Type hi\nSet Width 800").unwrap_err();
-        assert!(err.to_string().contains("before runtime tape commands"));
+    fn warns_about_startup_commands_after_runtime_commands() {
+        let (tape, warnings) = parse_warnings(
+            "Set Width 800\nType hi\nSet TypingSpeed 10ms\nSet Theme Dracula\nSet Shell zsh\nEnv FOO bar\nRequire git",
+        );
+        assert_eq!(tape.header_len(), 1);
+        assert_eq!(
+            warnings,
+            [
+                late(
+                    "line 4",
+                    TapeWarningKind::LateSetting {
+                        key: "Theme".into(),
+                        effect: LateSettingEffect::Ignored,
+                    }
+                ),
+                late(
+                    "line 5",
+                    TapeWarningKind::LateSetting {
+                        key: "Shell".into(),
+                        effect: LateSettingEffect::WholeTape,
+                    }
+                ),
+                late("line 6", TapeWarningKind::LateEnv { key: "FOO".into() }),
+                late(
+                    "line 7",
+                    TapeWarningKind::LateRequire {
+                        program: "git".into(),
+                    }
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn header_env_and_require_do_not_warn() {
+        let (_, warnings) = parse_warnings("Env FOO bar\nSet Width 800\nRequire git\nType hi");
+        assert!(warnings.is_empty());
+    }
+
+    #[test]
+    fn joins_several_type_strings_with_a_space() {
+        let (tape, warnings) = parse_warnings("Type@10ms \"echo\" \"hi there\" Enter");
+        assert_eq!(
+            tape.commands[0],
+            Command::Type {
+                text: "echo hi there".to_string(),
+                delay: Some(Duration::from_millis(10)),
+            }
+        );
+        assert!(matches!(tape.commands[1], Command::Key { .. }));
+        assert_eq!(
+            warnings,
+            [late(
+                "line 1",
+                TapeWarningKind::TypeJoinedStrings {
+                    strings: 2,
+                    text: "echo hi there".to_string(),
+                }
+            )]
+        );
     }
 
     #[test]
@@ -1323,7 +1450,7 @@ Wait+Screen ready WindowTitle final"#,
         dir
     }
 
-    fn parse_dir(dir: &Path, warnings: &mut Vec<String>) -> Result<Tape> {
+    fn parse_dir(dir: &Path, warnings: &mut Vec<TapeWarning>) -> Result<Tape> {
         Tape::parse_file(&dir.join("main.tape"), &mut |warning| {
             warnings.push(warning)
         })
@@ -1362,10 +1489,11 @@ Wait+Screen ready WindowTitle final"#,
             ]
         );
         assert_eq!(warnings.len(), 1);
-        assert!(warnings[0].contains("Output setup.gif"), "{warnings:?}");
+        let warning = warnings[0].to_string();
+        assert!(warning.contains("Output setup.gif"), "{warning}");
         assert!(
-            warnings[0].contains("setup.tape line 1, sourced at"),
-            "{warnings:?}"
+            warning.contains("setup.tape line 1, sourced at"),
+            "{warning}"
         );
     }
 
@@ -1397,7 +1525,7 @@ Wait+Screen ready WindowTitle final"#,
     }
 
     #[test]
-    fn source_after_runtime_commands_rejects_settings_with_their_origin() {
+    fn source_after_runtime_commands_warns_with_the_setting_origin() {
         let dir = tape_dir(
             "order",
             &[
@@ -1405,10 +1533,19 @@ Wait+Screen ready WindowTitle final"#,
                 ("setup.tape", "\nSet Width 640"),
             ],
         );
-        let error = parse_dir(&dir, &mut Vec::new()).unwrap_err().to_string();
-        assert!(error.contains("`Width` (from "), "{error}");
-        assert!(error.contains("setup.tape line 2, sourced at "), "{error}");
-        assert!(error.contains("main.tape line 2)"), "{error}");
+        let mut warnings = Vec::new();
+        parse_dir(&dir, &mut warnings).unwrap();
+        assert_eq!(warnings.len(), 1);
+        let warning = warnings[0].to_string();
+        assert!(
+            warning.contains("`Set Width` after runtime commands is ignored"),
+            "{warning}"
+        );
+        assert!(
+            warning.contains("setup.tape line 2, sourced at "),
+            "{warning}"
+        );
+        assert!(warning.contains("main.tape line 2: "), "{warning}");
     }
 
     #[test]

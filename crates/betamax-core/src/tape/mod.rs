@@ -31,9 +31,12 @@
 //! # }
 //! ```
 
+mod diagnostics;
 mod model;
 mod parser;
 
+#[doc(inline)]
+pub use diagnostics::{LateSettingEffect, TapeWarning, TapeWarningKind};
 #[doc(inline)]
 pub use model::{
     Assertion, Command, Key, KeyCode, KeyModifiers, MouseButton, MouseEvent, ScrollDirection, Tape,

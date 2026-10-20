@@ -73,6 +73,15 @@ The visible result should be close for common named themes and base16-style JSON
 theme metadata is not identical. Selection colors, cursor text colors, and other theme fields are
 not fully represented in Betamax's current renderer.
 
+## Tape ordering and `Type`
+
+Startup commands after runtime commands follow VHS, with warnings: `Set TypingSpeed` applies from
+that point, `Set Shell` and `Env` apply to the whole tape, and other settings are ignored. Two
+differences: a late `Require` is still checked, where VHS skips it, and an `Env` does not end the
+header, so a `Set` after it still applies, where VHS ignores it. `Type "a" "b"` types `a b`, as in
+VHS, and warns. See
+[Startup commands after runtime commands](tape-reference.md#startup-commands-after-runtime-commands).
+
 ## Intentional omissions
 
 These VHS features are not implemented:
@@ -82,8 +91,8 @@ These VHS features are not implemented:
 - `publish`
 
 `Source <path>.tape` is supported. Betamax resolves the path against the sourcing tape's directory
-before the current directory, allows nested `Source` with cycle detection, and rejects sourced
-`Set`, `Env`, or `Require` after runtime commands instead of ignoring them.
+before the current directory and allows nested `Source` with cycle detection. Sourced startup
+commands follow the same ordering rule as the rest of the tape.
 
 ## Fidelity risks
 

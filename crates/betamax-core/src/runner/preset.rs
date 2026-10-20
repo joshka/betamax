@@ -22,7 +22,7 @@ impl Preset {
     /// Last preset wins. Validate every occurrence, including overridden selections.
     pub(super) fn from_tape(tape: &Tape) -> Result<Self> {
         let mut preset = Self::default();
-        for command in &tape.commands {
+        for command in tape.startup_commands() {
             if let Command::Set { key, value } = command {
                 if key != "Preset" {
                     continue;
