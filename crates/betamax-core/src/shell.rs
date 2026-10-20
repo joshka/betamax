@@ -3,10 +3,18 @@
 //! VHS examples commonly assume a clean shell with a simple colored `>` prompt. This module applies
 //! that convention without requiring every tape to configure a prompt manually.
 
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::path::Path;
 
+use miette::miette;
 use portable_pty::CommandBuilder;
+
+use crate::Result;
+
+/// Shell used when a tape has no `Set Shell`.
+///
+/// This matches VHS, so tape commands behave the same regardless of the host user's `$SHELL`.
+pub(crate) const DEFAULT_SHELL: &str = "bash";
 
 /// Shell family that Betamax knows how to make deterministic for examples.
 ///
@@ -46,7 +54,7 @@ impl ShellLaunch {
     pub(crate) fn from_argv(argv: &[OsString]) -> Self {
         let mut argv = argv.to_vec();
         if argv.is_empty() {
-            argv.push(OsString::from("sh"));
+            argv.push(OsString::from(DEFAULT_SHELL));
         }
 
         let kind = shell_kind(&argv[0]);
@@ -82,6 +90,39 @@ impl ShellLaunch {
 
         Self { argv, kind }
     }
+}
+
+/// Fail before PTY startup when the shell program can't be found.
+///
+/// A program containing a path separator must exist as given. A bare name is looked up on `PATH`,
+/// using a tape `Env PATH` override when present because that is the `PATH` the spawn sees.
+/// Checking here gives a targeted error instead of a vague PTY spawn failure, which matters most
+/// for the bash default on hosts without bash.
+pub(crate) fn ensure_shell_exists(program: &OsStr, env: &[(String, String)]) -> Result<()> {
+    let found = if Path::new(program).components().count() > 1 {
+        Path::new(program).is_file()
+    } else {
+        let path = env
+            .iter()
+            .rev()
+            .find(|(key, _)| key == "PATH")
+            .map(|(_, value)| OsString::from(value))
+            .or_else(|| std::env::var_os("PATH"))
+            .unwrap_or_default();
+        std::env::split_paths(&path).any(|dir| dir.join(program).is_file())
+    };
+    if found {
+        return Ok(());
+    }
+    let name = program.to_string_lossy();
+    if program == DEFAULT_SHELL {
+        return Err(miette!(
+            "shell `{name}` not found on PATH; tapes run in bash unless they set a shell, \
+             so install bash or add `Set Shell \"sh\"` (or another installed shell) to the tape"
+        )
+        .into());
+    }
+    Err(miette!("shell `{name}` not found; check the tape's `Set Shell` value").into())
 }
 
 /// Infer a supported shell family from the executable name.
@@ -133,6 +174,53 @@ pub(crate) fn apply_terminal_environment(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn empty_argv_defaults_to_clean_bash() {
+        let launch = ShellLaunch::from_argv(&[]);
+
+        assert_eq!(launch.kind, ShellKind::Bash);
+        assert_eq!(
+            launch.argv,
+            ["bash", "--noprofile", "--norc", "--login", "+o", "history"].map(OsString::from)
+        );
+    }
+
+    #[test]
+    fn missing_default_shell_suggests_set_shell() {
+        let env = [("PATH".to_string(), "/nonexistent-betamax-dir".to_string())];
+
+        let error = ensure_shell_exists(OsStr::new("bash"), &env).unwrap_err();
+
+        let message = error.to_string();
+        assert!(
+            message.contains("shell `bash` not found on PATH"),
+            "{message}"
+        );
+        assert!(message.contains("Set Shell"), "{message}");
+    }
+
+    #[test]
+    fn missing_shell_path_is_an_error() {
+        let error = ensure_shell_exists(OsStr::new("/nonexistent/zsh"), &[]).unwrap_err();
+
+        assert!(error
+            .to_string()
+            .contains("shell `/nonexistent/zsh` not found"));
+    }
+
+    #[test]
+    fn shell_lookup_uses_tape_path() {
+        let dir = std::env::temp_dir();
+        let env = [("PATH".to_string(), "/nonexistent-betamax-dir".to_string())];
+        assert!(ensure_shell_exists(OsStr::new("sh"), &env).is_err());
+
+        let env = [(
+            "PATH".to_string(),
+            format!("/nonexistent-betamax-dir:/bin:{}", dir.display()),
+        )];
+        ensure_shell_exists(OsStr::new("sh"), &env).unwrap();
+    }
 
     #[test]
     fn terminal_environment_defaults_to_color() {

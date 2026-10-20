@@ -1,6 +1,5 @@
 //! PTY process management and output draining.
 
-use std::ffi::OsString;
 use std::io::{Read, Write};
 use std::sync::mpsc::{self, Receiver};
 use std::thread;
@@ -12,7 +11,7 @@ use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 use super::capture::{append_visible_frame, capture_frame, collect_title_changes, CaptureState};
 use super::settings::Settings;
 use crate::runner::TerminalSession;
-use crate::shell::{apply_terminal_environment, ShellLaunch};
+use crate::shell::{apply_terminal_environment, ensure_shell_exists, ShellLaunch};
 use crate::tape::{WaitPattern, WaitTarget};
 use crate::trace::ByteSample;
 use crate::wait::{wait_pattern_matches, wait_pattern_name, wait_target_name, wait_target_text};
@@ -51,6 +50,8 @@ impl PtySession {
     /// The PTY reader runs on a background thread so command execution can drain output with idle
     /// timeouts instead of blocking forever on reads.
     pub(super) fn spawn(settings: &Settings) -> Result<Self> {
+        let shell = ShellLaunch::from_argv(&settings.shell);
+        ensure_shell_exists(&shell.argv[0], &settings.env)?;
         let pty_system = native_pty_system();
         let pair = pty_system
             .openpty(PtySize {
@@ -61,13 +62,7 @@ impl PtySession {
             })
             .map_err(|error| miette!("failed to open PTY: {error}"))?;
 
-        let mut argv = settings.shell.clone();
-        if argv.is_empty() {
-            argv.push(OsString::from("sh"));
-        }
-        let shell = ShellLaunch::from_argv(&argv);
-        argv = shell.argv;
-        let mut command = CommandBuilder::from_argv(argv);
+        let mut command = CommandBuilder::from_argv(shell.argv);
         // portable-pty falls back to $HOME without an explicit cwd.
         let cwd = std::env::current_dir()
             .into_diagnostic()

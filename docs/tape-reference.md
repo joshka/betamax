@@ -31,7 +31,7 @@ Defaults below describe `Default`, which currently selects `Framed`. See [Preset
 
 | Setting                   | Value                                                  | Default          | Notes                                       |
 | ------------------------- | ------------------------------------------------------ | ---------------- | ------------------------------------------- |
-| `Shell`                   | string                                                 | `$SHELL` or `sh` | Shell argv is split with shell-like rules.  |
+| `Shell`                   | string                                                 | `bash`           | Shell argv is split with shell-like rules.  |
 | `Theme`                   | theme name or inline JSON string                       | `Aardvark Ink`   | Ghostty or VHS name, any case.              |
 | `FontFamily`              | string                                                 | `JetBrains Mono` | Falls back through the font system.         |
 | `FontSize`                | number                                                 | `22`             | Pixels.                                     |
@@ -127,6 +127,12 @@ For built-in shell names such as `bash`, `zsh`, and `fish`, Betamax starts a cle
 with startup files and history disabled where possible. Those shells use the VHS-style colored `>`
 prompt by default, so captures do not inherit prompts such as `bash-5.3$` from the host
 environment.
+
+Without `Set Shell`, tapes run in `bash` found on `PATH`, as in VHS, not the host user's `$SHELL`.
+If bash isn't installed, the run fails before the shell starts; set an installed shell such as
+`Set Shell "sh"`. `Set Shell` doesn't expand environment variables, so name the shell (`Set Shell
+"zsh"`) rather than writing `"$SHELL"`. On macOS without Homebrew bash, this is the system bash
+3.2.
 
 ### Presets
 
