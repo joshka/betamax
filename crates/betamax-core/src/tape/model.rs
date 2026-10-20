@@ -119,6 +119,18 @@ pub enum Command {
         /// Repeat count parsed from the token after the key name; defaults to one.
         count: u16,
     },
+    /// Move the terminal viewport through scrollback without sending input to the program.
+    ///
+    /// This is VHS's `ScrollUp`/`ScrollDown`. Use [`MouseEvent::Scroll`] to send wheel input to
+    /// the program instead. Input commands return the viewport to the bottom first.
+    ScrollViewport {
+        /// Direction to move the viewport.
+        direction: ViewportDirection,
+        /// Optional delay after each row; the capture interval applies when absent.
+        delay: Option<Duration>,
+        /// Number of rows to move; defaults to one.
+        count: u16,
+    },
     /// Send a mouse action at the current zero-based terminal cell position.
     Mouse {
         /// Motion, button transition, or wheel ticks.
@@ -321,6 +333,15 @@ pub enum ScrollDirection {
     Left,
     /// Wheel right.
     Right,
+}
+
+/// Direction of viewport movement through scrollback.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ViewportDirection {
+    /// Toward older scrollback rows.
+    Up,
+    /// Toward the active screen.
+    Down,
 }
 
 /// A checkpoint condition evaluated after output settles.

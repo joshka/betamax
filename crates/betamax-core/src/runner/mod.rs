@@ -79,8 +79,8 @@ use crate::media::{
 };
 use crate::output::{classify_outputs, Outputs};
 use crate::tape::{
-    Assertion, Command, Key, KeyCode, KeyModifiers, MouseEvent, Tape, Value, WaitPattern,
-    WaitTarget,
+    Assertion, Command, Key, KeyCode, KeyModifiers, MouseEvent, Tape, Value, ViewportDirection,
+    WaitPattern, WaitTarget,
 };
 
 /// One title notification and the raw terminal image at that exact VT boundary.
@@ -182,6 +182,23 @@ pub trait TerminalSession {
     fn mouse_input(&mut self, _event: MouseEvent, _modifiers: KeyModifiers) -> Result<Vec<u8>> {
         Err(miette!("terminal backend does not support mouse input").into())
     }
+
+    /// Move the viewport through scrollback by `rows`, negative toward older output.
+    ///
+    /// The viewport stays put as new output arrives. Custom backends may leave the default,
+    /// which reports unsupported viewport scrolling.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the backend cannot scroll its viewport.
+    fn scroll_viewport(&mut self, _rows: isize) -> Result<()> {
+        Err(miette!("terminal backend does not support viewport scrolling").into())
+    }
+
+    /// Return the viewport to the active screen before keyboard input, as terminals do.
+    ///
+    /// The default does nothing, which suits backends without viewport scrolling.
+    fn scroll_viewport_to_bottom(&mut self) {}
 
     /// Take reply bytes the emulator wants written back to the PTY master,
     /// e.g. the response to a cursor position query (`ESC[6n`). Default is
@@ -661,6 +678,7 @@ where
             }
             Command::Type { text, delay } => {
                 let delay = delay.unwrap_or(settings.typing_delay);
+                terminal.scroll_viewport_to_bottom();
                 for ch in text.chars() {
                     let mut buf = [0u8; 4];
                     session.write_all(ch.encode_utf8(&mut buf).as_bytes())?;
@@ -668,6 +686,7 @@ where
                 }
             }
             Command::Key { key, delay, count } => {
+                terminal.scroll_viewport_to_bottom();
                 for _ in 0..*count {
                     let bytes = key_bytes(key)?;
                     session.write_all(&bytes)?;
@@ -699,6 +718,26 @@ where
                 session.resize(*columns, *rows, settings)?;
                 session.drain_for(terminal, settings.capture_interval(), settings, capture)?;
             }
+            Command::ScrollViewport {
+                direction,
+                delay,
+                count,
+            } => {
+                session.drain_into(terminal, CHECKPOINT_IDLE)?;
+                let rows = match direction {
+                    ViewportDirection::Up => -1,
+                    ViewportDirection::Down => 1,
+                };
+                for _ in 0..*count {
+                    terminal.scroll_viewport(rows)?;
+                    session.drain_for(
+                        terminal,
+                        delay.unwrap_or(settings.capture_interval()),
+                        settings,
+                        capture,
+                    )?;
+                }
+            }
             Command::Mouse { event, modifiers } => {
                 session.drain_into(terminal, CHECKPOINT_IDLE)?;
                 let bytes = terminal.mouse_input(*event, *modifiers)?;
@@ -722,6 +761,7 @@ where
             }
             Command::Copy(text) => *clipboard = text.clone(),
             Command::Paste => {
+                terminal.scroll_viewport_to_bottom();
                 session.write_all(clipboard.as_bytes())?;
                 session.drain_for(terminal, settings.capture_interval(), settings, capture)?;
             }
@@ -849,6 +889,9 @@ where
                 }
                 Command::Mouse { .. } => {
                     return Err(miette!("mouse input requires terminal capture").into())
+                }
+                Command::ScrollViewport { .. } => {
+                    return Err(miette!("viewport scrolling requires terminal capture").into())
                 }
                 Command::Wait { .. } => {
                     return Err(miette!(
@@ -1029,6 +1072,20 @@ fn describe_command(command: &Command) -> String {
         }
         Command::Assert(assertion) => format!("Assert {assertion:?}"),
         Command::Resize { columns, rows } => format!("Resize {columns} {rows}"),
+        Command::ScrollViewport {
+            direction,
+            delay,
+            count,
+        } => {
+            let name = match direction {
+                ViewportDirection::Up => "ScrollUp",
+                ViewportDirection::Down => "ScrollDown",
+            };
+            let suffix = delay
+                .map(|delay| format!("@{}", describe_duration(delay)))
+                .unwrap_or_default();
+            format!("{name}{suffix} {count}")
+        }
         Command::Mouse { event, modifiers } => format!("Mouse {event:?} {modifiers:?}"),
         Command::Hide => "Hide".to_string(),
         Command::Show => "Show".to_string(),
@@ -1052,6 +1109,7 @@ fn command_kind(command: &Command) -> &'static str {
         Command::Type { .. } => "Type",
         Command::Wait { .. } => "Wait",
         Command::Key { .. } => "Key",
+        Command::ScrollViewport { .. } => "ScrollViewport",
         Command::Mouse { .. } => "Mouse",
         Command::Resize { .. } => "Resize",
         Command::Assert(_) => "Assert",

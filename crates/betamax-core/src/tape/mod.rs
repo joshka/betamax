@@ -37,7 +37,7 @@ mod parser;
 #[doc(inline)]
 pub use model::{
     Assertion, Command, Key, KeyCode, KeyModifiers, MouseButton, MouseEvent, ScrollDirection, Tape,
-    Value, WaitPattern, WaitTarget,
+    Value, ViewportDirection, WaitPattern, WaitTarget,
 };
 #[doc(inline)]
 pub use parser::parse_duration;

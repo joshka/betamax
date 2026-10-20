@@ -86,6 +86,8 @@
 #   End[@<time>] [number]           Press the End key
 #   Shift+Tab[@<time>] [number]     Press Shift+Tab
 #   F1[@<time>] [number]            Press a function key. Supports F1 through F25
+#   ScrollUp[@<time>] [number]      Scroll the viewport up through scrollback
+#   ScrollDown[@<time>] [number]    Scroll the viewport back down
 #   Ctrl+<key>                      Press Control + <key> (e.g. Ctrl+C)
 #   Alt+<key>                       Press Alt + <key> (e.g. Alt+F)
 #   Ctrl+Alt+Shift+<key>            Press combined modifiers

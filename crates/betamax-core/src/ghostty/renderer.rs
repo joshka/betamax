@@ -254,7 +254,8 @@ impl RasterRenderer {
     /// Build a compact terminal state snapshot suitable for JSON output and snapshot tests.
     ///
     /// libghostty-vt exposes scrollback through viewport scrolling. This method walks from the top
-    /// of scrollback to the bottom, then restores the viewport before returning.
+    /// of scrollback to the bottom, then restores the caller's viewport position before returning,
+    /// so a viewport scrolled back with `ScrollUp` reports the rows it shows.
     ///
     /// The method reads the terminal in two forms: plain text for ergonomic string assertions and
     /// compact styled rows for snapshot tests. The styled form keeps the default style expanded and
@@ -306,6 +307,10 @@ impl RasterRenderer {
             "read libghostty-vt terminal metadata",
         );
 
+        let viewport_row = terminal
+            .scrollbar()
+            .map_err(vt_error("failed to read terminal viewport position"))?
+            .offset;
         let mut all_rows = Vec::new();
         tracing::trace!("scrolling libghostty-vt viewport to collect state rows");
         terminal.scroll_viewport(ScrollViewport::Top);
@@ -318,7 +323,9 @@ impl RasterRenderer {
                 all_rows.push(row.clone());
             }
         }
-        terminal.scroll_viewport(ScrollViewport::Bottom);
+        terminal.scroll_viewport(ScrollViewport::Row(
+            usize::try_from(viewport_row).unwrap_or(usize::MAX),
+        ));
         tracing::trace!("restored libghostty-vt viewport after state row collection");
 
         let viewport = trim_empty_rows(self.state_rows(terminal)?);

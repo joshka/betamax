@@ -6,7 +6,7 @@ use regex::Regex;
 
 use super::{
     Assertion, Command, Key, KeyCode, KeyModifiers, MouseButton, MouseEvent, ScrollDirection, Tape,
-    Value, WaitPattern, WaitTarget,
+    Value, ViewportDirection, WaitPattern, WaitTarget,
 };
 use crate::Result;
 
@@ -88,6 +88,22 @@ fn parse_tokens(line_number: usize, tokens: &[String], commands: &mut Vec<Comman
                 cursor += 1;
             }
             "Paste" => commands.push(Command::Paste),
+            "ScrollUp" | "ScrollDown" => {
+                let count = optional_count(tokens.get(cursor))?;
+                if count.is_some() {
+                    cursor += 1;
+                }
+                let direction = if name == "ScrollUp" {
+                    ViewportDirection::Up
+                } else {
+                    ViewportDirection::Down
+                };
+                commands.push(Command::ScrollViewport {
+                    direction,
+                    delay,
+                    count: count.unwrap_or(1),
+                });
+            }
             "WindowTitle" => {
                 if delay.is_some() {
                     return Err(miette!("WindowTitle does not accept a duration").into());
@@ -618,6 +634,8 @@ fn is_command_token(token: &str) -> bool {
             | "Env"
             | "Copy"
             | "Paste"
+            | "ScrollUp"
+            | "ScrollDown"
             | "Caption"
             | "WindowTitle"
             | "Source"
@@ -764,6 +782,37 @@ Wait+Screen ready WindowTitle final"#,
                 .to_string()
                 .contains("line 2"));
         }
+    }
+
+    #[test]
+    fn parses_vhs_viewport_scroll_forms() {
+        let tape = Tape::parse("ScrollUp\nScrollUp 5\nScrollDown@100ms 3 ScrollDown").unwrap();
+        assert_eq!(
+            tape.commands,
+            vec![
+                Command::ScrollViewport {
+                    direction: ViewportDirection::Up,
+                    delay: None,
+                    count: 1,
+                },
+                Command::ScrollViewport {
+                    direction: ViewportDirection::Up,
+                    delay: None,
+                    count: 5,
+                },
+                Command::ScrollViewport {
+                    direction: ViewportDirection::Down,
+                    delay: Some(Duration::from_millis(100)),
+                    count: 3,
+                },
+                Command::ScrollViewport {
+                    direction: ViewportDirection::Down,
+                    delay: None,
+                    count: 1,
+                },
+            ]
+        );
+        assert!(Tape::parse("ScrollUp 70000").is_err());
     }
 
     #[test]
