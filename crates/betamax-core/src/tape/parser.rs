@@ -72,7 +72,11 @@ fn parse_tokens(line_number: usize, tokens: &[String], commands: &mut Vec<Comman
                 let value = required_token(line_number, tokens, cursor + 1, "setting value")?;
                 commands.push(Command::Set {
                     key: key.to_string(),
-                    value: parse_value(value),
+                    value: if key == "LoopOffset" {
+                        parse_loop_offset_value(value)
+                    } else {
+                        parse_value(value)
+                    },
                 });
                 cursor += 2;
             }
@@ -455,6 +459,19 @@ fn parse_value(value: &str) -> Value {
         return Value::Duration(duration);
     }
     Value::String(value.to_string())
+}
+
+/// Parse a `LoopOffset` value, where VHS reads bare numbers as percentages.
+///
+/// VHS appends `%` to every `LoopOffset` value, so `20` and `20%` both mean 20 percent, and `0.5`
+/// means half a percent. The number is kept unnormalized so the runner can tell it apart from a
+/// duration such as `2s`, which Betamax accepts as an extension.
+fn parse_loop_offset_value(value: &str) -> Value {
+    let number = value.strip_suffix('%').unwrap_or(value);
+    match number.parse::<f64>() {
+        Ok(percent) => Value::Number(percent),
+        Err(_) => parse_value(value),
+    }
 }
 
 /// Parse the arguments to `Sleep`, supporting both compact and split unit forms.

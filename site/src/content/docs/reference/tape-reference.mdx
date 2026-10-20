@@ -59,7 +59,7 @@ Defaults below describe `Default`, which currently selects `Framed`. See [Preset
 | `Framerate`               | number                                                 | `50`             | Capture cadence in frames per second.       |
 | `TypingSpeed`             | duration or number                                     | `50ms`           | Typing delay; number values are seconds.    |
 | `PlaybackSpeed`           | number                                                 | `1.0`            | Changes output playback, not PTY timing.    |
-| `LoopOffset`              | number                                                 | `0.0`            | `0..=1` is a fraction; otherwise seconds.   |
+| `LoopOffset`              | percentage or duration                                 | `0`              | Percent of frames, like VHS; or `2s`.       |
 | `CursorBlink`             | bool                                                   | `true`           | Simulates a half-second blink cadence.      |
 | KeyboardOverlay           | `Off`, `Keys`, `Input`, or `All`                       | `Off`            | Shows recent input chips in media.          |
 | KeyboardOverlayLocation   | `CaptionRow`, `TopLeft`, `TopRight`, etc.              | `CaptionRow`     | Places keyboard overlay chips.              |

@@ -90,7 +90,6 @@ These tapes parse, but run differently or fail on ordering rules that VHS doesn'
 
 | VHS tape uses                         | What happens in Betamax                         | Change it to                                |
 | ------------------------------------- | ----------------------------------------------- | ------------------------------------------- |
-| `Set LoopOffset 20` (bare number)     | Read as 20 seconds, not 20%                     | `Set LoopOffset 20%`                        |
 | `Set` after `Type` or other commands  | Error; VHS warns and ignores it                 | Move every `Set` to the top                 |
 | `Env` or `Require` after commands     | Error; VHS hoists or skips them                 | Move them to the top                        |
 | `Type "a" "b"` (several strings)      | Only the first string is typed, then an error   | One string: `Type "a b"`                    |
