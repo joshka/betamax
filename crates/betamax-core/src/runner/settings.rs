@@ -31,8 +31,8 @@ const DEFAULT_PLAYBACK_SPEED: f64 = 1.0;
 /// This prevents `Set PlaybackSpeed 0` from creating infinite frame delays while still allowing
 /// very slow playback for debugging.
 const MIN_PLAYBACK_SPEED: f64 = 0.01;
-/// Default loop offset.
-const DEFAULT_LOOP_OFFSET: f64 = 0.0;
+/// Divisor that turns a `LoopOffset` percentage into a fraction of the frame count.
+const PERCENT_DIVISOR: f64 = 100.0;
 /// Default timeout for wait commands.
 const DEFAULT_WAIT_TIMEOUT: Duration = Duration::from_secs(15);
 /// Default wait pattern matching Betamax's VHS-style prompt.
@@ -63,9 +63,9 @@ pub(super) struct Settings {
     pub(super) playback_speed: f64,
     /// Animated-output rotation offset.
     ///
-    /// Values in `0.0..=1.0` are treated as a fraction of the frame count. Other values are
-    /// treated as seconds at the capture framerate.
-    pub(super) loop_offset: f64,
+    /// Bare numbers and `%` values are a percentage of the frame count, matching VHS. Durations
+    /// are a Betamax extension measured at the capture framerate.
+    pub(super) loop_offset: LoopOffset,
     /// Default per-character delay for `Type`.
     pub(super) typing_delay: Duration,
     /// Whether captured frames should blink the cursor according to the output framerate.
@@ -169,7 +169,7 @@ impl Settings {
             rows: 0,
             framerate: DEFAULT_FRAMERATE,
             playback_speed: DEFAULT_PLAYBACK_SPEED,
-            loop_offset: DEFAULT_LOOP_OFFSET,
+            loop_offset: LoopOffset::Percent(0.0),
             typing_delay: DEFAULT_TYPING_DELAY,
             presentation: Presentation::new(theme)?,
             cursor_blink: true,
@@ -249,7 +249,12 @@ impl Settings {
             ("PlaybackSpeed", Value::Number(playback_speed)) => {
                 self.playback_speed = (*playback_speed).max(MIN_PLAYBACK_SPEED);
             }
-            ("LoopOffset", Value::Number(loop_offset)) => self.loop_offset = *loop_offset,
+            ("LoopOffset", Value::Number(percent)) => {
+                self.loop_offset = LoopOffset::Percent(*percent);
+            }
+            ("LoopOffset", Value::Duration(duration)) => {
+                self.loop_offset = LoopOffset::Duration(*duration);
+            }
             ("Margin", Value::Number(margin)) => self.presentation.style.margin = *margin as u32,
             ("MarginFill", Value::String(margin_fill)) => {
                 self.presentation.style.margin_fill = Some(margin_fill.clone());
@@ -415,21 +420,34 @@ impl Settings {
     /// Rotate animated output frames to change the loop boundary.
     ///
     /// This is applied after the final frame has been appended. Static outputs ignore loop offset.
-    /// Fractional offsets in `0.0..=1.0` mean a percentage of the frame list. Other values are
-    /// interpreted as seconds at the capture framerate to match VHS's time-based option.
+    /// Percentages round up to whole frames and wrap past 100%, and zero or negative offsets
+    /// leave the frames alone, as in VHS. Durations convert to frames at the capture framerate.
     pub(super) fn apply_loop_offset<T>(&self, frames: &mut [(T, Duration)]) {
-        if frames.len() < 2 || self.loop_offset == 0.0 {
+        let len = frames.len();
+        if len < 2 {
             return;
         }
-        let len = frames.len();
-        let offset = if (0.0..=1.0).contains(&self.loop_offset) {
-            (self.loop_offset * len as f64).round() as usize
-        } else {
-            (self.loop_offset * f64::from(self.framerate.max(MIN_EFFECTIVE_FRAMERATE))).round()
-                as usize
+        let offset = match self.loop_offset {
+            LoopOffset::Percent(percent) => (percent / PERCENT_DIVISOR * len as f64).ceil(),
+            LoopOffset::Duration(duration) => (duration.as_secs_f64()
+                * f64::from(self.framerate.max(MIN_EFFECTIVE_FRAMERATE)))
+            .round(),
         };
+        if offset <= 0.0 || !offset.is_finite() {
+            return;
+        }
+        let offset = (offset as usize) % len;
         frames.rotate_left(offset % len);
     }
+}
+
+/// Where an animated output's loop starts, from `Set LoopOffset`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(super) enum LoopOffset {
+    /// A percentage of the frame count, such as `20` or `20%`.
+    Percent(f64),
+    /// A time into the recording, such as `2s`.
+    Duration(Duration),
 }
 
 /// Fit as many terminal cells as possible in a pixel dimension.
@@ -507,7 +525,6 @@ fn setting_expected_type(key: &str) -> &'static str {
         | "Padding"
         | "Framerate"
         | "PlaybackSpeed"
-        | "LoopOffset"
         | "Margin"
         | "WindowBarSize"
         | "WindowBorder"
@@ -520,6 +537,7 @@ fn setting_expected_type(key: &str) -> &'static str {
         "CursorBlink" | "Shadow" | "WindowTitleFromTerminal" => "bool",
         "KeyboardOverlay" => "Off, Keys, Input, or All",
         "KeyboardOverlayLocation" => "CaptionRow, TopLeft, TopRight, BottomLeft, or BottomRight",
+        "LoopOffset" => "percentage or duration",
         "WaitTimeout" => "duration or number of seconds",
         _ => "known value",
     }
@@ -759,5 +777,72 @@ Set Width "wide""#,
                 Duration::from_secs_f64(0.137 / speed)
             );
         }
+    }
+
+    /// Parse a tape that sets only `LoopOffset` and return the resulting settings.
+    fn loop_offset_settings(value: &str) -> Settings {
+        let tape = Tape::parse(&format!("Set LoopOffset {value}\n")).unwrap();
+        Settings::from_tape(&tape).unwrap()
+    }
+
+    /// Rotate ten numbered frames with the given `LoopOffset` and return the new frame order.
+    fn rotated_frames(value: &str) -> Vec<u32> {
+        let settings = loop_offset_settings(value);
+        let mut frames: Vec<_> = (0..10).map(|frame| (frame, Duration::ZERO)).collect();
+        settings.apply_loop_offset(&mut frames);
+        frames.into_iter().map(|(frame, _)| frame).collect()
+    }
+
+    #[test]
+    fn loop_offset_reads_bare_numbers_as_percentages_like_vhs() {
+        assert_eq!(
+            loop_offset_settings("20").loop_offset,
+            LoopOffset::Percent(20.0)
+        );
+        assert_eq!(
+            loop_offset_settings("20%").loop_offset,
+            LoopOffset::Percent(20.0)
+        );
+        assert_eq!(
+            loop_offset_settings("0.5").loop_offset,
+            LoopOffset::Percent(0.5)
+        );
+        assert_eq!(
+            loop_offset_settings("2s").loop_offset,
+            LoopOffset::Duration(Duration::from_secs(2))
+        );
+        assert_eq!(
+            loop_offset_settings("500ms").loop_offset,
+            LoopOffset::Duration(Duration::from_millis(500))
+        );
+    }
+
+    #[test]
+    fn loop_offset_rotates_frames_like_vhs() {
+        assert_eq!(rotated_frames("20"), [2, 3, 4, 5, 6, 7, 8, 9, 0, 1]);
+        assert_eq!(rotated_frames("20%"), [2, 3, 4, 5, 6, 7, 8, 9, 0, 1]);
+        // VHS rounds partial frames up, so 0.5% of ten frames is one frame.
+        assert_eq!(rotated_frames("0.5"), [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]);
+        assert_eq!(rotated_frames("150"), [5, 6, 7, 8, 9, 0, 1, 2, 3, 4]);
+        assert_eq!(rotated_frames("100"), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        assert_eq!(rotated_frames("0"), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        assert_eq!(rotated_frames("-20"), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    }
+
+    #[test]
+    fn loop_offset_durations_use_the_capture_framerate() {
+        let tape = Tape::parse("Set Framerate 10\nSet LoopOffset 300ms\n").unwrap();
+        let settings = Settings::from_tape(&tape).unwrap();
+        let mut frames: Vec<_> = (0..10).map(|frame| (frame, Duration::ZERO)).collect();
+        settings.apply_loop_offset(&mut frames);
+        let order: Vec<_> = frames.into_iter().map(|(frame, _)| frame).collect();
+        assert_eq!(order, [3, 4, 5, 6, 7, 8, 9, 0, 1, 2]);
+    }
+
+    #[test]
+    fn loop_offset_rejects_strings() {
+        let tape = Tape::parse("Set LoopOffset soon\n").unwrap();
+        let error = Settings::from_tape(&tape).unwrap_err().to_string();
+        assert!(error.contains("percentage or duration"), "{error}");
     }
 }
