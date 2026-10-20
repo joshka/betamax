@@ -56,7 +56,7 @@ MP4 and WebM need ffmpeg on `PATH`, and MP4 can't use a transparent margin. See
 The core tape flow is the same:
 
 - `Output` declares artifacts.
-- `Set` controls size, theme, timing, typography, and frame styling.
+- `Set` controls size (in pixels or cells), theme, timing, typography, and frame styling.
 - `Type`, `Enter`, key commands, `Sleep`, and `Wait` drive the terminal. `Wait`, `Wait+Line`, and
   `Wait+Screen` keep the VHS defaults: pattern `>$` and a 15s timeout.
 - `ScrollUp` and `ScrollDown` move the viewport through scrollback; typing returns it to the
@@ -74,7 +74,6 @@ familiar `>` instead of your own. Other shells only get a bash-style `PS1`. Beta
 | VHS feature                       | Use instead                                                   |
 | --------------------------------- | ------------------------------------------------------------- |
 | `Source other.tape`               | Copy the commands into the tape                               |
-| `Set Rows`, `Set Columns`         | `Set Width` and `Set Height`, or `Resize C R` mid-tape        |
 | `Output demo.txt` or `.ascii`     | `Output demo.json` or `State`, plus `Assert*` commands        |
 | `vhs record`                      | Write the tape by hand, or start from `betamax new`           |
 | `vhs serve`, `vhs publish`        | Not planned; host the rendered files yourself                 |

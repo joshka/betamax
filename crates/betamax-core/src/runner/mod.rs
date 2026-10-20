@@ -493,6 +493,16 @@ where
             commands = tape.commands.len(),
             "starting captured tape run",
         );
+        self.progress(
+            ANSI_DIM,
+            format_args!(
+                "terminal {}x{} cells, output {}x{} px",
+                settings.columns,
+                settings.rows,
+                settings.presentation.width,
+                settings.presentation.height
+            ),
+        );
         tracing::debug!("opening Ghostty frame capture");
         let mut terminal = self.capture.open(CaptureRequest {
             canvas: PixelSize::new(

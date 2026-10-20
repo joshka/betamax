@@ -139,6 +139,7 @@ The repository includes tapes that exercise the core behavior:
 | `examples/scrollback.tape`                | scrollback-inclusive state JSON                |
 | `examples/text-styles.tape`               | ANSI styles, truecolor, and styled state spans |
 | `examples/layout.tape`                    | padding, margin, fill, window bar, radius      |
+| `examples/rows-columns.tape`              | terminal size in cells with `Columns`/`Rows`   |
 | `examples/presentation-overlays.tape`     | captions plus keyboard overlay layout          |
 | `examples/themes.tape`                    | copied Ghostty themes and palette mapping      |
 | `examples/webp.tape`                      | Lossless WebP animation and screenshots        |
