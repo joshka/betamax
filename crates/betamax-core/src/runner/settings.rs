@@ -76,6 +76,69 @@ pub(super) struct Settings {
     pub(super) wait_timeout: Duration,
     /// Tape-provided environment overrides applied after Betamax defaults.
     pub(super) env: Vec<(String, String)>,
+    /// Pixel or cell sizing chosen by the tape for each axis.
+    sizing: Sizing,
+}
+
+/// How the tape sized each axis.
+///
+/// Presets set pixel defaults without claiming an axis, so `Set Rows` can follow any preset. An
+/// explicit `Set Width` or `Set Height` conflicts with cells on the same axis, matching VHS.
+#[derive(Debug, Clone, Copy, Default)]
+struct Sizing {
+    width: AxisSizing,
+    height: AxisSizing,
+}
+
+/// Sizing source for one output axis.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+enum AxisSizing {
+    /// Fit cells into the preset or default pixel size.
+    #[default]
+    Default,
+    /// Fit cells into an explicit `Set Width` or `Set Height`.
+    Pixels,
+    /// Grow the output to hold exactly this many cells.
+    Cells(u16),
+}
+
+impl AxisSizing {
+    /// Record a pixel setting, rejecting a cell setting on the same axis.
+    fn set_pixels(&mut self, pixels: &str, cells: &str) -> Result<()> {
+        if matches!(self, Self::Cells(_)) {
+            return Err(both_sizes_error(pixels, cells));
+        }
+        *self = Self::Pixels;
+        Ok(())
+    }
+
+    /// Record a cell setting, rejecting a pixel setting on the same axis.
+    fn set_cells(&mut self, value: f64, pixels: &str, cells: &str) -> Result<()> {
+        if *self == Self::Pixels {
+            return Err(both_sizes_error(pixels, cells));
+        }
+        if value.fract() != 0.0 || !(1.0..=f64::from(u16::MAX)).contains(&value) {
+            return Err(miette!(
+                "Set {cells} expects a whole number of cells in 1..={}, got {value}",
+                u16::MAX
+            )
+            .into());
+        }
+        *self = Self::Cells(value as u16);
+        Ok(())
+    }
+
+    fn cells(self) -> Option<u16> {
+        match self {
+            Self::Cells(cells) => Some(cells),
+            _ => None,
+        }
+    }
+}
+
+/// Explain a pixel and cell setting that size the same axis.
+fn both_sizes_error(pixels: &str, cells: &str) -> crate::Error {
+    miette!("cannot set both {pixels} and {cells}; {cells} sizes the output to fit the grid").into()
 }
 
 impl Settings {
@@ -113,6 +176,7 @@ impl Settings {
             wait_pattern: WaitPattern::Regex(DEFAULT_WAIT_PATTERN.to_string()),
             wait_timeout: DEFAULT_WAIT_TIMEOUT,
             env: Vec::new(),
+            sizing: Sizing::default(),
         };
 
         let preset = Preset::from_tape(tape)?;
@@ -150,8 +214,20 @@ impl Settings {
                     .map_err(|error| miette!("invalid Shell setting `{shell}`: {error}"))?;
                 self.shell = parts.into_iter().map(OsString::from).collect();
             }
-            ("Width", Value::Number(width)) => self.presentation.width = *width as u32,
-            ("Height", Value::Number(height)) => self.presentation.height = *height as u32,
+            ("Width", Value::Number(width)) => {
+                self.sizing.width.set_pixels("Width", "Columns")?;
+                self.presentation.width = *width as u32;
+            }
+            ("Height", Value::Number(height)) => {
+                self.sizing.height.set_pixels("Height", "Rows")?;
+                self.presentation.height = *height as u32;
+            }
+            ("Columns", Value::Number(columns)) => {
+                self.sizing.width.set_cells(*columns, "Width", "Columns")?;
+            }
+            ("Rows", Value::Number(rows)) => {
+                self.sizing.height.set_cells(*rows, "Height", "Rows")?;
+            }
             ("FontSize", Value::Number(font_size)) => {
                 self.presentation.text.font_size = *font_size as f32
             }
@@ -257,7 +333,26 @@ impl Settings {
     /// decoration are subtracted first, then text padding is subtracted from the terminal canvas.
     /// Each dimension is clamped to at least one cell so pathological settings still create a valid
     /// PTY.
+    ///
+    /// `Columns` and `Rows` first grow the output on their axis so the grid fits exactly, then
+    /// round up to an even pixel count for video encoders, like VHS. The spare pixel is smaller
+    /// than a cell, so the fitted grid is unchanged.
     fn apply_terminal_grid(&mut self) {
+        let padding = self.presentation.text.padding.saturating_mul(2);
+        if let Some(columns) = self.sizing.width.cells() {
+            let canvas = u32::from(columns)
+                .saturating_mul(self.presentation.text.cell_width())
+                .saturating_add(padding);
+            self.presentation.width =
+                round_up_to_even(self.presentation.frame_width_for_canvas(canvas));
+        }
+        if let Some(rows) = self.sizing.height.cells() {
+            let canvas = u32::from(rows)
+                .saturating_mul(self.presentation.text.cell_height())
+                .saturating_add(padding);
+            self.presentation.height =
+                round_up_to_even(self.presentation.frame_height_for_canvas(canvas));
+        }
         let inner_width = self
             .presentation
             .terminal_canvas_width()
@@ -343,6 +438,11 @@ fn fit_cells(pixels: u32, cell_pixels: u32) -> u16 {
     u16::try_from(cells).unwrap_or(u16::MAX)
 }
 
+/// Round a pixel dimension up to an even count, which MP4 and WebM encoders require.
+fn round_up_to_even(pixels: u32) -> u32 {
+    pixels.saturating_add(pixels % 2)
+}
+
 /// Return whether a key is a recognized `Set` setting.
 ///
 /// This is separate from `apply_set`'s main match so diagnostics can distinguish unknown setting
@@ -353,6 +453,8 @@ fn known_setting(key: &str) -> bool {
         "Shell"
             | "Width"
             | "Height"
+            | "Columns"
+            | "Rows"
             | "FontSize"
             | "FontFamily"
             | "LetterSpacing"
@@ -394,6 +496,8 @@ fn setting_expected_type(key: &str) -> &'static str {
         | "Theme" | "WindowBorderColor" | "WindowTitle" | "WindowTitleColor" => "string",
         "Width"
         | "Height"
+        | "Columns"
+        | "Rows"
         | "FontSize"
         | "LetterSpacing"
         | "LineHeight"
@@ -476,6 +580,100 @@ Set Theme "Aardvark Blue""#,
         let settings = Settings::from_tape(&tape).unwrap();
 
         assert_eq!(settings.presentation.theme.name, "Aardvark Blue");
+    }
+
+    fn grid(source: &str) -> Settings {
+        Settings::from_tape(&Tape::parse(source).unwrap()).unwrap()
+    }
+
+    fn grid_error(source: &str) -> String {
+        Settings::from_tape(&Tape::parse(source).unwrap())
+            .unwrap_err()
+            .to_string()
+    }
+
+    #[test]
+    fn columns_and_rows_size_the_grid_exactly() {
+        for source in [
+            "",
+            "Set Preset Bare",
+            "Set Preset Inset",
+            "Set Preset Default-0.1",
+            "Set FontSize 31\nSet LineHeight 1.3\nSet LetterSpacing 1.5",
+            "Set Padding 17\nSet Margin 9",
+            "Set WindowBar Rings\nSet WindowBarSize 41",
+            "Set KeyboardOverlay Keys",
+        ] {
+            let settings = grid(&format!(
+                "{source}\nSet Columns 83\nSet Rows 21\nCaption hi"
+            ));
+            assert_eq!((settings.columns, settings.rows), (83, 21), "{source:?}");
+            assert_eq!(settings.presentation.width % 2, 0, "{source:?}");
+            assert_eq!(settings.presentation.height % 2, 0, "{source:?}");
+        }
+    }
+
+    #[test]
+    fn columns_add_padding_and_margin_to_the_output_width() {
+        let settings = grid("Set Preset Bare\nSet Padding 10\nSet Columns 80");
+        let cell_width = settings.presentation.text.cell_width();
+
+        let width = 80 * cell_width + 2 * 10;
+        assert_eq!(settings.presentation.width, width + width % 2);
+        assert_eq!(settings.presentation.height, 720);
+    }
+
+    #[test]
+    fn one_cell_axis_leaves_the_other_axis_in_pixels() {
+        let only_rows = grid("Set Width 900\nSet Rows 12");
+        let pixels = grid("Set Width 900");
+        assert_eq!(only_rows.rows, 12);
+        assert_eq!(only_rows.columns, pixels.columns);
+        assert_eq!(only_rows.presentation.width, 900);
+
+        let only_columns = grid("Set Height 500\nSet Columns 40");
+        assert_eq!(only_columns.columns, 40);
+        assert_eq!(only_columns.presentation.height, 500);
+    }
+
+    #[test]
+    fn pixel_and_cell_sizes_on_one_axis_conflict_in_either_order() {
+        for (source, message) in [
+            (
+                "Set Width 900\nSet Columns 80",
+                "cannot set both Width and Columns",
+            ),
+            (
+                "Set Columns 80\nSet Width 900",
+                "cannot set both Width and Columns",
+            ),
+            (
+                "Set Height 500\nSet Rows 20",
+                "cannot set both Height and Rows",
+            ),
+            (
+                "Set Rows 20\nSet Height 500",
+                "cannot set both Height and Rows",
+            ),
+        ] {
+            assert!(grid_error(source).contains(message), "{source:?}");
+        }
+    }
+
+    #[test]
+    fn rejects_cell_counts_that_are_not_positive_whole_numbers() {
+        for source in [
+            "Set Columns 0",
+            "Set Rows -1",
+            "Set Rows 2.5",
+            "Set Columns 65536",
+        ] {
+            assert!(
+                grid_error(source).contains("whole number of cells"),
+                "{source:?}"
+            );
+        }
+        assert!(grid_error("Set Rows wide").contains("Set Rows expects number"));
     }
 
     #[test]

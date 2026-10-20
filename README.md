@@ -145,6 +145,7 @@ The checked-in examples are small smoke-test tapes that demonstrate core behavio
 | `examples/scrollback.tape`                | scrollback-inclusive state JSON                | `scrollback.*`            |
 | `examples/text-styles.tape`               | ANSI styles, truecolor, and styled state spans | `text-styles.*`           |
 | `examples/layout.tape`                    | padding, margin, fill, window bar, radius      | `layout.gif`              |
+| `examples/rows-columns.tape`              | terminal size in cells with `Columns`/`Rows`   | `rows-columns.gif`        |
 | `examples/themes.tape`                    | copied Ghostty themes and palette mapping      | `themes.gif`              |
 | `examples/screenshot.tape`                | screenshots and terminal state JSON            | `screenshot.png`          |
 | `examples/webp.tape`                      | Lossless WebP animation and screenshots        | `webp.*`                  |

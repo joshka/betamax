@@ -39,6 +39,8 @@ Defaults below describe `Default`, which currently selects `Framed`. See [Preset
 | `LineHeight`              | number                                                 | `1`              | Multiplier applied to font size.            |
 | `Width`                   | number                                                 | `1200`           | Final output width in pixels.               |
 | `Height`                  | number                                                 | `720`            | Final output height in pixels.              |
+| `Columns`                 | number                                                 | from `Width`     | Terminal columns; sizes the output width.   |
+| `Rows`                    | number                                                 | from `Height`    | Terminal rows; sizes the output height.     |
 | `Padding`                 | number                                                 | `0`              | Inner padding before terminal cells.        |
 | `Framerate`               | number                                                 | `50`             | Capture cadence in frames per second.       |
 | `TypingSpeed`             | duration                                               | `50ms`           | Default delay between typed characters.     |
@@ -80,6 +82,29 @@ Font size, margins, and frame decoration affect the space available to the appli
 modal placement, centering, wrapping, or split panes, start with the default `FontSize` and
 `Margin`.
 Increase `Width` or `Height` if the application needs more space.
+
+### Sizing in cells
+
+`Set Columns` and `Set Rows` ask for an exact terminal grid, like VHS. Betamax grows the output to
+fit it: the cells, then padding, margin, window bar, and any caption row, rounded up to an even
+pixel count for video encoders. Font size, letter spacing, and line height change the output size,
+not the grid.
+
+```tape
+Set Columns 80
+Set Rows 24
+```
+
+Each axis is sized one way. Set only `Rows` and the width still comes from `Width`, the preset, or
+the default. Setting `Width` and `Columns`, or `Height` and `Rows`, is an error. A preset's size is
+a default, so cells replace it without an error. Both values are whole numbers in `1..=65535` and,
+like other settings, must appear before runtime commands. Each captured run prints the resolved
+grid and output size, for example `terminal 80x24 cells, output 1104x622 px`.
+
+`Set Columns` and `Set Rows` choose the starting grid and size the output around it.
+[`Resize`](#resize-columns-rows) changes the grid mid-tape and keeps the output size fixed: a
+smaller grid leaves empty canvas, and a larger one is clipped. Use `Set` to size the recording,
+and `Resize` to test how an application reacts when its terminal changes size.
 
 `Set KeyboardOverlay Input` draws input labels on generated PNG, GIF, video,
 screenshot, and frame-sequence media. Labels appear when input is queued and linger briefly after
@@ -574,7 +599,8 @@ Wait+Screen@5s "narrow layout"
 State target/narrow.json
 ```
 
-The media canvas, font metrics, decorations, and padding stay fixed for the entire tape. The live
+The media canvas, font metrics, decorations, and padding stay fixed for the entire tape. To size
+the recording in cells, use [`Set Columns` and `Set Rows`](#sizing-in-cells) instead. The live
 grid starts at the same top-left origin as the original grid. Shrinking leaves unused canvas space
 in the terminal background color; growing beyond the canvas clips the rendered grid. State JSON
 and subsequent mouse bounds use the live grid even for clipped cells. The pointer clamps to the

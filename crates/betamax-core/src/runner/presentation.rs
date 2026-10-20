@@ -251,6 +251,23 @@ impl Presentation {
             .saturating_sub(self.presentation_overlay_height())
     }
 
+    /// Output width whose terminal canvas is exactly `canvas_width` pixels wide.
+    ///
+    /// This inverts [`Self::terminal_canvas_width`] for `Set Columns`.
+    pub(super) fn frame_width_for_canvas(&self, canvas_width: u32) -> u32 {
+        canvas_width.saturating_add(self.style.effective_margin().saturating_mul(2))
+    }
+
+    /// Output height whose terminal canvas is exactly `canvas_height` pixels tall.
+    ///
+    /// This inverts [`Self::terminal_canvas_height`] for `Set Rows`.
+    pub(super) fn frame_height_for_canvas(&self, canvas_height: u32) -> u32 {
+        canvas_height
+            .saturating_add(self.style.effective_margin().saturating_mul(2))
+            .saturating_add(self.style.window_bar_height())
+            .saturating_add(self.presentation_overlay_height())
+    }
+
     /// Height reserved below the terminal canvas for presentation-only overlays.
     fn presentation_overlay_height(&self) -> u32 {
         let keyboard_overlay_height = if self.keyboard_overlay_in_caption_row() {
