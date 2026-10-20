@@ -18,7 +18,7 @@ Sources checked:
 | Process model     | Browser/server-oriented pipeline   | No `ttyd`, browser server, or xterm.js layer |
 | State snapshots   | Not a primary feature              | JSON viewport, scrollback, and styled spans  |
 | Theme source      | VHS theme set and JSON themes      | Ghostty themes and JSON themes               |
-| `Source`          | Supported                          | Parsed but intentionally not executed        |
+| `Source`          | Supported, one level, CWD paths    | Nested, tape-relative paths, CWD fallback    |
 | `record`/`serve`  | Supported                          | Intentionally not implemented                |
 | `publish`         | Supported                          | Intentionally not implemented                |
 | Video encoding    | ffmpeg-backed                      | ffmpeg-backed                                |
@@ -77,13 +77,13 @@ not fully represented in Betamax's current renderer.
 
 These VHS features are not implemented:
 
-- `Source <path>.tape`
 - `record`
 - `serve`
 - `publish`
 
-`Source` is parsed so migrated VHS tapes get a clear error, but execution returns an explicit
-not-implemented error.
+`Source <path>.tape` is supported. Betamax resolves the path against the sourcing tape's directory
+before the current directory, allows nested `Source` with cycle detection, and rejects sourced
+`Set`, `Env`, or `Require` after runtime commands instead of ignoring them.
 
 ## Fidelity risks
 

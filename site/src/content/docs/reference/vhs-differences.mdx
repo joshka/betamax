@@ -73,15 +73,13 @@ familiar `>` instead of your own. Other shells only get a bash-style `PS1`. Beta
 
 | VHS feature                       | Use instead                                                   |
 | --------------------------------- | ------------------------------------------------------------- |
-| `Source other.tape`               | Copy the commands into the tape                               |
 | `vhs record`                      | Write the tape by hand, or start from `betamax new`           |
 | `vhs serve`, `vhs publish`        | Not planned; host the rendered files yourself                 |
 | `vhs manual`, `themes --markdown` | The [tape reference](../tape-reference/) and `betamax themes` |
 
 `record`, `serve`, and `publish` are out of scope for the first stable release: Betamax focuses on
 local rendering and terminal testing. The `--publish` flag is still accepted so existing scripts get
-a clear error. `Source` is parsed for the same reason: a tape that uses it fails with a targeted
-message instead of an unknown command or a silent skip.
+a clear error.
 
 ## Same syntax, different behavior
 
@@ -95,6 +93,7 @@ These tapes parse, but run differently or fail on ordering rules that VHS doesn'
 | Backtick strings or `\` in `"…"`      | Strings follow shell quoting rules              | Single quotes for literal text: `'C:\path'` |
 | `Wait /foo bar/` (regex with a space) | Split into two tokens                           | Quote it: `Wait "/foo bar/"`                |
 | `Output frames.png`                   | Writes one PNG of the final frame               | `Output frames/` for a frames directory     |
+| `Source` after commands, with `Set`   | Error; VHS warns and ignores the `Set`          | Move `Source` to the top                    |
 
 All 348 VHS theme names work in `Set Theme`. VHS's theme list is a 2023 snapshot of
 iTerm2-Color-Schemes, which has since renamed most themes, so Betamax maps the old VHS spelling to
@@ -113,6 +112,8 @@ Smaller differences:
 - **Clipboard.** `Copy` and `Paste` use a clipboard private to the tape. Betamax never reads or
   writes your system clipboard.
 - **Screenshots.** `Screenshot` captures after output settles, not on the next frame.
+- **Source.** `Source` paths resolve against the sourcing tape's directory first, then the current
+  directory; VHS uses only the current directory. Sourced tapes may nest, which VHS rejects.
 - **CLI.** Run tapes with `betamax run demo.tape`. `-o` adds an output to the ones in the tape;
   VHS's `-o` replaces them.
 

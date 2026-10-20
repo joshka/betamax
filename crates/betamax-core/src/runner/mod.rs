@@ -874,9 +874,11 @@ where
             | Command::Require(_)
             | Command::Set { .. } => {}
             Command::Source(path) => {
-                return Err(
-                    miette!("Source is parsed but not executed yet: {}", path.display()).into(),
-                );
+                return Err(miette!(
+                    "`Source {}` was not expanded; load the tape with `Tape::parse_file`",
+                    path.display()
+                )
+                .into());
             }
         }
 
@@ -953,7 +955,7 @@ where
                 }
                 Command::Source(path) => {
                     return Err(miette!(
-                        "Source is parsed but not executed yet: {}",
+                        "`Source {}` was not expanded; load the tape with `Tape::parse_file`",
                         path.display()
                     )
                     .into());

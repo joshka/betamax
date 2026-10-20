@@ -41,8 +41,10 @@ impl Validate {
                 let source = std::fs::read_to_string(&path)
                     .into_diagnostic()
                     .wrap_err_with(|| format!("failed to read {}", path.display()))?;
-                Tape::parse(&source)
-                    .wrap_err_with(|| format!("failed to parse {}", path.display()))?;
+                Tape::parse_with_sources(&source, Some(&path), &mut |warning| {
+                    eprintln!("warning: {}: {warning}", path.display());
+                })
+                .wrap_err_with(|| format!("failed to parse {}", path.display()))?;
                 validated += 1;
             }
         }
