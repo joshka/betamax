@@ -41,9 +41,9 @@ const MIN_GIF_DELAY_UNITS: u128 = 2;
 
 /// Write an animated GIF with an infinite loop.
 ///
-/// GIF frame delays are stored in hundredths of a second, and browsers slow anything under 20 ms to
-/// 100 ms. Frames that would show for less than 20 ms are merged into the next frame, so faster
-/// captures play back at up to 50 fps with their total time kept.
+/// GIF frame delays are stored in hundredths of a second, and browsers play 10 ms or less as 100
+/// ms. Frames that would show for less than 20 ms are dropped and their time given to the next
+/// frame, so faster captures play back at up to 50 fps with their total time kept.
 ///
 /// # Errors
 ///
@@ -61,6 +61,7 @@ pub fn write_gif_with_progress(
     frames: &[(Frame, Duration)],
     progress: &mut impl MediaProgressReporter,
 ) -> Result<()> {
+    let frames = drop_short_frames(frames);
     let Some((first, _)) = frames.first() else {
         return Err(miette!("cannot write GIF with no frames").into());
     };
@@ -73,7 +74,7 @@ pub fn write_gif_with_progress(
         .map_err(|error| error.wrap_err(format!("failed to create {}", path.display())))?;
     let mut counts = HashMap::new();
     let mut any_transparent = false;
-    for (frame, _) in frames {
+    for (frame, _) in &frames {
         if frame.width != first.width || frame.height != first.height {
             return Err(miette!("all GIF frames must have the same dimensions").into());
         }
@@ -127,6 +128,35 @@ pub fn write_gif_with_progress(
     }
 
     Ok(())
+}
+
+/// Drop frames that would show for less than 20 ms, giving their time to the next frame.
+///
+/// Timing follows the same rounded running total that [`FrameDelta`] writes, so every kept frame
+/// spans at least two units there. Frames already 20 ms or longer, such as protected title
+/// transitions, always span two units and are never dropped. The last frame is always kept.
+fn drop_short_frames(frames: &[(Frame, Duration)]) -> Vec<(&Frame, Duration)> {
+    let mut kept: Vec<(&Frame, Duration)> = Vec::with_capacity(frames.len());
+    let mut start = Duration::ZERO;
+    for (frame, delay) in frames {
+        if let Some((last, last_delay)) = kept.last_mut() {
+            let short = gif_units(start + *last_delay) < gif_units(start) + MIN_GIF_DELAY_UNITS;
+            if short {
+                *last = frame;
+                *last_delay += *delay;
+                continue;
+            }
+            start += *last_delay;
+        }
+        kept.push((frame, *delay));
+    }
+    kept
+}
+
+/// Round a running time to the nearest GIF delay unit.
+fn gif_units(elapsed: Duration) -> u128 {
+    let unit = GIF_DELAY_UNIT_MS * 1_000_000;
+    (elapsed.as_nanos() + unit / 2) / unit
 }
 
 /// One palette shared by every frame of a GIF.
@@ -493,6 +523,71 @@ mod tests {
             "kept only {} of 30 frames",
             stored.len()
         );
+        fs::remove_file(&path).into_diagnostic()?;
+        Ok(())
+    }
+
+    #[test]
+    fn gif_drops_short_frames_but_keeps_the_last_one() {
+        let frames: Vec<_> = [15, 8, 20, 7, 30, 4, 5]
+            .into_iter()
+            .enumerate()
+            .map(|(step, ms)| {
+                (
+                    block_frame(2 * step, 6, [200, 80, 80, 255]),
+                    Duration::from_millis(ms),
+                )
+            })
+            .collect();
+        let kept = drop_short_frames(&frames);
+
+        // Each 8, 7 and 4 ms frame would end less than 20 ms after the frame before it, so the
+        // next frame replaces it and takes its time. The last frame stays even though it is short.
+        let kept_frames: Vec<_> = kept
+            .iter()
+            .map(|(frame, _)| frames.iter().position(|(f, _)| std::ptr::eq(f, *frame)))
+            .collect();
+        assert_eq!(kept_frames, [Some(0), Some(2), Some(4), Some(6)]);
+        let kept_ms: Vec<_> = kept.iter().map(|(_, delay)| delay.as_millis()).collect();
+        assert_eq!(kept_ms, [15, 28, 37, 9]);
+    }
+
+    #[test]
+    fn gif_short_frames_keep_transparent_pixels_exact() -> Result<()> {
+        // Clear pixels appear and disappear between frames, some of which are too short to keep.
+        let frame = |step: usize| {
+            let mut frame = block_frame(4 * step, 2 * step, [200, 80, 80, 255]);
+            for (index, pixel) in frame
+                .pixels
+                .as_chunks_mut::<BYTES_PER_PIXEL>()
+                .0
+                .iter_mut()
+                .enumerate()
+            {
+                let (x, y) = (index % 40, index / 40);
+                if !step.is_multiple_of(3) && (x < step || y + step >= 20) {
+                    pixel.copy_from_slice(&[0, 0, 0, 0]);
+                }
+            }
+            let ms = if step.is_multiple_of(2) { 10 } else { 40 };
+            (frame, Duration::from_millis(ms))
+        };
+        let frames: Vec<_> = (0..8).map(frame).collect();
+        let path = temp_path("betamax-short-transparent.gif");
+        write_gif(&path, &frames)?;
+
+        let kept = drop_short_frames(&frames);
+        let decoded = decode_composited(&path)?;
+        assert_eq!(decoded.len(), kept.len());
+        for (index, ((expected, _), (actual, delay))) in kept.iter().zip(&decoded).enumerate() {
+            assert!(expected.pixels == *actual, "frame {index} differs");
+            assert!(
+                *delay >= Duration::from_millis(20),
+                "frame {index} lasts {delay:?}"
+            );
+        }
+        let total: Duration = decoded.iter().map(|(_, delay)| *delay).sum();
+        assert_eq!(total, Duration::from_millis(200));
         fs::remove_file(&path).into_diagnostic()?;
         Ok(())
     }

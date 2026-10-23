@@ -5,19 +5,14 @@ const MS: Duration = Duration::from_millis(100);
 
 /// Encode `frames` (each `width` pixels wide) with the same delay and a reserved clear index.
 fn encode(width: usize, frames: &[Vec<u8>]) -> Vec<DeltaFrame> {
-    encode_with(width, frames, true, MS)
+    encode_with(width, frames, true)
 }
 
-fn encode_with(
-    width: usize,
-    frames: &[Vec<u8>],
-    transparent: bool,
-    delay: Duration,
-) -> Vec<DeltaFrame> {
+fn encode_with(width: usize, frames: &[Vec<u8>], transparent: bool) -> Vec<DeltaFrame> {
     let mut delta = FrameDelta::new(width, frames[0].len() / width, transparent);
     let mut encoded: Vec<_> = frames
         .iter()
-        .filter_map(|frame| delta.push(frame.clone(), delay))
+        .filter_map(|frame| delta.push(frame.clone(), MS))
         .collect();
     encoded.extend(delta.finish());
     encoded
@@ -168,61 +163,6 @@ fn composited_frames_reproduce_every_input_frame() {
 }
 
 #[test]
-fn short_frames_merge_into_later_ones_without_losing_time_or_pixels() {
-    // 10 ms frames are too short for browsers, so most merge into the frame after them. Whatever
-    // remains must be input frames in order, end on the last one, and keep about the total time.
-    let (width, height) = (7, 5);
-    let mut state = 0x9e37_79b9_u32;
-    let mut next = |bound: u32| {
-        state ^= state << 13;
-        state ^= state >> 17;
-        state ^= state << 5;
-        state % bound
-    };
-    for transparent in [true, false] {
-        for _ in 0..50 {
-            let mut frame: Vec<u8> = (0..width * height).map(|_| 1 + next(4) as u8).collect();
-            let mut frames = Vec::new();
-            for _ in 0..12 {
-                let pixel = next(frame.len() as u32) as usize;
-                frame[pixel] = match next(5) {
-                    0 if transparent => T,
-                    value => 1 + value as u8,
-                };
-                frames.push(frame.clone());
-            }
-            frames.dedup();
-            let encoded = encode_with(width, &frames, transparent, Duration::from_millis(10));
-
-            let total: u32 = encoded.iter().map(|frame| u32::from(frame.delay)).sum();
-            // Only the last frame and frames that clear pixels cannot merge, and each of those
-            // runs at most one unit long.
-            let clearing = frames.iter().filter(|frame| frame.contains(&T)).count() as u32;
-            let nominal = frames.len() as u32;
-            assert!(
-                (nominal..=nominal + 1 + clearing).contains(&total),
-                "{total} units for {nominal} frames, {clearing} clearing"
-            );
-            assert!(encoded.iter().all(|frame| frame.delay >= 2));
-            let displayed = composite_twice(width, width * height, &encoded);
-            let mut remaining = frames.iter();
-            for shown in &displayed[..encoded.len()] {
-                assert!(
-                    remaining.any(|frame| frame == shown),
-                    "out of order or unknown frame"
-                );
-            }
-            assert_eq!(displayed[encoded.len() - 1], frames[frames.len() - 1]);
-            assert_eq!(
-                displayed[encoded.len()],
-                displayed[0],
-                "loop restarts on the first frame"
-            );
-        }
-    }
-}
-
-#[test]
 fn crops_without_a_clear_index_when_every_index_is_a_color() {
     // Index 255 is an opaque color here, so it must be drawn rather than treated as clear.
     let frames = [
@@ -231,7 +171,7 @@ fn crops_without_a_clear_index_when_every_index_is_a_color() {
         vec![T, 2, 1, T],
         vec![T, 2, 1, 1],
     ];
-    let encoded = encode_with(2, &frames, false, MS);
+    let encoded = encode_with(2, &frames, false);
 
     assert_eq!(encoded.len(), 3);
     assert_eq!(encoded[0].buffer, frames[0]);

@@ -15,7 +15,7 @@ use std::time::Duration;
 
 use ::gif::DisposalMethod;
 
-use super::{gif_delay, GIF_DELAY_UNIT_MS, GIF_TRANSPARENT_INDEX, MIN_GIF_DELAY_UNITS};
+use super::{gif_delay, gif_units, GIF_TRANSPARENT_INDEX, MIN_GIF_DELAY_UNITS};
 
 /// Rectangle of a GIF frame within the logical screen, in pixels.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -117,10 +117,6 @@ impl FrameDelta {
                 pending.delay = merged;
                 return None;
             }
-            if self.written > 0 && self.would_be_too_short() && !self.clears_kept(&frame) {
-                // Replace the pending frame instead of writing it, keeping its time.
-                return self.replace_pending(frame, delay);
-            }
         } else if self.transparent && frame.contains(&GIF_TRANSPARENT_INDEX) {
             self.first_with_clear = Some(frame.clone());
         }
@@ -150,41 +146,6 @@ impl FrameDelta {
             dispose: DisposalMethod::Keep,
         });
         written
-    }
-
-    /// Whether the pending frame would end less than the minimum GIF delay after the last write.
-    fn would_be_too_short(&self) -> bool {
-        let Some(pending) = &self.pending else {
-            return false;
-        };
-        self.rounded_end(self.elapsed.saturating_add(pending.delay))
-            < self.written + MIN_GIF_DELAY_UNITS
-    }
-
-    /// Whether `frame` clears pixels that the canvas under the pending frame shows.
-    ///
-    /// The frame before the pending one was disposed for the pending frame, so these clears could
-    /// not be expressed if the pending frame were replaced.
-    fn clears_kept(&self, frame: &[u8]) -> bool {
-        self.transparent
-            && self.under.iter().zip(frame).any(|(&under, &next)| {
-                next == GIF_TRANSPARENT_INDEX && under != GIF_TRANSPARENT_INDEX
-            })
-    }
-
-    /// Draw `frame` in place of the pending frame, which is dropped but keeps its time.
-    fn replace_pending(&mut self, frame: Vec<u8>, delay: Duration) -> Option<DeltaFrame> {
-        let pending = self.pending.as_mut()?;
-        pending.delay = pending.delay.saturating_add(delay);
-        pending.rect = changed_bounds(self.width, &self.under, &frame, |under, next| under != next)
-            .unwrap_or(Rect {
-                left: 0,
-                top: 0,
-                width: 1,
-                height: 1,
-            });
-        self.canvas = frame;
-        None
     }
 
     /// Return the last frame, disposed so that looping back to the first frame shows it exactly.
@@ -226,22 +187,14 @@ impl FrameDelta {
     ///
     /// Truncating each hold separately loses up to 10 ms per frame, which shortened typing and
     /// other dense stretches by roughly a quarter. Rounding the running total keeps every frame
-    /// within 10 ms of its captured timestamp. Each frame keeps the 20 ms minimum; [`Self::push`]
-    /// merges frames that would be shorter, so only the last frame or a clearing one can stretch.
+    /// within 10 ms of its captured timestamp. Frames reach here at least 20 ms long, so only a
+    /// short last frame is stretched to the minimum.
     fn settle_delay(&mut self, delay: Duration) -> u16 {
         self.elapsed = self.elapsed.saturating_add(delay);
-        let end = self
-            .rounded_end(self.elapsed)
-            .max(self.written + MIN_GIF_DELAY_UNITS);
+        let end = gif_units(self.elapsed).max(self.written + MIN_GIF_DELAY_UNITS);
         let units = u16::try_from(end - self.written).unwrap_or(u16::MAX);
         self.written += u128::from(units);
         units
-    }
-
-    /// Round a cumulative time to the nearest GIF delay unit.
-    fn rounded_end(&self, elapsed: Duration) -> u128 {
-        let unit = GIF_DELAY_UNIT_MS * 1_000_000;
-        (elapsed.as_nanos() + unit / 2) / unit
     }
 
     /// Encode the pending frame from the canvas before and after it was drawn.
