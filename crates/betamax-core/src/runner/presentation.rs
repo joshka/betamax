@@ -110,8 +110,8 @@ impl Presentation {
         )?;
         self.margin_has_alpha = self.backdrop.has_alpha();
         let bounds = PixelRect {
-            x: self.style.effective_margin(),
-            y: self.style.effective_margin(),
+            x: self.style.effective_margin().left,
+            y: self.style.effective_margin().top,
             width: self.terminal_canvas_width(),
             height: self.terminal_canvas_height() + self.style.window_bar_height(),
         };
@@ -139,7 +139,7 @@ impl Presentation {
             content,
             self.style.border_radius,
             border_width,
-            self.style.effective_margin(),
+            self.style.effective_margin().min_side(),
         )?;
         self.style
             .prepare_backdrop(&mut self.backdrop, outline.rect);
@@ -190,11 +190,18 @@ impl Presentation {
         let gap = PRESENTATION_ROW_PLATE_GAP.min(shell.y);
         let top_y = self
             .height
-            .saturating_sub(self.style.effective_margin())
+            .saturating_sub(self.style.effective_margin().bottom)
             .saturating_sub(row_height)
             .max(shell.y.saturating_add(shell.height))
             .saturating_add(gap);
-        let bottom_y = self.height.saturating_sub(shell.y);
+        // Leave the same gap below the plate as the outline leaves inside the bottom margin.
+        let outline_growth = self.style.effective_margin().top.saturating_sub(shell.y);
+        let bottom_y = self.height.saturating_sub(
+            self.style
+                .effective_margin()
+                .bottom
+                .saturating_sub(outline_growth),
+        );
         let rect = PixelRect {
             x: shell.x,
             y: top_y,
@@ -240,13 +247,13 @@ impl Presentation {
 
     pub(super) fn terminal_canvas_width(&self) -> u32 {
         self.width
-            .saturating_sub(self.style.effective_margin().saturating_mul(2))
+            .saturating_sub(self.style.effective_margin().horizontal())
     }
 
     /// Height of the terminal canvas before margin and window-bar decoration.
     pub(super) fn terminal_canvas_height(&self) -> u32 {
         self.height
-            .saturating_sub(self.style.effective_margin().saturating_mul(2))
+            .saturating_sub(self.style.effective_margin().vertical())
             .saturating_sub(self.style.window_bar_height())
             .saturating_sub(self.presentation_overlay_height())
     }
@@ -255,7 +262,7 @@ impl Presentation {
     ///
     /// This inverts [`Self::terminal_canvas_width`] for `Set Columns`.
     pub(super) fn frame_width_for_canvas(&self, canvas_width: u32) -> u32 {
-        canvas_width.saturating_add(self.style.effective_margin().saturating_mul(2))
+        canvas_width.saturating_add(self.style.effective_margin().horizontal())
     }
 
     /// Output height whose terminal canvas is exactly `canvas_height` pixels tall.
@@ -263,7 +270,7 @@ impl Presentation {
     /// This inverts [`Self::terminal_canvas_height`] for `Set Rows`.
     pub(super) fn frame_height_for_canvas(&self, canvas_height: u32) -> u32 {
         canvas_height
-            .saturating_add(self.style.effective_margin().saturating_mul(2))
+            .saturating_add(self.style.effective_margin().vertical())
             .saturating_add(self.style.window_bar_height())
             .saturating_add(self.presentation_overlay_height())
     }
@@ -286,12 +293,13 @@ impl Presentation {
 
     /// Left edge for presentation content, aligned with the terminal frame.
     fn presentation_overlay_left_x(&self) -> u32 {
-        self.style.effective_margin().min(self.width)
+        self.style.effective_margin().left.min(self.width)
     }
 
     /// Right edge for presentation content, aligned with the terminal frame.
     fn presentation_overlay_right_x(&self) -> u32 {
-        self.width.saturating_sub(self.style.effective_margin())
+        self.width
+            .saturating_sub(self.style.effective_margin().right)
     }
 
     /// Decorate a single raw terminal frame with caption text and keyboard labels.
@@ -365,7 +373,7 @@ impl Presentation {
         let margin = self.style.effective_margin();
         let bar_height = self.style.window_bar_height();
         let mut output = self.window_canvas.clone();
-        output.blit(frame, margin, margin + bar_height)?;
+        output.blit(frame, margin.left, margin.top + bar_height)?;
         self.style.draw(
             &mut output,
             &self.backdrop,
@@ -441,7 +449,7 @@ impl Presentation {
 
         let y = self
             .height
-            .saturating_sub(self.style.effective_margin())
+            .saturating_sub(self.style.effective_margin().bottom)
             .saturating_sub(height);
         let centered_text_y = y
             .saturating_add(height.saturating_sub(caption_height) / 2)
@@ -476,14 +484,15 @@ impl Presentation {
     /// Anchor for keyboard overlay chips in final output-frame coordinates.
     fn keyboard_overlay_anchor(&self) -> KeyboardOverlayAnchor {
         let margin = self.style.effective_margin();
-        let terminal_left_x = margin.min(self.width);
-        let terminal_right_x = self.width.saturating_sub(margin);
+        let terminal_left_x = margin.left.min(self.width);
+        let terminal_right_x = self.width.saturating_sub(margin.right);
         let terminal_top_y = margin
+            .top
             .saturating_add(self.style.window_bar_height())
             .min(self.height);
         let terminal_bottom_y = terminal_top_y
             .saturating_add(self.terminal_canvas_height())
-            .min(self.height.saturating_sub(margin));
+            .min(self.height.saturating_sub(margin.bottom));
 
         match self.keyboard_overlay.location {
             KeyboardOverlayLocation::CaptionRow => KeyboardOverlayAnchor {
@@ -492,12 +501,12 @@ impl Presentation {
                 left_x: self.presentation_overlay_left_x(),
                 top_y: self
                     .height
-                    .saturating_sub(margin)
+                    .saturating_sub(margin.bottom)
                     .saturating_sub(self.presentation_overlay_height().min(self.height)),
                 right_x: self
                     .presentation_overlay_right_x()
                     .saturating_sub(self.presentation_overlay_inset_x()),
-                bottom_y: self.height.saturating_sub(margin),
+                bottom_y: self.height.saturating_sub(margin.bottom),
                 inset_x: 0,
                 inset_y: 0,
             },
@@ -559,7 +568,7 @@ impl Presentation {
     /// column 0, keeping at least half the caption font size so text never touches the image edge.
     fn presentation_overlay_inset_x(&self) -> u32 {
         let optical_inset = self.style.border_radius / 2;
-        if self.style.effective_margin() > 0 {
+        if self.style.effective_margin().any() {
             return optical_inset;
         }
         let min_inset =

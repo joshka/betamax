@@ -2,6 +2,7 @@
 
 use super::border::Border;
 use super::canvas::{rgb, Canvas, PixelRect};
+use super::insets::Insets;
 use super::margin::parse_hex_color;
 use super::shadow::Shadow;
 use super::window_shape::WindowOutline;
@@ -32,8 +33,8 @@ const WINDOW_TITLE_BUTTON_GAP_RADII: u32 = 2;
 /// raw terminal capture, so screenshots, GIFs, videos, and PNG sequences share the same chrome.
 #[derive(Debug, Clone, PartialEq)]
 pub(super) struct WindowStyle {
-    /// Outer margin around the captured terminal, in pixels.
-    pub(super) margin: u32,
+    /// Outer margin around the captured terminal, in pixels per side.
+    pub(super) margin: Insets,
     /// Explicit solid color or linear gradient. `None` follows the final selected theme.
     pub(super) margin_fill: Option<String>,
     /// Window button mode. Empty disables the bar; non-empty draws traffic-light buttons.
@@ -62,7 +63,7 @@ impl WindowStyle {
     pub(super) fn new(theme: &TerminalTheme) -> Self {
         let background = theme.background_hex();
         Self {
-            margin: 0,
+            margin: Insets::default(),
             margin_fill: None,
             window_bar: String::new(),
             window_bar_size: DEFAULT_WINDOW_BAR_SIZE,
@@ -81,9 +82,9 @@ impl WindowStyle {
     }
 
     /// VHS only applies margin when a margin fill is configured.
-    pub(super) fn effective_margin(&self) -> u32 {
+    pub(super) fn effective_margin(&self) -> Insets {
         if self.margin_fill.as_deref() == Some("") {
-            0
+            Insets::default()
         } else {
             self.margin
         }
@@ -113,6 +114,7 @@ impl WindowStyle {
         let radius = (bar_height / WINDOW_BUTTON_RADIUS_DIVISOR).max(MIN_WINDOW_BUTTON_RADIUS);
         let height = height.min(
             margin
+                .top
                 .saturating_add(bar_height)
                 .saturating_add(radius)
                 .saturating_add(1),
@@ -120,9 +122,9 @@ impl WindowStyle {
         let mut overlay = Canvas::transparent(width, height)?;
         let color = self.bar_color(fallback);
         overlay.fill_rect(
-            margin,
-            margin,
-            width.saturating_sub(margin.saturating_mul(2)),
+            margin.left,
+            margin.top,
+            width.saturating_sub(margin.horizontal()),
             bar_height,
             color,
         );
@@ -148,7 +150,7 @@ impl WindowStyle {
             output.composite_overlay(bar_overlay);
             let buttons = WindowButtons::new(
                 output.width,
-                self.effective_margin() + bar_height / 2,
+                self.effective_margin(),
                 bar_height,
                 &self.window_bar,
             );
@@ -183,17 +185,17 @@ impl WindowStyle {
         let bounds = buttons.horizontal_bounds();
         let occupied_width = if self.window_bar.ends_with("Right") {
             output_width
-                .saturating_sub(margin)
+                .saturating_sub(margin.right)
                 .saturating_sub(bounds.start)
         } else {
-            bounds.end.saturating_sub(margin)
+            bounds.end.saturating_sub(margin.left)
         };
         let inset = occupied_width.saturating_add(buttons.radius * WINDOW_TITLE_BUTTON_GAP_RADII);
         PixelRect {
-            x: margin + inset,
-            y: margin,
+            x: margin.left + inset,
+            y: margin.top,
             width: output_width
-                .saturating_sub(margin.saturating_mul(2))
+                .saturating_sub(margin.horizontal())
                 .saturating_sub(inset.saturating_mul(2)),
             height: self.window_bar_height(),
         }
@@ -205,8 +207,13 @@ impl WindowStyle {
     /// place the buttons on the right; all other values place them on the left.
     fn draw_window_buttons(&self, output: &mut Canvas) -> Result<()> {
         let bar_height = self.window_bar_height();
-        let cy = self.effective_margin() + bar_height / 2;
-        let buttons = WindowButtons::new(output.width, cy, bar_height, &self.window_bar);
+        let buttons = WindowButtons::new(
+            output.width,
+            self.effective_margin(),
+            bar_height,
+            &self.window_bar,
+        );
+        let cy = buttons.cy;
         let colors = [
             rgb(0xff, 0x5f, 0x57),
             rgb(0xff, 0xbd, 0x2e),
@@ -227,21 +234,25 @@ impl WindowStyle {
 /// Horizontal button geometry shared by drawing and title clearance.
 struct WindowButtons {
     first_x: u32,
+    cy: u32,
     step: u32,
     radius: u32,
 }
 
 impl WindowButtons {
-    fn new(output_width: u32, edge_center: u32, bar_height: u32, mode: &str) -> Self {
+    fn new(output_width: u32, margin: Insets, bar_height: u32, mode: &str) -> Self {
         let radius = (bar_height / WINDOW_BUTTON_RADIUS_DIVISOR).max(MIN_WINDOW_BUTTON_RADIUS);
         let step = radius * WINDOW_BUTTON_GAP_RADIUS_MULTIPLIER;
+        // Buttons sit half a bar height in from the window's corner on both axes.
+        let edge_offset = bar_height / 2;
         let first_x = if mode.ends_with("Right") {
-            output_width.saturating_sub(edge_center + step * 2)
+            output_width.saturating_sub(margin.right + edge_offset + step * 2)
         } else {
-            edge_center
+            margin.left + edge_offset
         };
         Self {
             first_x,
+            cy: margin.top + edge_offset,
             step,
             radius,
         }
@@ -443,7 +454,7 @@ mod tests {
                     fill,
                 )
                 .unwrap();
-                let margin = settings.presentation.style.effective_margin();
+                let margin = settings.presentation.style.effective_margin().top;
                 let height = settings.presentation.style.window_bar_height();
                 legacy.blit(&raw, margin, margin + height).unwrap();
                 if height > 0 {
@@ -507,7 +518,7 @@ mod tests {
 
         let settings = Settings::from_tape(&tape).unwrap();
 
-        assert_eq!(settings.presentation.style.margin, 12);
+        assert_eq!(settings.presentation.style.margin, Insets::uniform(12));
         assert_eq!(
             settings.presentation.style.margin_fill.as_deref(),
             Some("#674EFF")

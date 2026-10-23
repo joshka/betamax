@@ -35,14 +35,14 @@ fn explicit_values_override_presets_in_either_order_and_last_value_wins() {
     ] {
         let settings = settings(source);
         let style = &settings.presentation.style;
-        assert_eq!(style.margin, 44);
+        assert_eq!(style.margin, Insets::uniform(44));
         assert_eq!(settings.presentation.text.padding, 0);
         assert!(!style.shadow.enabled);
         assert!(style.window_bar.is_empty());
         assert_eq!(style.border.width, 0);
     }
     let repeated = settings("Set Margin 44\nSet Preset Bare\nSet Margin 12\nSet Preset Framed");
-    assert_eq!(repeated.presentation.style.margin, 12);
+    assert_eq!(repeated.presentation.style.margin, Insets::uniform(12));
 }
 
 #[test]
@@ -53,11 +53,11 @@ fn presets_have_distinct_geometry_and_versioned_default_restores_old_defaults() 
             bare.presentation.style.margin,
             bare.presentation.text.padding
         ),
-        (0, 0)
+        (Insets::default(), 0)
     );
     assert_eq!((bare.columns, bare.rows), (92, 32));
     let inset = settings("Set Preset Inset");
-    assert_eq!(inset.presentation.style.margin, 16);
+    assert_eq!(inset.presentation.style.margin, Insets::uniform(16));
     assert!(inset.presentation.style.window_bar.is_empty());
     assert!(!inset.presentation.style.shadow.enabled);
     let legacy = settings("Set Preset Default-0.1");
@@ -113,7 +113,7 @@ fn tiny_framed_dimensions_fail_before_capture_instead_of_panicking() {
 #[test]
 fn last_default_preset_restores_the_default_baseline_without_erasing_overrides() {
     let selected = settings("Set Preset Bare\nSet Margin 44\nSet Preset Default");
-    assert_eq!(selected.presentation.style.margin, 44);
+    assert_eq!(selected.presentation.style.margin, Insets::uniform(44));
     assert_eq!(selected.presentation.style.window_bar, "Colorful");
     assert!(selected.presentation.style.shadow.enabled);
 }

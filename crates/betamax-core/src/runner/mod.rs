@@ -47,6 +47,7 @@ mod canvas;
 mod caption;
 mod capture;
 mod failure;
+mod insets;
 mod keyboard_overlay;
 mod margin;
 mod oklch;

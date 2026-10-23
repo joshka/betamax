@@ -11,6 +11,7 @@ use std::time::Duration;
 use miette::miette;
 use regex::Regex;
 
+use super::insets::Insets;
 use super::keyboard_overlay::{parse_keyboard_overlay_location, parse_keyboard_overlay_mode};
 use super::presentation::Presentation;
 use super::preset::Preset;
@@ -268,7 +269,12 @@ impl Settings {
             ("LoopOffset", Value::Duration(duration)) => {
                 self.loop_offset = LoopOffset::Duration(*duration);
             }
-            ("Margin", Value::Number(margin)) => self.presentation.style.margin = *margin as u32,
+            ("Margin", Value::Number(margin)) => {
+                self.presentation.style.margin = Insets::uniform(*margin as u32);
+            }
+            ("Margin", Value::String(margin)) => {
+                self.presentation.style.margin = Insets::parse(margin)?;
+            }
             ("MarginFill", Value::String(margin_fill)) => {
                 self.presentation.style.margin_fill = Some(margin_fill.clone());
             }
@@ -550,7 +556,6 @@ fn setting_expected_type(key: &str) -> &'static str {
         | "Padding"
         | "Framerate"
         | "PlaybackSpeed"
-        | "Margin"
         | "WindowBarSize"
         | "WindowBorder"
         | "WindowBorderOpacity"
@@ -563,6 +568,7 @@ fn setting_expected_type(key: &str) -> &'static str {
         "KeyboardOverlay" => "Off, Keys, Input, or All",
         "KeyboardOverlayLocation" => "CaptionRow, TopLeft, TopRight, BottomLeft, or BottomRight",
         "LoopOffset" => "percentage or duration",
+        "Margin" => "number or string of 1 to 4 pixel values",
         "WebpQuality" => "number from 0 to 100, or Lossless",
         "WaitTimeout" => "duration or number of seconds",
         _ => "known value",
@@ -621,7 +627,7 @@ mod tests {
         assert_eq!(settings.presentation.text.line_height, 1.0);
         assert_eq!(settings.presentation.text.padding, 60);
         assert_eq!(settings.presentation.theme.name, "Aardvark Blue");
-        assert_eq!(settings.presentation.style.margin, 0);
+        assert_eq!(settings.presentation.style.margin, Insets::uniform(0));
         assert_eq!(settings.presentation.style.margin_fill, None);
         assert_eq!(settings.presentation.style.window_bar, "");
         assert_eq!(settings.presentation.style.window_bar_size, 30);
@@ -767,6 +773,45 @@ Set Theme "Aardvark Blue""#,
         let width = 80 * cell_width + 2 * 10;
         assert_eq!(settings.presentation.width, width + width % 2);
         assert_eq!(settings.presentation.height, 720);
+    }
+
+    #[test]
+    fn columns_and_rows_add_each_margin_side_once() {
+        let uniform =
+            grid("Set Preset Bare\nSet MarginFill \"#000000\"\nSet Columns 80\nSet Rows 20");
+        let sides = grid(
+            "Set Preset Bare\nSet MarginFill \"#000000\"\nSet Margin \"10 20 30 40\"\nSet Columns 80\nSet Rows 20",
+        );
+
+        assert_eq!((sides.columns, sides.rows), (80, 20));
+        assert_eq!(
+            sides.presentation.width,
+            uniform.presentation.width + 20 + 40
+        );
+        assert_eq!(
+            sides.presentation.height,
+            uniform.presentation.height + 10 + 30
+        );
+    }
+
+    #[test]
+    fn margin_takes_a_number_or_css_shorthand() {
+        let number = grid("Set Margin 12");
+        let shorthand = grid("Set Margin \"20 30 40\"");
+
+        assert_eq!(number.presentation.style.margin, Insets::uniform(12));
+        assert_eq!(
+            shorthand.presentation.style.margin,
+            Insets {
+                top: 20,
+                right: 30,
+                bottom: 40,
+                left: 30
+            }
+        );
+        assert!(grid_error("Set Margin \"1 2 3 4 5\"")
+            .contains("Set Margin expects 1 to 4 space-separated pixel values"));
+        assert!(grid_error("Set Margin true").contains("Set Margin expects number or string"));
     }
 
     #[test]

@@ -2,6 +2,7 @@
 
 use miette::miette;
 
+use super::insets::Insets;
 use super::oklch::Oklch;
 use super::presentation::Presentation;
 use crate::ghostty::TerminalTheme;
@@ -65,7 +66,7 @@ impl Preset {
         if self == Self::Bare {
             return Ok(());
         }
-        presentation.style.margin = if self == Self::Framed { 32 } else { 16 };
+        presentation.style.margin = Insets::uniform(if self == Self::Framed { 32 } else { 16 });
         presentation.style.border_radius = 11;
         presentation.style.border.width = 1;
         if self == Self::Framed {

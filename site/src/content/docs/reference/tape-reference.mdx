@@ -95,7 +95,7 @@ Defaults below describe `Default`, which currently selects `Framed`. See [Preset
 | KeyboardOverlayLocation   | `CaptionRow`, `TopLeft`, `TopRight`, etc.              | `CaptionRow`     | Places keyboard overlay chips.              |
 | `WaitTimeout`             | duration or number                                     | `15s`            | Number values are seconds.                  |
 | `WaitPattern`             | regex string                                           | `>$`             | Used by `Wait` without explicit pattern.    |
-| `Margin`                  | number                                                 | `32`             | Outer decoration margin in pixels.          |
+| `Margin`                  | number, or string of 1–4 numbers                       | `32`             | Pixels; string sets sides as in CSS.        |
 | `MarginFill`              | string                                                 | theme gradient   | Color, gradient, image, or `transparent`.   |
 | `WindowBar`               | `Rings`, `RingsRight`, `Colorful`, or etc.             | `Colorful`       | Left dots; any non-empty value enables bar. |
 | `WindowBarSize`           | number                                                 | `30`             | Bar height in pixels when enabled.          |
@@ -286,6 +286,15 @@ Set MarginFill "linear(to: bottom-right, #232640, #0f101a)"
 Set MarginFill "linear(to: left, #232640, #0f101a)"
 Set MarginFill "linear(angle: 135deg, #232640, #0f101a)"
 Set MarginFill "linear(angle: 135deg, #4d5b9e 0%, #232640 42%, #0f101a 100%)"
+```
+
+`Margin` takes one number for every side, or a string in CSS shorthand order: one value sets all
+four sides, two set top/bottom then left/right, three set top, left/right, then bottom, and four set
+top, right, bottom, left. Values are whole pixels separated by spaces; anything else is an error.
+`Columns` and `Rows` add each side once, so the grid size is unchanged:
+
+```tape
+Set Margin "40 200 120 40"
 ```
 
 `linear(...)` takes an optional direction followed by at least two comma-separated color stops.
