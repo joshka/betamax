@@ -5,7 +5,7 @@ use ::image::Rgba;
 use super::*;
 use crate::runner::canvas::rgb;
 use crate::runner::settings::Settings;
-use crate::runner::{RunOptions, Runner};
+use crate::runner::Runner;
 use crate::tape::Tape;
 
 const RED: Rgba<u8> = Rgba([255, 0, 0, 255]);
@@ -217,7 +217,7 @@ fn translucent_images_reject_mp4_before_spawning_the_shell() {
         "Output target/betamax-image.mp4\nSet MarginFill \"{file}\"\nSleep 1ms"
     ))
     .unwrap();
-    let error = Runner::new(RunOptions::default())
+    let error = Runner::new()
         .with_tape_dir(dir)
         .run_artifacts(&tape)
         .unwrap_err()

@@ -1,6 +1,6 @@
 //! `Set Columns` and `Set Rows` give the shell exactly the requested terminal grid.
 
-use betamax_core::{RunOptions, Runner, Tape};
+use betamax_core::{Runner, Tape};
 use indoc::indoc;
 
 #[test]
@@ -19,10 +19,5 @@ fn shell_sees_requested_columns_and_rows() {
         AssertText "size:13x57"
         "#})
     .unwrap();
-    Runner::new(RunOptions {
-        quiet: true,
-        publish: false,
-    })
-    .run_artifacts(&tape)
-    .unwrap();
+    Runner::new().run_artifacts(&tape).unwrap();
 }

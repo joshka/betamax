@@ -1,16 +1,16 @@
 //! `betamax run` command.
 //!
 //! The CLI command is intentionally thin: it reads tape source, appends an optional CLI-provided
-//! output path, builds runner options, and delegates execution to the library API.
+//! output path, configures the runner, and delegates execution to the library API.
 
 use std::path::{Path, PathBuf};
 
 use betamax_core::media::{MediaProgress, MediaProgressKind, MediaProgressReporter};
-use betamax_core::runner::{RunOptions, Runner};
+use betamax_core::runner::Runner;
 use betamax_core::tape::Tape;
 use clap_stdin::FileOrStdin;
 use indicatif::{ProgressBar, ProgressStyle};
-use miette::{IntoDiagnostic, Result};
+use miette::{miette, IntoDiagnostic, Result};
 
 use super::warnings::print_tape_warning;
 
@@ -51,6 +51,12 @@ impl Run {
     /// Returns an error if the input cannot be read, the tape cannot be parsed, runner execution
     /// fails, or a requested output cannot be written.
     pub fn run(&self) -> Result<()> {
+        // `--publish` mirrors VHS's flag, but Betamax does not publish recordings.
+        if self.publish {
+            return Err(miette!(
+                "publish is not implemented in the Ghostty-first runner"
+            ));
+        }
         if !self.quiet {
             println!("{ANSI_BLUE}running {}{ANSI_RESET}", self.input.filename());
         }
@@ -68,11 +74,7 @@ impl Run {
             tape.add_output(output.clone());
         }
 
-        let options = RunOptions {
-            publish: self.publish,
-            quiet: self.quiet,
-        };
-        let mut runner = Runner::new(options);
+        let mut runner = Runner::new();
         if self.input.is_file() {
             let tape_dir = Path::new(self.input.filename())
                 .parent()
@@ -83,7 +85,9 @@ impl Run {
             runner = runner.with_failure_dir(failure_dir);
         }
         if !self.quiet {
-            runner = runner.with_media_progress(CliMediaProgress::default());
+            runner = runner
+                .with_progress()
+                .with_media_progress(CliMediaProgress::default());
         }
         runner.run(&tape)?;
         Ok(())

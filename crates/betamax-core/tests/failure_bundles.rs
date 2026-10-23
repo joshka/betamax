@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use betamax_core::{RunOptions, Runner, Tape};
+use betamax_core::{Runner, Tape};
 use serde_json::Value;
 
 /// Run `source` with bundles under a fresh directory; return the error and the one bundle.
@@ -15,13 +15,10 @@ fn fail(name: &str, source: &str) -> (String, PathBuf) {
     let root =
         Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("failure-bundles/{name}-{stamp}"));
     let tape = Tape::parse(source).unwrap();
-    let error = Runner::new(RunOptions {
-        quiet: true,
-        publish: false,
-    })
-    .with_failure_dir(&root)
-    .run_artifacts(&tape)
-    .unwrap_err();
+    let error = Runner::new()
+        .with_failure_dir(&root)
+        .run_artifacts(&tape)
+        .unwrap_err();
     let bundles: Vec<_> = std::fs::read_dir(&root)
         .unwrap()
         .map(|entry| entry.unwrap().path())

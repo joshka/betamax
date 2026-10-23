@@ -5,7 +5,7 @@ use std::io::{BufReader, Cursor};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use betamax_core::{RunOptions, Runner, Tape};
+use betamax_core::{Runner, Tape};
 use image::codecs::gif::GifDecoder;
 use image::AnimationDecoder;
 use image_webp::WebPDecoder;
@@ -148,10 +148,7 @@ Type "exit"
 Enter
 "#,
     );
-    let mut runner = Runner::new(RunOptions {
-        publish: false,
-        quiet: true,
-    });
+    let mut runner = Runner::new();
     runner.run(&Tape::parse(&tape).unwrap()).unwrap();
 }
 

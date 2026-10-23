@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use betamax_core::{RunOptions, Runner, Tape};
+use betamax_core::{Runner, Tape};
 
 fn run(commands: &str) -> betamax_core::Result<betamax_core::RunArtifacts> {
     let fixture =
@@ -24,11 +24,7 @@ fn run(commands: &str) -> betamax_core::Result<betamax_core::RunArtifacts> {
     "#,
         fixture.display()
     ))?;
-    Runner::new(RunOptions {
-        quiet: true,
-        publish: false,
-    })
-    .run_artifacts(&tape)
+    Runner::new().run_artifacts(&tape)
 }
 
 #[test]

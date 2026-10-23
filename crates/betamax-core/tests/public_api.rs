@@ -8,9 +8,7 @@ use betamax_core::ghostty::{
 };
 use betamax_core::media::{Frame, PixelFormat};
 use betamax_core::tape::{Command, Key, KeyCode, KeyModifiers, Value, WaitPattern, WaitTarget};
-use betamax_core::{
-    Error, FrameCapture, Result, RunArtifacts, RunOptions, Runner, Tape, TerminalSession,
-};
+use betamax_core::{Error, FrameCapture, Result, RunArtifacts, Runner, Tape, TerminalSession};
 
 #[test]
 fn public_api_types_are_send_where_expected() {
@@ -24,7 +22,6 @@ fn public_api_types_are_send_where_expected() {
     assert_send::<PixelFormat>();
     assert_send::<PixelSize>();
     assert_send::<RunArtifacts>();
-    assert_send::<RunOptions>();
     assert_send::<Runner>();
     assert_send::<StateCursor>();
     assert_send::<StateSpan>();
@@ -57,12 +54,7 @@ fn public_runner_returns_final_state_and_output_paths() {
     ))
     .unwrap();
 
-    let artifacts = Runner::new(RunOptions {
-        publish: false,
-        quiet: true,
-    })
-    .run_artifacts(&tape)
-    .unwrap();
+    let artifacts = Runner::new().run_artifacts(&tape).unwrap();
 
     let state = artifacts.final_state.expect("final state");
     assert!(state.viewport_text.contains("api ok"));
@@ -89,15 +81,9 @@ fn runner_accepts_custom_capture_backend() {
     ))
     .unwrap();
 
-    let artifacts = Runner::with_capture(
-        RunOptions {
-            publish: false,
-            quiet: true,
-        },
-        FakeCapture,
-    )
-    .run_artifacts(&tape)
-    .unwrap();
+    let artifacts = Runner::with_capture(FakeCapture)
+        .run_artifacts(&tape)
+        .unwrap();
 
     let state = artifacts.final_state.expect("final state");
     assert!(state.viewport_text.contains("fake capture ok"));
@@ -136,15 +122,9 @@ fn captions_affect_screenshots_not_state_json() {
     ))
     .unwrap();
 
-    let artifacts = Runner::with_capture(
-        RunOptions {
-            publish: false,
-            quiet: true,
-        },
-        FakeCapture,
-    )
-    .run_artifacts(&tape)
-    .unwrap();
+    let artifacts = Runner::with_capture(FakeCapture)
+        .run_artifacts(&tape)
+        .unwrap();
 
     let final_json = fs::read_to_string(&final_state).unwrap();
     let checkpoint_json = fs::read_to_string(&checkpoint_state).unwrap();
@@ -190,15 +170,9 @@ fn runner_writes_webp_animation_and_static_checkpoint() {
         screenshot.display()
     ))
     .unwrap();
-    let artifacts = Runner::with_capture(
-        RunOptions {
-            publish: false,
-            quiet: true,
-        },
-        FakeCapture,
-    )
-    .run_artifacts(&tape)
-    .unwrap();
+    let artifacts = Runner::with_capture(FakeCapture)
+        .run_artifacts(&tape)
+        .unwrap();
     assert_eq!(artifacts.output_paths, vec![output.clone()]);
     let decoder =
         image_webp::WebPDecoder::new(std::io::Cursor::new(fs::read(&output).unwrap())).unwrap();
@@ -293,14 +267,8 @@ fn custom_capture_backend_rejects_explicit_title_following() {
         output.display()
     ))
     .unwrap();
-    let error = Runner::with_capture(
-        RunOptions {
-            publish: false,
-            quiet: true,
-        },
-        FakeCapture,
-    )
-    .run_artifacts(&tape)
-    .unwrap_err();
+    let error = Runner::with_capture(FakeCapture)
+        .run_artifacts(&tape)
+        .unwrap_err();
     assert!(error.to_string().contains("does not support title events"));
 }

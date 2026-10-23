@@ -7,7 +7,7 @@ terminal frames, writes media outputs, and returns structured terminal state for
 tests.
 
 ```rust
-use betamax_core::{RunOptions, Runner, Tape};
+use betamax_core::{Runner, Tape};
 
 # fn main() -> betamax_core::Result<()> {
 let tape = Tape::parse(r#"
@@ -17,7 +17,7 @@ Type "printf 'hello\n'"
 Enter
 Wait+Screen "hello"
 "#)?;
-let artifacts = Runner::new(RunOptions::default()).run_artifacts(&tape)?;
+let artifacts = Runner::new().run_artifacts(&tape)?;
 assert!(artifacts.final_state.is_some());
 # Ok(())
 # }

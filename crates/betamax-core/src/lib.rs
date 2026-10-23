@@ -18,7 +18,7 @@
 //! including each command's behavior and each setting's default value.
 //!
 //! ```no_run
-//! use betamax_core::{RunOptions, Runner, Tape};
+//! use betamax_core::{Runner, Tape};
 //!
 //! # fn main() -> betamax_core::Result<()> {
 //! let tape = Tape::parse(
@@ -33,7 +33,7 @@
 //! Enter
 //! "#,
 //! )?;
-//! let artifacts = Runner::new(RunOptions::default()).run_artifacts(&tape)?;
+//! let artifacts = Runner::new().run_artifacts(&tape)?;
 //! assert!(artifacts.final_state.is_some());
 //! # Ok(())
 //! # }
@@ -76,6 +76,6 @@ mod wait;
 #[doc(inline)]
 pub use error::{Error, Result};
 #[doc(inline)]
-pub use runner::{FrameCapture, RunArtifacts, RunOptions, Runner, TerminalSession};
+pub use runner::{FrameCapture, RunArtifacts, Runner, TerminalSession};
 #[doc(inline)]
 pub use tape::Tape;

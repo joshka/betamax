@@ -4,7 +4,7 @@
 //! VHS writes for the tape header removed (Betamax skips them). The `Hide`/`Show` pairs keep every
 //! snapshot after the PTY has settled, so neither tool races shell output.
 
-use betamax_core::{RunOptions, Runner, Tape};
+use betamax_core::{Runner, Tape};
 use indoc::formatdoc;
 
 #[test]
@@ -41,12 +41,7 @@ fn text_output_matches_vhs_golden() {
     })
     .unwrap();
 
-    Runner::new(RunOptions {
-        quiet: true,
-        publish: false,
-    })
-    .run_artifacts(&tape)
-    .unwrap();
+    Runner::new().run_artifacts(&tape).unwrap();
 
     let actual = std::fs::read_to_string(&path).unwrap();
     std::fs::remove_file(&path).unwrap();

@@ -1,18 +1,15 @@
 //! `ScrollUp`/`ScrollDown` move the viewport, and keyboard input returns it to the bottom.
 
-use betamax_core::{RunOptions, Runner, Tape};
+use betamax_core::{Runner, Tape};
 use indoc::indoc;
 
 fn run(source: &str) -> betamax_core::ghostty::TerminalState {
     let tape = Tape::parse(source).unwrap();
-    Runner::new(RunOptions {
-        quiet: true,
-        publish: false,
-    })
-    .run_artifacts(&tape)
-    .unwrap()
-    .final_state
-    .unwrap()
+    Runner::new()
+        .run_artifacts(&tape)
+        .unwrap()
+        .final_state
+        .unwrap()
 }
 
 const SETUP: &str = indoc! {r#"

@@ -6,7 +6,7 @@ use betamax_core::ghostty::{
     CaptureRequest, GhosttyFrameCapture, PixelSize, TerminalGrid, TerminalTheme, TextSettings,
 };
 use betamax_core::tape::{KeyModifiers, MouseButton, MouseEvent, ScrollDirection};
-use betamax_core::{RunOptions, Runner, Tape, TerminalSession};
+use betamax_core::{Runner, Tape, TerminalSession};
 
 #[test]
 fn mouse_and_keys_reach_real_pty_with_cell_coordinates() {
@@ -142,14 +142,11 @@ fn run_fixture(name: &str, commands: &str) -> betamax_core::ghostty::TerminalSta
         root.display()
     ))
     .unwrap();
-    Runner::new(RunOptions {
-        quiet: true,
-        publish: false,
-    })
-    .run_artifacts(&tape)
-    .unwrap()
-    .final_state
-    .unwrap()
+    Runner::new()
+        .run_artifacts(&tape)
+        .unwrap()
+        .final_state
+        .unwrap()
 }
 
 #[test]
