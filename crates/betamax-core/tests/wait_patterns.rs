@@ -44,3 +44,25 @@ fn unquoted_wait_regex_keeps_spaces() {
         "#,
     );
 }
+
+#[test]
+fn quoted_key_name_is_waited_for() {
+    // A quoted key name once ended the wait's argument list and was pressed instead.
+    let tape = Tape::parse(
+        r#"
+        Set Shell "bash"
+        Set Width 800
+        Set Height 240
+        Set TypingSpeed 0ms
+        Set WaitTimeout 2s
+        Hide
+        Type "sleep 0.3; printf 'press %s or %s\n' En''ter q"
+        Enter
+        Wait+Screen "Enter"
+        Type "echo typed" "q"
+        AssertText "echo typed q"
+        "#,
+    )
+    .unwrap();
+    Runner::new().run_artifacts(&tape).unwrap();
+}

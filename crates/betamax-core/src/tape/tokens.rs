@@ -11,6 +11,7 @@
 //! backslashes does not close the literal.
 
 use std::fmt;
+use std::ops::Deref;
 
 /// A quote opened on a tape line was never closed.
 #[derive(Debug)]
@@ -22,9 +23,27 @@ impl fmt::Display for UnclosedQuote {
     }
 }
 
+/// One word of a tape line.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct Token {
+    /// The word after quotes and escapes are removed.
+    pub(super) text: String,
+    /// Whether the word used quotes or backslash escapes. Such a word is always text, never a
+    /// command, so `Wait+Screen "Enter"` waits for `Enter` instead of pressing it.
+    pub(super) quoted: bool,
+}
+
+impl Deref for Token {
+    type Target = str;
+
+    fn deref(&self) -> &str {
+        &self.text
+    }
+}
+
 /// Split one tape line into words.
-pub(super) fn split_line(line: &str) -> Result<Vec<String>, UnclosedQuote> {
-    let mut words = Vec::new();
+pub(super) fn split_line(line: &str) -> Result<Vec<Token>, UnclosedQuote> {
+    let mut tokens = Vec::new();
     // Raw spellings of the words so far; a quoted `"Wait"` is not a wait command.
     let mut raw_words = Vec::new();
     let mut rest = line;
@@ -33,21 +52,25 @@ pub(super) fn split_line(line: &str) -> Result<Vec<String>, UnclosedQuote> {
         if rest.is_empty() || rest.starts_with('#') {
             break;
         }
-        let len = match regex_literal_len(rest).filter(|_| expects_regex(&raw_words)) {
+        let (token, len) = match regex_literal_len(rest).filter(|_| expects_regex(&raw_words)) {
             Some(len) => {
-                words.push(rest[..len].to_string());
-                len
+                let token = Token {
+                    text: rest[..len].to_string(),
+                    quoted: false,
+                };
+                (token, len)
             }
             None => {
-                let (word, len) = shell_word(rest)?;
-                words.push(word);
-                len
+                let (text, len) = shell_word(rest)?;
+                let quoted = rest[..len].contains(['\'', '"', '\\']);
+                (Token { text, quoted }, len)
             }
         };
+        tokens.push(token);
         raw_words.push(&rest[..len]);
         rest = &rest[len..];
     }
-    Ok(words)
+    Ok(tokens)
 }
 
 fn is_separator(ch: char) -> bool {
@@ -164,7 +187,11 @@ mod tests {
     use super::*;
 
     fn split(line: &str) -> Vec<String> {
-        split_line(line).unwrap()
+        split_line(line)
+            .unwrap()
+            .into_iter()
+            .map(|token| token.text)
+            .collect()
     }
 
     #[test]
@@ -209,6 +236,16 @@ mod tests {
             ["Wait", "/usr/bin/", "Enter"]
         );
         assert_eq!(split("Wait /a b/c/"), ["Wait", "/a b/c/"]);
+    }
+
+    #[test]
+    fn marks_quoted_and_escaped_words() {
+        let quoted: Vec<_> = split_line(r#"Wait "Enter" 'q' \x En"ter" Enter Wait /a b/"#)
+            .unwrap()
+            .into_iter()
+            .map(|token| token.quoted)
+            .collect();
+        assert_eq!(quoted, [false, true, true, true, true, false, false, false]);
     }
 
     #[test]
