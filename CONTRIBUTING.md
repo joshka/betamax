@@ -131,26 +131,11 @@ Markdown is linted with `markdownlint-cli2` through `mise run lint-md`.
 Rust documentation should explain return values, edge cases, and decisions that the code does not
 make clear. Document private items when their names and implementation leave those questions open.
 
-## Examples and README assets
+## READMEs, examples, and media
 
-Checked-in tapes under `examples/` are small smoke tests and documentation examples. Render them
-locally with:
-
-```sh
-mise run render-examples
-```
-
-Rendered files are written under `examples/output` and copied to `target/betamax-examples`.
-Generated media is intentionally not tracked in source control.
-
-README GIFs are hosted as assets on the GitHub Release tag `readme-assets`. Maintainers can refresh
-them with:
-
-```sh
-mise run upload-readme-assets
-```
-
-That command requires the [GitHub CLI][github-cli] and permission to upload release assets.
+The GitHub README points readers to the right page, and the crates.io README shows what Betamax
+does. Detail belongs on the docs site. See [READMEs and media](docs/readmes-and-media.md) before
+editing either README, refreshing the hero recording, or uploading example media.
 
 ## Pull requests
 
@@ -173,7 +158,6 @@ User-visible changes should update [CHANGELOG.md](CHANGELOG.md). Keep entries sh
 behavior: new commands, changed defaults, supported output formats, public API changes, important
 bug fixes, and known limitations.
 
-[github-cli]: https://cli.github.com/
 [markdownlint-cli2]: https://github.com/DavidAnson/markdownlint-cli2
 [mise]: https://mise.jdx.dev/
 [nix]: https://nixos.org/

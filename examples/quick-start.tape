@@ -1,21 +1,13 @@
-# Render the quick-start demo and a still frame for theme/layout inspection.
+# Render the README hero recording and a still frame for theme and layout inspection.
 Output examples/output/quick-start.gif
 
 Require cargo
 Require cargo-binstall
 
-# Use the local Brownout Ghostty theme and a warm outer margin.
-# Preserve the curated website/README presentation on regeneration.
-Set Preset Default-0.1
+# The README hero: the homepage's quick-start flow in the current default look. Keep the commands
+# in step with site/quick-start.tape, which renders the frameless homepage version.
 Set Shell "bash"
 Set Theme "Betamax Brownout"
-Set Width 1032
-Set Height 886
-Set Margin 16
-Set MarginFill "#20140d"
-Set WindowBar Colorful
-Set WindowBarSize 34
-Set BorderRadius 8
 Set Framerate 12
 Set TypingSpeed 8ms
 Set CursorBlink false

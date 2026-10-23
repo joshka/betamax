@@ -218,6 +218,16 @@ Run source installs through `mise` so Cargo finds the Zig version pinned in
 mise run install-local
 ```
 
+## Docs site
+
+The [Starlight][starlight] docs site lives under `site/` and is published to
+<https://www.joshka.net/betamax/>. Run it locally with:
+
+```sh
+pnpm install
+mise run docs-site-dev
+```
+
 ## Installation modes
 
 Users can install Betamax with Homebrew from [joshka/homebrew-tap][homebrew-tap]:
@@ -353,15 +363,10 @@ sudo apt-get update
 sudo apt-get install ffmpeg
 ```
 
-## README assets
+## READMEs and media
 
-README GIFs are generated artifacts, not tracked files. They are hosted on the GitHub Release tag
-`readme-assets` and can be refreshed after rendering examples:
-
-```sh
-mise run render-examples
-mise run upload-readme-assets
-```
+See [READMEs and media](readmes-and-media.md) for what each README is for, crates.io rendering
+limits, refreshing the hero recording, and uploading example media.
 
 [astro]: https://astro.build/
 [binstall-support]: https://github.com/cargo-bins/cargo-binstall/blob/main/SUPPORT.md

@@ -1,90 +1,29 @@
 # Betamax
 
-Betamax records terminal sessions as GIFs, screenshots, videos, and JSON snapshots for tests.
-Write a [VHS](https://github.com/charmbracelet/vhs)-style tape file to run commands, type text,
-and wait for output.
+Record terminal demos and test terminal apps from a script. Betamax runs
+[VHS](https://github.com/charmbracelet/vhs)-style tape files and saves GIFs, PNGs, videos, and
+JSON snapshots of the screen.
 
-Betamax uses `libghostty-vt` to parse terminal output and renders frames in Rust with `cosmic-text`
-and `swash`. It does not need a browser or terminal server.
+![Installing Betamax, creating a tape, and rendering it, recorded with Betamax][hero-gif]
 
-## Install
+- **One binary, no browser.** Betamax drives a real PTY, parses output with Ghostty's terminal
+  engine (`libghostty-vt`), and writes GIF, WebP, and PNG itself. No Chromium, ttyd, or xterm.js,
+  and no `ffmpeg` unless you want MP4 or WebM.
+- **Correct terminal output.** Wide characters, emoji, truecolor, and kitty, sixel, and iTerm2
+  inline images.
+- **Tests, not just demos.** Wait for text on screen, then snapshot the viewport, scrollback, and
+  styles as JSON for CI.
+- **Previews on pull requests.** The [GitHub Action][github-action] renders your tapes in CI and
+  posts a gallery comment, so reviewers see the change running.
 
-Betamax currently supports macOS and Linux. Windows is not supported because the upstream
-`libghostty-vt-sys` native build does not support Windows.
+## How it works
 
-Install the CLI with Homebrew from [joshka/homebrew-tap][homebrew-tap]:
-
-```sh
-brew install joshka/tap/betamax
-```
-
-If Homebrew requires trusted taps, trust the formula first:
-
-```sh
-brew trust --formula joshka/tap/betamax
-```
-
-Or install from crates.io with cargo-binstall:
-
-```sh
-cargo binstall betamax
-```
-
-If [cargo-binstall][cargo-binstall] is not installed, install it first:
-
-```sh
-cargo install cargo-binstall
-```
-
-Source installs are mainly for maintainers. Betamax uses the safe `libghostty-vt` Rust wrapper; its
-`libghostty-vt-sys` dependency fetches a pinned Ghostty source commit and runs Zig 0.15.2 to build
-the native VT library. In a checkout, use [mise][mise] to get the pinned toolchain:
-
-```sh
-mise install
-mise run install-local
-```
-
-> [!NOTE]
-> Source builds require **Zig 0.15.2**. Upstream Ghostty supports Zig 0.16, but the published
-> `libghostty-vt-sys` dependency still pins older Ghostty source. Betamax is waiting for a
-> `libghostty-rs` release containing the update. Use the mise commands above to select the
-> supported toolchain.
-
-Other toolchain managers, including [Nix][nix], or [Zig][zig] 0.15.2 on `PATH` also work.
-
-See [build troubleshooting](https://www.joshka.net/betamax/reference/development/#build-troubleshooting)
-if Cargo finds the wrong Zig version.
-
-MP4 and WebM output require [ffmpeg][ffmpeg] on `PATH`; GIF, WebP, PNG, screenshots, and
-state JSON are written in process.
-
-```sh
-# macOS
-brew install ffmpeg
-
-# Debian/Ubuntu
-sudo apt-get update
-sudo apt-get install ffmpeg
-```
-
-## A tape
-
-Tape files describe the terminal session to run and the artifacts to write:
+A tape lists what to type and what to wait for. Betamax runs it in a real terminal and writes every
+`Output` when the tape ends:
 
 ```tape
-Output examples/output/basic.gif
-Output examples/output/basic.png
-Output examples/output/basic.state.json
-
-Set Shell "bash"
-Set Theme "Aardvark Blue"
-Set FontSize 28
-Set Width 924
-Set Height 534
-Set Margin 12
-Set WindowBar Colorful
-Set BorderRadius 8
+Output demo.gif
+Output demo.png
 
 Hide
 Type "cargo build --quiet"
@@ -92,148 +31,57 @@ Enter
 Wait
 Show
 
-Type "printf 'hello from betamax\n'"
+Type "my-app --demo"
 Enter
-Wait+Screen "hello from betamax"
-Screenshot examples/output/basic-checkpoint.png
-Hide
-Type "exit"
-Enter
+Wait+Screen "Ready"
+Screenshot ready.png
+State ready.json
 ```
 
-Run it with:
+- `Hide` and `Show` keep setup out of the recording.
+- `Wait` blocks until the prompt returns. `Wait+Screen` blocks until text appears on screen, and the
+  tape fails if it doesn't appear in time, so tapes don't depend on guessed sleeps.
+- `Screenshot` and `State` capture a checkpoint mid-run: a PNG for people, and JSON with the
+  viewport, scrollback, cursor, and styles for snapshot tests.
+
+`betamax new demo.tape` writes a starter tape with every command documented, and
+`betamax run demo.tape` renders it. Most VHS tapes run unchanged; see
+[Differences from VHS][vhs-differences].
+
+## Install
 
 ```sh
-betamax run demo.tape
+cargo binstall betamax
+# or
+brew install joshka/tap/betamax
 ```
 
-`Hide` and `Show` let setup and teardown happen without appearing in the final animation. Wait
-commands can block on time, a line, the whole screen, or a regular expression, so tapes can be
-stable even when terminal programs do real work.
+`cargo install betamax` also works, but it builds Ghostty's terminal library from source and needs
+Zig 0.15.2 (which [mise](https://mise.jdx.dev/) can install), so prefer the prebuilt binaries
+above. Betamax runs on macOS and Linux. See [Install][install] for details, including `ffmpeg` for
+video output.
 
-## What it can write
+## Learn more
 
-| Output               | Use case                                                   |
-| -------------------- | ---------------------------------------------------------- |
-| GIF                  | README demos, release notes, docs pages                    |
-| WebP                 | Lossless animations and checkpoint screenshots             |
-| PNG                  | Final-frame screenshots                                    |
-| Screenshot command   | Checkpoint screenshots from the middle of a run            |
-| MP4 and WebM         | Video assets encoded through `ffmpeg`                      |
-| Frame directory      | Individual rendered frames for debugging or custom tooling |
-| State JSON           | Viewport, scrollback, text, and style spans for tests      |
+- [Quick start][quick-start]: install, write a first tape, and render it
+- [Writing tapes][tape-files]: typing, keys, waits, themes, window styling, and captions
+- [Terminal testing][terminal-testing] and [State JSON][state-json]: assert on terminal output in CI
+- [GitHub Action][github-action]: render tapes on pull requests and post previews
+- [Tape reference][tape-reference]: every command and setting
+- [Examples][examples]: rendered tapes with their source
 
-## Examples
+To embed Betamax in Rust tests, use [`betamax-core`][betamax-core]. Source, issues, and discussions
+are on [GitHub][github].
 
-The repository includes tapes that exercise the core behavior:
-
-| Tape                                      | Demonstrates                                   |
-| ----------------------------------------- | ---------------------------------------------- |
-| `examples/quick-start.tape`               | installing, help, `new`, and nested `run`      |
-| `examples/basic.tape`                     | typing, wait, theme, window bar, border radius |
-| `examples/hide-show.tape`                 | hidden setup and hidden trailing cleanup       |
-| `examples/waits.tape`                     | line, screen, regex, and default prompt waits  |
-| `examples/keys.tape`                      | key commands, repeats, editing, and interrupt  |
-| `examples/clipboard-env.tape`             | `Env`, `Copy`, and `Paste`                     |
-| `examples/outputs.tape`                   | GIF, PNG, JSON, screenshot, state, frame dir   |
-| `examples/scrollback.tape`                | scrollback-inclusive state JSON                |
-| `examples/text-styles.tape`               | ANSI styles, truecolor, and styled state spans |
-| `examples/layout.tape`                    | padding, margin, fill, window bar, radius      |
-| `examples/rows-columns.tape`              | terminal size in cells with `Columns`/`Rows`   |
-| `examples/presentation-overlays.tape`     | captions plus keyboard overlay layout          |
-| `examples/themes.tape`                    | copied Ghostty themes and palette mapping      |
-| `examples/webp.tape`                      | Lossless WebP animation and screenshots        |
-| `examples/video.tape`                     | GIF, MP4, and WebM from one capture            |
-
-### Quick start
-
-![Quick start Betamax GIF][quick-start-gif]
-
-### Basic
-
-![Basic Betamax GIF][basic-gif]
-
-### Hide and show
-
-![Hide and Show Betamax GIF][hide-show-gif]
-
-### Themes
-
-![Ghostty theme Betamax GIF][themes-gif]
-
-## Themes and styling
-
-Betamax ships copied Ghostty themes and can also read user Ghostty theme directories. List theme
-names with:
-
-```sh
-betamax themes
-betamax themes --json
-```
-
-Tapes can control width, height, font size, padding, margin, border radius, window bar style, fill
-color, typing speed, playback speed, and prompt text. The defaults are chosen to feel close to VHS:
-a readable terminal size, a visible frame, and a simple `>` prompt unless a tape asks for a real
-shell prompt.
-
-Captions and keyboard overlay chips are presentation-only annotations for visual outputs.
-`KeyboardOverlayLocation CaptionRow` reserves a bottom presentation row before deriving the terminal
-grid so labels do not cover terminal content. Corner locations such as `BottomRight` draw the chips
-inside the terminal canvas with a small inset from the terminal edge. Caption glyphs are clipped to
-their reserved width as a final guard for font fallback and unusually wide characters.
-
-## Terminal testing
-
-Use a tape to run an interactive program, wait for expected text, and capture screenshots or
-state JSON at checkpoints. Compare the JSON with snapshot-testing tools such as `insta`.
-
-State JSON includes:
-
-- viewport text
-- scrollback text
-- a compact style table
-- styled text spans that avoid cell-by-cell verbosity
-
-## Differences from VHS
-
-Betamax differs from VHS in these areas:
-
-| Area              | Betamax status                                       |
-| ----------------- | ---------------------------------------------------- |
-| Architecture      | PTY plus `libghostty-vt`, no browser/server/xterm.js |
-| GIF/WebP/PNG      | In process                                           |
-| MP4/WebM          | Supported through `ffmpeg`                           |
-| Themes            | Copied Ghostty themes plus inline JSON themes        |
-| Window styling    | Rust composition                                     |
-| Testing snapshots | JSON state with viewport, scrollback, and styles     |
-| `Source`          | Parsed but intentionally not executed                |
-| `record`/`serve`  | Intentionally not implemented                        |
-| `publish`         | Intentionally not implemented                        |
-
-See [Differences from VHS][vhs-differences] for the full comparison.
-
-## Documentation
-
-- [Documentation Site][docs-site]
-- [Tape reference][tape-reference]
-- [Terminal testing][terminal-testing]
-- [State JSON][state-json]
-- [Differences from VHS][vhs-differences]
-- [Repository README][repo-readme]
-
-[basic-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/basic.gif
-[cargo-binstall]: https://github.com/cargo-bins/cargo-binstall
-[docs-site]: https://www.joshka.net/betamax/
-[ffmpeg]: https://ffmpeg.org/
-[hide-show-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/hide-show.gif
-[homebrew-tap]: https://github.com/joshka/homebrew-tap
-[mise]: https://mise.jdx.dev/
-[nix]: https://nixos.org/
-[quick-start-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/quick-start.gif
-[repo-readme]: https://github.com/joshka/betamax
+[betamax-core]: https://crates.io/crates/betamax-core
+[examples]: https://www.joshka.net/betamax/examples/
+[github]: https://github.com/joshka/betamax
+[github-action]: https://www.joshka.net/betamax/testing/github-action/
+[hero-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/quick-start.gif
+[install]: https://www.joshka.net/betamax/quick-start/#install
+[quick-start]: https://www.joshka.net/betamax/quick-start/
 [state-json]: https://www.joshka.net/betamax/testing/state-json/
+[tape-files]: https://www.joshka.net/betamax/authoring/tape-files/
 [tape-reference]: https://www.joshka.net/betamax/reference/tape-reference/
 [terminal-testing]: https://www.joshka.net/betamax/testing/terminal-testing/
-[themes-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/themes.gif
 [vhs-differences]: https://www.joshka.net/betamax/reference/vhs-differences/
-[zig]: https://ziglang.org/

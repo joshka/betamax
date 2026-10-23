@@ -1,7 +1,7 @@
 # Tape reference
 
 This reference lists supported tape commands, settings, and defaults. Start with the
-[README examples](../README.md#tape-example) to write your first tape. The
+[Quick start](https://www.joshka.net/betamax/quick-start/) to write your first tape. The
 [feature field guide](feature-gallery.md) shows rendered examples and test coverage.
 
 ## Outputs

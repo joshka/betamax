@@ -542,6 +542,42 @@ Supported named keys are `Escape`, `Backspace`, `Delete`, `Insert`, `Down`, `Ent
 `Tab`, `Left`, `Right`, `Up`, `PageUp`, `PageDown`, `Home`, `End`, and `F1` through `F25`.
 Single-character key tokens are accepted for modified combinations such as `Ctrl+C`.
 
+### Mouse commands
+
+Mouse coordinates are zero-based terminal cells: column `0`, row `0` is the top-left cell.
+They exclude font padding, margins, window bars, and captions. The pointer starts at `(0, 0)`.
+
+```tape
+MouseMove 42 8
+MouseDown Left
+MouseMove 46 8
+MouseUp Left
+Shift+MouseScroll Down 3
+```
+
+`MouseMove <column> <row>` moves the pointer; moving with a held button produces a drag.
+`MouseDown <button>` and `MouseUp <button>` accept `Left`, `Middle`, or `Right`.
+`MouseScroll <direction> <count>` sends a positive number of wheel ticks at the pointer, with
+`Up`, `Down`, `Left`, or `Right` describing wheel direction. These commands accept `Ctrl+`,
+`Alt+`, and `Shift+` prefixes in any order. Modifiers apply to that action only.
+
+The application controls mouse reporting. Betamax uses Ghostty's encoder to respect disabled,
+press/release, button-motion, and all-motion reporting and the negotiated X10, UTF-8, SGR, urxvt,
+or SGR-pixel format. Legacy protocols can suppress coordinates they cannot represent. SGR-pixel
+reports use the center of the requested cell with the current cell metrics. Wheel commands emit
+press reports without changing held-button state. Multiple held buttons are supported; motion
+reports the most recently pressed button still held.
+
+Out-of-bounds coordinates, pressing an already-held button, and releasing a button that is not held
+fail the tape. With reporting disabled, input produces no PTY bytes while pointer/button state
+still updates. Betamax does not emulate a terminal window's local selection; use `ScrollUp` and
+`ScrollDown` to move the viewport through scrollback.
+
+Use an output wait after each action to synchronize with application redraw. Mouse commands do not
+accept `@duration`; use `Sleep` separately for recording pacing. Mouse input requires a terminal
+backend even when the tape requests no media. Custom `TerminalSession` implementations can opt in
+by implementing `mouse_input`; its default reports unsupported input when a mouse command runs.
+
 ### `ScrollUp[@duration] [count]` and `ScrollDown[@duration] [count]`
 
 Move the terminal viewport through scrollback, one row at a time, without sending input to the
@@ -561,6 +597,32 @@ state JSON all read the rows currently shown.
 
 Use `MouseScroll` instead when the program should handle scrolling, such as a TUI with its own
 scroll region.
+
+### `Resize <columns> <rows>`
+
+Resize the live terminal grid and PTY in cells. Both dimensions must be integers in `1..=65535`.
+The child receives its normal resize notification; follow the command with an output wait to
+verify redraw rather than assuming a timing delay is sufficient.
+
+```tape
+Resize 50 16
+Wait+Screen@5s "narrow layout"
+State target/narrow.json
+```
+
+The media canvas, font metrics, decorations, and padding stay fixed for the entire tape. To size
+the recording in cells, use [`Set Columns` and `Set Rows`](#sizing-in-cells) instead. The live
+grid starts at the same top-left origin as the original grid. Shrinking leaves unused canvas space
+in the terminal background color; growing beyond the canvas clips the rendered grid. State JSON
+and subsequent mouse bounds use the live grid even for clipped cells. The pointer clamps to the
+last valid column and row after shrinking; held buttons remain held.
+
+The terminal backend updates before the PTY notification, so child redraw goes into the new grid.
+Either update failing aborts the tape; commands do not continue with inconsistent dimensions.
+Optional kernel pixel dimensions use grid size times cell metrics, or zero (unspecified) if they
+exceed the PTY's 16-bit pixel fields. The PTY control handle remains alive for the session and is
+released with its reader, writer, and child handles. A custom `TerminalSession` can implement
+`resize`; the default returns an unsupported-resize error when this command runs.
 
 ### `Sleep <duration>`
 

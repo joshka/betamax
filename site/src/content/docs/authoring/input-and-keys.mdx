@@ -1,6 +1,6 @@
 ---
 title: Input and keys
-description: Type printable text, press terminal control keys, and show input in review media.
+description: Type text, press keys, use the mouse, resize the terminal, and show input in review media.
 ---
 
 Betamax tapes drive a real PTY with printable text and terminal key sequences. Use `Type` for text
@@ -71,6 +71,28 @@ Wait
 
 After input that changes terminal state, use `Wait`, `Wait+Line`, or `Wait+Screen` to check the
 expected text before sending more input.
+
+## Mouse, scrolling, and resizing
+
+Tapes can click, drag, and scroll in programs that enable mouse reporting, using zero-based cell
+coordinates. `ScrollUp` and `ScrollDown` move the viewport through scrollback without sending
+input, and `Resize` changes the terminal grid mid-tape so you can test how a program redraws.
+
+```tape
+MouseMove 42 8
+MouseDown Left
+MouseMove 46 8
+MouseUp Left
+Wait+Screen "selected"
+
+Resize 50 16
+Wait+Screen@5s "narrow layout"
+```
+
+Follow each action with a wait so the program has redrawn before the next step. See
+[Mouse commands](../../reference/tape-reference/#mouse-commands),
+[`ScrollUp` and `ScrollDown`](../../reference/tape-reference/#scrollupduration-count-and-scrolldownduration-count),
+and [`Resize`](../../reference/tape-reference/#resize-columns-rows) for the details.
 
 ## On-screen keys
 

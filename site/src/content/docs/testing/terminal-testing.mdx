@@ -87,7 +87,7 @@ To check a snapshot from a Rust test:
 1. Assert targeted fields directly, or snapshot the whole file with `insta`.
 
 For tests that call Betamax directly from Rust, `betamax-core` exposes tape parsing, the runner,
-and terminal state types.
+and terminal state types. See the [`betamax-core` API docs](https://docs.rs/betamax-core).
 
 ## Choosing artifacts for tests
 
@@ -99,3 +99,6 @@ See [Examples](../../examples/) for `scrollback.tape`, `text-styles.tape`, and `
 which exercise the most useful testing paths.
 
 See a worked example of [developing a feature with Betamax](../visual-development/).
+
+To run tapes in CI and review the results on pull requests, use the
+[GitHub Action](../github-action/).
