@@ -414,7 +414,7 @@ fn parse_tokens(
             _ if name == "Wait" || name.starts_with("Wait+") => {
                 let target = parse_wait_target(line_number, name)?;
                 let pattern = match tokens.get(cursor) {
-                    Some(token) if !is_command_token(token) => {
+                    Some(token) if is_regex_pattern(token) || !is_command_token(token) => {
                         cursor += 1;
                         Some(parse_wait_pattern(line_number, token)?)
                     }
@@ -860,18 +860,23 @@ fn optional_count(token: Option<&String>) -> Result<Option<u16>> {
 }
 
 /// Parse a key command name such as `Enter`, `Ctrl+C`, or `Shift+Tab`.
+///
+/// The key comes last and every earlier `+`-separated part must be `Alt`, `Ctrl`, or `Shift`.
+/// Anything else, including a second key, rejects the whole token, so a stray argument such as
+/// `/hello+/` is not mistaken for the key `/`.
 fn parse_key(name: &str) -> Option<Key> {
+    let mut parts = name.rsplit('+');
+    let key = parse_key_code(parts.next()?)?;
     let mut modifiers = KeyModifiers::default();
-    let mut key = None;
-    for part in name.split('+') {
+    for part in parts {
         match part {
             "Alt" => modifiers.alt = true,
             "Ctrl" => modifiers.ctrl = true,
             "Shift" => modifiers.shift = true,
-            part => key = parse_key_code(part),
+            _ => return None,
         }
     }
-    key.map(|key| Key::Press { key, modifiers })
+    Some(Key::Press { key, modifiers })
 }
 
 /// Map a key name to the internal key code.
@@ -968,13 +973,20 @@ fn parse_wait_target(line_number: usize, name: &str) -> Result<WaitTarget> {
 /// Slash-delimited patterns are compiled immediately as regexes. Other tokens are plain substring
 /// matches, which keeps common prompt and output waits easy to write.
 fn parse_wait_pattern(line_number: usize, pattern: &str) -> Result<WaitPattern> {
-    if pattern.len() >= 2 && pattern.starts_with('/') && pattern.ends_with('/') {
+    if is_regex_pattern(pattern) {
         let pattern = pattern[1..pattern.len() - 1].to_string();
         Regex::new(&pattern)
             .map_err(|error| miette!("line {line_number}: invalid regex `{pattern}`: {error}"))?;
         return Ok(WaitPattern::Regex(pattern));
     }
     Ok(WaitPattern::Contains(pattern.to_string()))
+}
+
+/// Return whether a token is a slash-delimited regex such as `/v[0-9]+/`.
+///
+/// After `Wait`, such a token is always the pattern, never the next command.
+fn is_regex_pattern(token: &str) -> bool {
+    token.len() >= 2 && token.starts_with('/') && token.ends_with('/')
 }
 
 /// Warn about startup commands that follow runtime commands.
@@ -1259,6 +1271,89 @@ Wait+Screen ready WindowTitle final"#,
                     timeout: Some(Duration::from_secs(2)),
                 },
             ]
+        );
+    }
+
+    #[test]
+    fn keeps_slash_delimited_wait_arguments_as_regex_patterns() {
+        // `+` used to let these tokens parse as the key `/`, dropping the pattern.
+        let tape = Tape::parse(
+            r#"Wait+Line /hello+/ Wait+Screen "/v[0-9]+\.[0-9]+/" Wait /a+MouseMove/ Enter"#,
+        )
+        .unwrap();
+        let wait = |target, pattern: &str| Command::Wait {
+            target,
+            pattern: Some(WaitPattern::Regex(pattern.to_string())),
+            timeout: None,
+        };
+        assert_eq!(
+            tape.commands,
+            vec![
+                wait(WaitTarget::Line, "hello+"),
+                wait(WaitTarget::Screen, r"v[0-9]+\.[0-9]+"),
+                wait(WaitTarget::Line, "a+MouseMove"),
+                Command::Key {
+                    key: Key::Press {
+                        key: KeyCode::Enter,
+                        modifiers: KeyModifiers::default(),
+                    },
+                    delay: None,
+                    count: 1,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn parses_modifier_chords_with_the_key_last() {
+        let tape = Tape::parse("Ctrl+C Shift+Tab Ctrl+Alt+Shift+F5 Alt+/").unwrap();
+        let press = |key, ctrl, alt, shift| Command::Key {
+            key: Key::Press {
+                key,
+                modifiers: KeyModifiers { alt, ctrl, shift },
+            },
+            delay: None,
+            count: 1,
+        };
+        assert_eq!(
+            tape.commands,
+            vec![
+                press(KeyCode::Char('C'), true, false, false),
+                press(KeyCode::Tab, false, false, true),
+                press(KeyCode::Function(5), true, true, true),
+                press(KeyCode::Char('/'), false, true, false),
+            ]
+        );
+    }
+
+    #[test]
+    fn rejects_key_tokens_with_unknown_parts_or_several_keys() {
+        for name in [
+            "Ctrl+Foo+C",
+            "ctrl+c",
+            "A+B",
+            "C+Ctrl",
+            "Ctrl+Alt",
+            "Ctrl+",
+            "Ctrl++",
+        ] {
+            let error = Tape::parse(name).unwrap_err().to_string();
+            assert!(
+                error.contains(&format!("unsupported tape command `{name}`")),
+                "{name}: {error}"
+            );
+        }
+    }
+
+    #[test]
+    fn joins_type_strings_that_only_look_like_chords() {
+        let tape = Tape::parse(r#"Type "1" "+2" "a+b""#).unwrap();
+        assert_eq!(
+            tape.commands,
+            vec![Command::Type {
+                text: "1 +2 a+b".to_string(),
+                delay: None,
+            }]
         );
     }
 

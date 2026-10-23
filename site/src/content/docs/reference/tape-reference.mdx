@@ -572,8 +572,10 @@ F5
 Supported named keys are `Escape`, `Backspace`, `Delete`, `Insert`, `Down`, `Enter`, `Space`,
 `Tab`, `Left`, `Right`, `Up`, `PageUp`, `PageDown`, `Home`, `End`, and `F1` through `F25`.
 Single-character key tokens are accepted for modified combinations such as `Ctrl+C`. Supported
-modifiers are `Ctrl`, `Alt`, and `Shift`. Betamax routes key events through `libghostty-vt`'s key
-encoder, with fallbacks for common terminal control sequences.
+modifiers are `Ctrl`, `Alt`, and `Shift`, and they come before the key. A token with any other
+part, or with more than one key, is an unsupported command rather than a key press. Betamax
+routes key events through `libghostty-vt`'s key encoder, with fallbacks for common terminal control
+sequences.
 
 ### Mouse commands
 
@@ -676,7 +678,8 @@ any sleep that only exists to make a GIF, video, or review artifact readable.
 
 Pattern forms:
 
-- `/regex/`: regular expression, validated when the tape is parsed.
+- `/regex/`: regular expression, validated when the tape is parsed. A slash-delimited token after
+  a wait is always its pattern, quoted or not.
 - `text`: plain substring match.
 - omitted: use `Set WaitPattern`, which defaults to the VHS-style prompt regex `>$`.
 
