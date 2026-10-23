@@ -22,7 +22,7 @@ pub struct Run {
     /// File to read input from, or `-` for stdin
     input: FileOrStdin,
 
-    /// Publish the output
+    /// Not supported: Betamax does not upload recordings. Accepted for VHS compatibility
     #[arg(long, short)]
     publish: bool,
 
@@ -30,7 +30,7 @@ pub struct Run {
     #[arg(long, short, value_name = "FILE")]
     output: Option<PathBuf>,
 
-    /// Do not log messages. If publish flag is provided, it will log shareable URL
+    /// Do not print progress messages
     #[arg(long, short)]
     quiet: bool,
 
@@ -54,7 +54,7 @@ impl Run {
         // `--publish` mirrors VHS's flag, but Betamax does not publish recordings.
         if self.publish {
             return Err(miette!(
-                "publish is not implemented in the Ghostty-first runner"
+                "--publish is not supported: Betamax does not upload recordings to a sharing service"
             ));
         }
         if !self.quiet {
