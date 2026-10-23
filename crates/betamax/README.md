@@ -16,6 +16,11 @@ JSON snapshots of the screen.
 - **Previews on pull requests.** The [GitHub Action][github-action] renders your tapes in CI and
   posts a gallery comment, so reviewers see the change running.
 
+![btop, a full-screen system monitor, recorded with Betamax][btop-gif]
+
+[btop](https://github.com/aristocratos/btop) recorded with Betamax from
+[this tape][btop-tape].
+
 ## How it works
 
 A tape lists what to type and what to wait for. Betamax runs it in a real terminal and writes every
@@ -90,6 +95,8 @@ are on [GitHub][github].
 
 [basic-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/basic.gif
 [betamax-core]: https://crates.io/crates/betamax-core
+[btop-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/btop.gif
+[btop-tape]: https://github.com/joshka/betamax/blob/main/examples/btop.tape
 [examples]: https://www.joshka.net/betamax/examples/
 [github]: https://github.com/joshka/betamax
 [github-action]: https://www.joshka.net/betamax/testing/github-action/

@@ -11,6 +11,9 @@ checkout with:
 mise run render-examples
 ```
 
+Some examples drive other programs, such as `cargo-binstall` and `btop`. Their `Require` lines
+stop the render with the missing program's name; install it and rerun.
+
 Generated files are written under `examples/output` and copied to `target/betamax-examples` for
 local inspection. The previews on this page are hosted as GitHub Release assets; curated site
 previews may also live under `site/public/assets` with Git LFS. See
@@ -94,6 +97,7 @@ The `ratatui-diff-*` tapes drive an external viewer: set `BETAMAX_DIFF_VIEWER` t
 
 | Tape                                                          | Demonstrates                                   | Docs                                                         |
 | ------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------ |
+| [`btop.tape`][btop-src]                                       | a full-screen TUI with braille graphs          | [`Require`](../reference/tape-reference/#require-program)    |
 | [`ratatui-diff-ux.tape`][ratatui-diff-ux-src]                 | selecting and copying in a Ratatui diff viewer | [Visual development](../testing/visual-development/)         |
 | [`ratatui-diff-mouse.tape`][ratatui-diff-mouse-src]           | mouse selection in the diff viewer             | [Visual development](../testing/visual-development/)         |
 | [`ratatui-diff-multi-file.tape`][ratatui-diff-multi-file-src] | navigation, scrolling, and resize across files | [Visual development](../testing/visual-development/)         |
@@ -112,6 +116,15 @@ These previews come from the example tapes above.
 
 `quick-start.tape` shows the full first-run path: install check, help output, creating a starter
 tape, inspecting it, running it, and listing the generated GIF.
+
+### btop
+
+![btop recorded with Betamax](https://github.com/joshka/betamax/releases/download/readme-assets/btop.gif)
+
+`btop.tape` records [btop](https://github.com/aristocratos/btop), a full-screen system monitor that
+redraws constantly with truecolor gradients, braille graphs, and box drawing. It walks the process
+list, hides and restores the network box, and opens the main menu. The tape starts with
+`Require btop`, so it fails before recording when btop is not installed.
 
 ### Basic
 
@@ -177,6 +190,7 @@ Use `examples/waits.tape` when debugging timing. It shows the three wait targets
 `WaitPattern`, which is usually preferable to adding sleeps.
 
 [basic-src]: https://github.com/joshka/betamax/blob/main/examples/basic.tape
+[btop-src]: https://github.com/joshka/betamax/blob/main/examples/btop.tape
 [captions-src]: https://github.com/joshka/betamax/blob/main/examples/captions.tape
 [cell-graphics-src]: https://github.com/joshka/betamax/blob/main/examples/cell-graphics.tape
 [ci-interaction-src]: https://github.com/joshka/betamax/blob/main/examples/ci-interaction.tape
