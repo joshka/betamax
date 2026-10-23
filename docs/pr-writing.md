@@ -24,7 +24,7 @@ headings, bullet starts, and captions together: can a reviewer understand the ch
 
 Explain what a tape author or library caller supplies, what happens during execution, and what
 remains their responsibility. Include relevant custom-backend compatibility and failure behavior.
-Show the essential usage in the PR, then link the canonical [tape reference](tape-reference.md),
+Show the essential usage in the PR, then link the canonical [tape reference][tape-reference],
 [state contract](state-json.md), or Rustdoc for full rules. Links supplement the example.
 
 Distinguish Betamax behavior, consumer application behavior, fixture inputs, and test coverage.
@@ -59,3 +59,5 @@ notes once results are known. Rewriting a PR body does not rerun implementation 
 Do not hard-wrap GitHub paragraphs. Use structured API input or `gh --body-file` for multiline
 Markdown. Review once for context, skimming, and claim accuracy, then remove unnecessary detail.
 Brevity should reduce reader effort without removing evidence.
+
+[tape-reference]: https://www.joshka.net/betamax/reference/tape-reference/

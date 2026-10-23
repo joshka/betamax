@@ -5,7 +5,8 @@ description: Commands, settings, defaults, parsing rules, and execution behavior
 
 This is the canonical reference for Betamax tape files. Use it with
 [Tape files](../../authoring/tape-files/), [Outputs](../../authoring/outputs/), and
-[Examples](../../examples/) when authoring tapes.
+[Examples](../../examples/) when authoring tapes. The
+[Feature field guide](../../testing/feature-guide/) shows rendered examples of each feature.
 
 Betamax parses a tape before it starts a shell. Syntax errors, unknown commands, invalid regexes,
 unknown settings, type mismatches, unsupported output extensions, and startup-command ordering
@@ -44,19 +45,24 @@ has warnings.
 
 ## Outputs
 
-| Command                 | Behavior                                      | Notes                                       |
-| ----------------------- | --------------------------------------------- | ------------------------------------------- |
-| `Output <path>.gif`     | Write an animated GIF                         | Encoded in process                          |
-| `Output <path>.png`     | Write a final-frame PNG                       | Encoded in process                          |
-| `Output <path>.json`    | Write final terminal state                    | See [State JSON](../../testing/state-json/) |
-| `Output <path>.mp4`     | Write MP4 video                               | Requires [ffmpeg][video-encoding] on `PATH` |
-| `Output <path>.webm`    | Write WebM video                              | Requires [ffmpeg][video-encoding] on `PATH` |
-| `Output <dir>`          | Write numbered PNG frames into a directory    | Extensionless path only                     |
-| `Screenshot <path>.png` | Write a checkpoint screenshot at this command | Only `.png` is supported                    |
-| `State <path>.json`     | Write checkpoint terminal state               | Only `.json` is supported                   |
+| Command                  | Behavior                                      | Notes                                       |
+| ------------------------ | --------------------------------------------- | ------------------------------------------- |
+| `Output <path>.gif`      | Write an animated GIF                         | Encoded in process                          |
+| `Output <path>.webp`     | Write a lossless animated WebP                | Encoded in process                          |
+| `Output <path>.png`      | Write a final-frame PNG                       | Encoded in process                          |
+| `Output <path>.json`     | Write final terminal state                    | See [State JSON](../../testing/state-json/) |
+| `Output <path>.txt`      | Write VHS-compatible text snapshots           | Also `.ascii`; see [Text outputs]           |
+| `Output <path>.mp4`      | Write MP4 video                               | Requires [ffmpeg][video-encoding] on `PATH` |
+| `Output <path>.webm`     | Write WebM video                              | Requires [ffmpeg][video-encoding] on `PATH` |
+| `Output <dir>`           | Write numbered PNG frames into a directory    | Extensionless path only                     |
+| `Screenshot <path>.png`  | Write a checkpoint screenshot at this command | Encoded in process                          |
+| `Screenshot <path>.webp` | Write a lossless WebP checkpoint screenshot   | Encoded in process                          |
+| `State <path>.json`      | Write checkpoint terminal state               | Only `.json` is supported                   |
 
+Betamax reports a missing `ffmpeg` as a runtime error only when a video output is requested.
 Primary `Output` paths are grouped by output kind when written, not returned in source order.
 Checkpoint `Screenshot` and `State` commands are side effects at their position in the tape.
+`Caption <text>` renders presentation text onto visual outputs, but does not create files.
 
 ## Settings
 
@@ -146,10 +152,10 @@ like other settings, belong in the [header](#startup-commands-after-runtime-comm
 captured run prints the resolved
 grid and output size, for example `terminal 80x24 cells, output 1104x622 px`.
 
-`Set Columns` and `Set Rows` choose the starting grid and size the output around it. `Resize C R`
-changes the grid mid-tape and keeps the output size fixed: a smaller grid leaves empty canvas, and
-a larger one is clipped. Use `Set` to size the recording, and `Resize` to test how an application
-reacts when its terminal changes size.
+`Set Columns` and `Set Rows` choose the starting grid and size the output around it.
+[`Resize`](#resize-columns-rows) changes the grid mid-tape and keeps the output size fixed: a
+smaller grid leaves empty canvas, and a larger one is clipped. Use `Set` to size the recording,
+and `Resize` to test how an application reacts when its terminal changes size.
 
 `Set KeyboardOverlay Input` draws input labels on generated PNG, GIF, video,
 screenshot, and frame-sequence media. Labels appear when input is queued and linger briefly after
@@ -471,29 +477,51 @@ support the opt-in; an unsupported backend returns an error instead of silently 
 
 ### `Output <path>`
 
-Adds a primary output. Supported extensions are `.gif`, `.webp`, `.png`, `.json`, `.txt`, `.ascii`,
-`.mp4`, and `.webm`. An extensionless output path is treated as a directory for numbered PNG
-frames. Unsupported extensions fail before shell startup.
+Adds a primary output. The runner classifies it by extension after parsing and before starting the
+shell; unsupported extensions fail before shell startup.
 
-`.txt` and `.ascii` write VHS-compatible text snapshots. After each command that runs while the tape
-is shown, Betamax appends the visible screen (one line per row, trailing whitespace trimmed) and a
-line of 80 `─` characters. Styles and the cursor are dropped, wide characters appear once, and the
-alternate screen is written while it is active. `Hide` suppresses snapshots until `Show`, which adds
-one; `Set`, `Output`, and `Require` never add one. VHS golden files compare byte for byte, except
-that VHS also snapshots header commands and dumps the oldest scrollback rows once output scrolls.
+- `.gif`: animated GIF. After the first frame, each frame stores only the region that changed, and
+  unchanged frames extend the previous frame's hold.
+- `.webp`: lossless animated WebP with millisecond frame holds.
+- `.png`: final-frame PNG.
+- `.mp4` and `.webm`: video written through `ffmpeg`.
+- `.json`: final terminal-state JSON.
+- `.txt` or `.ascii`: VHS-compatible plain-text snapshots of the screen, one after each command
+  (see [Text outputs](#text-outputs)).
+- no extension: directory of numbered PNG frames.
+
+`Runner::run_artifacts` returns `Output` paths in deterministic output-kind order, not source order.
+Inline `Screenshot` and `State` commands are checkpoint outputs and are not in that list.
+
+#### Text outputs
+
+`Output demo.txt` and `Output demo.ascii` write the same format as VHS, so VHS golden files compare
+byte for byte. After each command that runs while the tape is shown, Betamax appends the visible
+screen: one line per terminal row, trailing whitespace trimmed, blank rows kept. A line of 80 `─`
+characters follows each snapshot. Styles and the cursor are dropped, wide characters appear once,
+and the alternate screen is written while an app has it active.
+
+`Hide` and the commands after it add nothing until `Show`, which adds a snapshot. `Set`, `Output`,
+and `Require` never add one. Two choices differ from VHS: VHS also writes a snapshot for each
+header command after `Output`, and once output scrolls it dumps the oldest scrollback rows instead
+of the screen. Betamax skips the header and always writes the visible screen. Each `Output` gets
+its own file, where VHS keeps only the last text output.
 
 ### `Require <program>`
 
 Fails early if a program is not present on `PATH`. This is useful for tapes that call optional
-tools such as `git`, `rg`, `cargo`, or `ffmpeg`. The check runs before output files are written,
-including for a `Require` placed after runtime commands, which also warns.
+tools such as `git`, `rg`, `cargo`, or `ffmpeg`. The check runs before any PTY or output side
+effects, including for a `Require` placed after runtime commands, which also warns. It looks for a
+file with that name in each `PATH` directory; executable-bit failures are left to the process that
+later runs the program.
 
 ### `Set <name> <value>`
 
-Applies one setting from the table above. Put `Set` commands before runtime commands because they
-affect shell startup, PTY size, capture timing, rendering, or output decoration. After runtime
-commands, `Set TypingSpeed` changes the delay for later `Type` commands, `Set Shell` still applies to
-the whole tape, and other settings are ignored with a warning. See
+Applies one setting from the [settings table](#settings). Unknown settings and type mismatches are
+errors. Put `Set` commands before runtime commands because they affect shell startup, PTY size,
+capture timing, rendering, or output decoration. After runtime commands, `Set TypingSpeed` changes
+the delay for later `Type` commands, `Set Shell` still applies to the whole tape, and other
+settings are ignored with a warning. See
 [Startup commands after runtime commands](#startup-commands-after-runtime-commands).
 
 The shell starts in the directory where `betamax` was run, not the tape file's directory.
@@ -511,21 +539,23 @@ See [Following app titles](#following-app-titles) for precedence and output timi
 
 Adds or overrides an environment variable for the spawned shell. Betamax applies its terminal
 defaults first, then tape `Env` values, so a tape can intentionally override variables such as
-`TERM`, `COLORTERM`, `NO_COLOR`, or application-specific flags. An `Env` after runtime commands
-still applies from shell start, with a warning.
+`TERM`, `COLORTERM`, `NO_COLOR`, prompt variables, or application-specific flags. Put `Env` in the
+header. The shell is spawned before runtime execution, so an `Env` after runtime commands still
+applies from shell start, with a warning.
 
 ### `Type[@duration] <text>`
 
 Types text into the PTY one Unicode scalar at a time. `Type@25ms "hello"` overrides the default
-typing speed for that command; otherwise the most recent `Set TypingSpeed` applies. Several strings
-are joined with one space, as in VHS: `Type "echo" "hi"` types `echo hi` and warns. Use `Type` for
-printable text and key commands for terminal control keys such as arrows, tab, delete, and
-interrupt.
+typing speed for that command; otherwise the most recent `Set TypingSpeed` applies. Betamax drains
+output and captures frames after each typed character, so text appears progressively. Several
+strings are joined with one space, as in VHS: `Type "echo" "hi"` types `echo hi` and warns. Use
+`Type` for printable text and key commands for terminal control keys such as arrows, tab, delete,
+and interrupt.
 
 ### Key commands
 
-Key commands send terminal key sequences to the PTY. They accept an optional `@duration` suffix and
-an optional repeat count:
+Key commands send terminal key sequences to the PTY. They accept an optional `@duration` suffix,
+which sleeps after each key press, and an optional repeat count after the key:
 
 ```tape
 Enter
@@ -540,7 +570,9 @@ F5
 
 Supported named keys are `Escape`, `Backspace`, `Delete`, `Insert`, `Down`, `Enter`, `Space`,
 `Tab`, `Left`, `Right`, `Up`, `PageUp`, `PageDown`, `Home`, `End`, and `F1` through `F25`.
-Single-character key tokens are accepted for modified combinations such as `Ctrl+C`.
+Single-character key tokens are accepted for modified combinations such as `Ctrl+C`. Supported
+modifiers are `Ctrl`, `Alt`, and `Shift`. Betamax routes key events through `libghostty-vt`'s key
+encoder, with fallbacks for common terminal control sequences.
 
 ### Mouse commands
 
@@ -627,8 +659,8 @@ released with its reader, writer, and child handles. A custom `TerminalSession` 
 ### `Sleep <duration>`
 
 Pauses tape execution while continuing to drain PTY output and capture frames. Durations accept
-compact forms such as `500ms`, `1s`, and `2m`, split forms such as `500 ms`, and bare numbers as
-seconds.
+compact forms such as `500ms`, `1s`, and `2m`, VHS-style split forms such as `500 ms` and `1 s`,
+and bare numbers such as `0.5` as seconds. Negative durations are errors.
 
 In tests, use sleeps only when there is no prompt, status line, or other text to wait for. In demos,
 add sleeps after waits to give viewers time to read the output.
@@ -636,13 +668,19 @@ add sleeps after waits to give viewers time to read the output.
 ### `Wait[@duration] [/regex/|text]`
 
 Waits for terminal text while continuing to drain output and capture frames. A bare `Wait` checks
-the current cursor line with `WaitPattern`, which defaults to the VHS-style prompt regex `>$`.
-`Wait@5s` overrides the timeout for that command.
+the current cursor line.
 
 Waits are assertions and synchronization points. Put `Wait`, `Wait+Line`, or `Wait+Screen` before
 any sleep that only exists to make a GIF, video, or review artifact readable.
 
-Use `/.../` for regex patterns and plain text for substring patterns.
+Pattern forms:
+
+- `/regex/`: regular expression, validated when the tape is parsed.
+- `text`: plain substring match.
+- omitted: use `Set WaitPattern`, which defaults to the VHS-style prompt regex `>$`.
+
+`Wait@5s` sets the timeout for that command; otherwise `Set WaitTimeout` applies, defaulting to
+`15s`. On timeout, the tape fails with the target and pattern in the error message.
 
 ### `Wait+Line[@duration] [/regex/|text]`
 
@@ -704,7 +742,8 @@ methods.
 
 Stops appending frames to animated outputs. The PTY still runs, terminal state still updates, waits
 still work, and checkpoint outputs still see the current terminal. Use this for compilation, setup,
-or teardown that should not appear in the final GIF/video.
+or teardown that should not appear in the final GIF/video. `Hide` controls recording visibility,
+not execution isolation: hidden commands can still affect final state.
 
 ### `Show`
 
@@ -753,8 +792,10 @@ margin and window bar size. Keyboard chips reserve caption space using their vis
 
 ### `Screenshot <path>.png`
 
-Writes an immediate PNG screenshot using the same theme and frame decoration as primary outputs.
-Only `.png` checkpoint screenshots are supported.
+Writes a static screenshot at that point in the tape, using the same theme and frame decoration as
+primary visual outputs. Accepts `.png` and `.webp`, in any case. WebP screenshots are lossless and
+preserve transparency. To write a static final WebP, put `Screenshot final.webp` at the end of the
+tape; `Output final.webp` always writes an animation.
 
 ### `State <path>.json`
 
@@ -764,9 +805,9 @@ cursor metadata, a default style, compact style deltas, and styled text spans. S
 
 ### `Copy <text>` and `Paste`
 
-`Copy` stores text in Betamax's tape-local clipboard. `Paste` writes that clipboard into the PTY.
-This does not touch the host operating system clipboard, which keeps tapes deterministic and safe
-for CI.
+`Copy` stores text in Betamax's tape-local clipboard. `Paste` writes that clipboard into the PTY;
+before any `Copy`, the clipboard is empty and `Paste` writes nothing. Neither touches the host
+operating system clipboard, which keeps tapes deterministic and safe for CI.
 
 ### `Source <path>.tape`
 
@@ -808,7 +849,10 @@ Betamax currently exposes these CLI commands:
 | `betamax themes --json`            | Print theme names as JSON                              |
 | `betamax themes --markdown`        | Print theme names as Markdown bullets                  |
 
-`publish`, `record`, and `serve` remain explicit not-implemented commands so users migrating from
-VHS get a clear error message.
+`betamax run --publish` is accepted so existing VHS scripts get a clear not-implemented error. See
+[Differences from VHS](../vhs-differences/#not-supported) for VHS commands Betamax omits. Theme
+lookup, aliases, and name matching are described in
+[Themes and layout](../../authoring/themes/#theme-lookup).
 
+[Text outputs]: #text-outputs
 [video-encoding]: ../../authoring/outputs/#video-encoding

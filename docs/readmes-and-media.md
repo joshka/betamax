@@ -24,7 +24,7 @@ and says that `cargo install` works but needs Zig 0.15.2. Everything else links 
 The feature bullets name what Betamax does that VHS does not. Leave out work that only matches VHS,
 such as GIF size; that belongs in [Differences from VHS](vhs-differences.md) if anywhere.
 
-When a feature changes, update its site page and the [Tape reference](tape-reference.md). The
+When a feature changes, update its site page and the [Tape reference][tape-reference]. The
 READMEs change only when the pitch, the install commands, or the site's structure change.
 
 ## crates.io rendering
@@ -91,3 +91,5 @@ mise run upload-readme-assets
 
 That command renders the examples first. It needs the [GitHub CLI](https://cli.github.com/) and
 permission to upload release assets.
+
+[tape-reference]: https://www.joshka.net/betamax/reference/tape-reference/

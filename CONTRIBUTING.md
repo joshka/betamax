@@ -105,9 +105,10 @@ cargo install cargo-deny cargo-outdated cargo-minimal-versions cargo-hack --lock
 
 ## Tape behavior
 
-Tape compatibility is documented in [docs/tape-reference.md](docs/tape-reference.md). When changing
-parser or runner behavior, update that reference next to the code change so users can answer these
-questions from one place:
+Tape compatibility is documented in the [tape reference][tape-reference], whose source is
+[`site/.../reference/tape-reference.mdx`][tape-reference-src]. When changing parser or runner
+behavior, update that page next to the code change so users can answer these questions from one
+place:
 
 - which command or setting is supported;
 - what the default value is;
@@ -163,4 +164,6 @@ bug fixes, and known limitations.
 [nix]: https://nixos.org/
 [pnpm]: https://pnpm.io/
 [rustup]: https://rustup.rs/
+[tape-reference]: https://www.joshka.net/betamax/reference/tape-reference/
+[tape-reference-src]: site/src/content/docs/reference/tape-reference.mdx
 [zig]: https://ziglang.org/

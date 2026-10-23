@@ -1,7 +1,7 @@
 # Differences from VHS
 
 This page compares Betamax with [VHS](https://github.com/charmbracelet/vhs).
-See the [Tape reference](tape-reference.md) for all supported commands and settings.
+See the [Tape reference][tape-reference] for all supported commands and settings.
 
 Sources checked:
 
@@ -30,8 +30,7 @@ Betamax defaults to `Framed`: Aardvark Ink, 1200×720, 22px text, zero terminal 
 rounded window with left dots, a backdrop, and a shadow. Existing tapes can select `Set Preset Default-0.1`
 to restore Betamax's previous defaults. `Set Preset Bare` removes decoration while keeping the new
 sizing and typography. These preset commands are Betamax extensions; they do not make tapes or
-rendered pixels identical to VHS. See [Presets](tape-reference.md#presets) for resolved values and
-override rules.
+rendered pixels identical to VHS. See [Presets][presets] for resolved values and override rules.
 
 ## Architecture
 
@@ -80,7 +79,7 @@ that point, `Set Shell` and `Env` apply to the whole tape, and other settings ar
 differences: a late `Require` is still checked, where VHS skips it, and an `Env` does not end the
 header, so a `Set` after it still applies, where VHS ignores it. `Type "a" "b"` types `a b`, as in
 VHS, and warns. See
-[Startup commands after runtime commands](tape-reference.md#startup-commands-after-runtime-commands).
+[Startup commands after runtime commands][startup-order].
 
 ## Intentional omissions
 
@@ -118,3 +117,7 @@ Betamax also provides:
 - scrollback-inclusive state capture;
 - `Runner::run_artifacts` for Rust callers;
 - local README demo preview workflow under `target/betamax-examples`.
+
+[presets]: https://www.joshka.net/betamax/reference/tape-reference/#presets
+[startup-order]: https://www.joshka.net/betamax/reference/tape-reference/#startup-commands-after-runtime-commands
+[tape-reference]: https://www.joshka.net/betamax/reference/tape-reference/
