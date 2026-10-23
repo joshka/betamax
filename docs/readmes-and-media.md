@@ -91,7 +91,8 @@ Refresh the assets with:
 mise run upload-readme-assets
 ```
 
-That command renders the examples first. It needs the [GitHub CLI](https://cli.github.com/) and
-permission to upload release assets.
+That command renders only the uploaded tapes (`quick-start`, `basic`, `btop`, `hide-show`, `themes`,
+and `video`), so it needs `cargo-binstall`, `btop`, `ffmpeg` for the video tape, the
+[GitHub CLI](https://cli.github.com/), and permission to upload release assets.
 
 [tape-reference]: https://www.joshka.net/betamax/reference/tape-reference/

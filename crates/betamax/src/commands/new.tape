@@ -103,6 +103,8 @@ Require echo
 Set Shell "bash"
 Set Preset Default
 
-Type "echo 'Welcome to Betamax!'" Sleep 500ms  Enter
+Type "echo 'Welcome to Betamax!'"
+Sleep 500ms
+Enter
 
 Sleep 5s
