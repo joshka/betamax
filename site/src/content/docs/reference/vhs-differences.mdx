@@ -180,6 +180,9 @@ screenshots, GIFs, and videos. Images scroll and clip with the terminal grid.
 
 Betamax also answers the capability queries those programs send first: kitty graphics queries,
 sixel in the primary device attributes, and the `CSI 14 t` and `CSI 16 t` pixel-size reports.
+Colour queries (`OSC 10`, `OSC 11`, `OSC 12`, and `OSC 4`) report the active theme, so programs
+that match plots or UI to the terminal's colours see the theme rather than falling back to
+defaults.
 Kitty animation frames and iTerm2 multipart transfers are not rendered.
 
 ### Style the window

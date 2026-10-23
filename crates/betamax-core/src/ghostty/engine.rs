@@ -3,6 +3,7 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
+use libghostty_vt::style::PaletteIndex;
 use libghostty_vt::terminal::{
     ConformanceLevel, DeviceAttributeFeature, DeviceAttributes, DeviceType,
     PrimaryDeviceAttributes, ScrollViewport, SecondaryDeviceAttributes, SizeReportSize,
@@ -209,6 +210,7 @@ impl GhosttySession {
             ))?;
         tracing::trace!("installed libghostty-vt write_pty callback");
         install_capability_replies(&mut terminal, cell_width, cell_height)?;
+        install_theme_colors(&mut terminal, &request.theme)?;
 
         Ok(Self {
             terminal,
@@ -450,6 +452,29 @@ fn install_capability_replies(
     Ok(())
 }
 
+/// Give libghostty-vt the theme's colours so it answers OSC 4, 10, 11, and 12 queries.
+///
+/// Programs such as jOtter query the foreground and background to match their output to the
+/// terminal; without defaults set, libghostty-vt has nothing to report and stays silent.
+fn install_theme_colors(
+    terminal: &mut Terminal<'static, 'static>,
+    theme: &TerminalTheme,
+) -> Result<()> {
+    let mut palette = terminal
+        .default_color_palette()
+        .map_err(vt_error("failed to read libghostty-vt palette"))?;
+    for (index, color) in (0u8..).zip(theme.palette) {
+        palette.set(PaletteIndex(index), color);
+    }
+    terminal
+        .set_default_fg_color(Some(theme.foreground))
+        .and_then(|terminal| terminal.set_default_bg_color(Some(theme.background)))
+        .and_then(|terminal| terminal.set_default_cursor_color(Some(theme.cursor)))
+        .and_then(|terminal| terminal.set_default_color_palette(Some(palette)))
+        .map_err(vt_error("failed to set libghostty-vt theme colors"))?;
+    Ok(())
+}
+
 fn vt_error(context: &'static str) -> impl Fn(libghostty_vt::Error) -> miette::Report {
     move |error| miette::miette!("{context}: {error}")
 }
@@ -508,6 +533,27 @@ mod tests {
         session.write_vt(b"\x1b]2;new title\x07");
         let error = session.take_title_changes().unwrap_err();
         assert!(error.to_string().contains("already borrowed"));
+    }
+
+    fn reply_to(query: &[u8]) -> String {
+        let mut session = GhosttySession::new(small_request()).expect("open session");
+        session.write_vt(query);
+        String::from_utf8(session.take_pending_pty_reply()).expect("utf-8 reply")
+    }
+
+    #[test]
+    fn color_queries_report_theme_colors() {
+        // Aardvark Blue: fg #dddddd, bg #102040, cursor #007acc, palette 1 #aa342e, 2 #4b8c0f.
+        assert_eq!(
+            reply_to(b"\x1b]10;?\x1b\\"),
+            "\x1b]10;rgb:dddd/dddd/dddd\x1b\\"
+        );
+        assert_eq!(reply_to(b"\x1b]11;?\x07"), "\x1b]11;rgb:1010/2020/4040\x07");
+        assert_eq!(reply_to(b"\x1b]12;?\x07"), "\x1b]12;rgb:0000/7a7a/cccc\x07");
+        assert_eq!(
+            reply_to(b"\x1b]4;1;?;2;?\x07"),
+            "\x1b]4;1;rgb:aaaa/3434/2e2e\x07\x1b]4;2;rgb:4b4b/8c8c/0f0f\x07"
+        );
     }
 
     #[test]
