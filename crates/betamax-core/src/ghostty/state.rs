@@ -60,6 +60,78 @@ pub struct TerminalState {
     pub scrollback: Vec<StateRow>,
 }
 
+impl TerminalState {
+    /// Returns viewport rows with each span's style next to its text, for snapshot tests.
+    ///
+    /// [`TerminalState::viewport`] refers to styles by index into [`TerminalState::styles`].
+    /// Betamax numbers styles in the order they first appear from the top of the screen, so the
+    /// numbers shift when an earlier row gains or loses a style. Snapshotting `viewport` and
+    /// `styles` directly then shows changes on rows that look the same, and reading a span
+    /// means looking up its index. These rows avoid both: each one reads on its own, and a
+    /// snapshot diff shows only rows whose text or style changed.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a span refers to an index outside `styles`. Betamax never produces such a state;
+    /// it can only come from edited or truncated JSON.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use betamax_core::ghostty::TerminalState;
+    /// # let state: TerminalState = serde_json::from_value(serde_json::json!({
+    /// #     "size": [20, 2], "total_rows": 2, "scrollback_rows": 0,
+    /// #     "cursor": { "x": 0, "y": 0, "visible": false },
+    /// #     "default_style": { "fg": "#dddddd", "bg": "#000000" },
+    /// #     "styles": [{ "fg": "#52aa60", "bold": true }],
+    /// #     "viewport_text": "Tasks\n> run test\n", "scrollback_text": "",
+    /// #     "viewport": [["Tasks"], [["> run test", 0]]], "scrollback": []
+    /// # }))?;
+    /// // `state` is `RunArtifacts::final_state` from a run whose viewport shows a plain "Tasks"
+    /// // header above a bold green selected row.
+    /// let rows = serde_json::to_value(state.styled_viewport())?;
+    /// assert_eq!(
+    ///     rows,
+    ///     serde_json::json!([
+    ///         ["Tasks"],
+    ///         [["> run test", { "fg": "#52aa60", "bold": true }]],
+    ///     ])
+    /// );
+    /// # Ok::<(), serde_json::Error>(())
+    /// ```
+    pub fn styled_viewport(&self) -> Vec<Vec<StyledSpan>> {
+        self.styled_rows(&self.viewport)
+    }
+
+    /// Returns scrollback rows with each span's style next to its text.
+    ///
+    /// See [`TerminalState::styled_viewport`] for why snapshot tests should prefer these rows.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a span refers to an index outside `styles`.
+    pub fn styled_scrollback(&self) -> Vec<Vec<StyledSpan>> {
+        self.styled_rows(&self.scrollback)
+    }
+
+    fn styled_rows(&self, rows: &[StateRow]) -> Vec<Vec<StyledSpan>> {
+        let mut styled = Vec::with_capacity(rows.len());
+        for row in rows {
+            let mut spans = Vec::with_capacity(row.len());
+            for span in row {
+                spans.push(match span {
+                    StateSpan::Text(text) => StyledSpan::Text(text.clone()),
+                    StateSpan::Styled(text, index) => {
+                        StyledSpan::Styled(text.clone(), self.styles[*index].clone())
+                    }
+                });
+            }
+            styled.push(spans);
+        }
+        styled
+    }
+}
+
 /// One visible terminal cell with its full resolved style.
 ///
 /// Empty cells contain a space. Wide-glyph continuation cells also contain a space; the leading
@@ -102,6 +174,19 @@ pub enum StateSpan {
     Text(String),
     /// Text using `TerminalState::styles[index]`.
     Styled(String, usize),
+}
+
+/// Text span with its style written out, returned by [`TerminalState::styled_viewport`].
+///
+/// Serializes as `"text"` for text in [`TerminalState::default_style`] and as `["text", {style}]`
+/// otherwise. The style is the same delta from the default that [`TerminalState::styles`] stores.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum StyledSpan {
+    /// Text using the default style.
+    Text(String),
+    /// Text with its non-default style.
+    Styled(String, StateStyle),
 }
 
 /// Serializable terminal style.
@@ -491,6 +576,69 @@ mod tests {
         );
         let json = serde_json::to_value(&rows).unwrap();
         assert_eq!(json, serde_json::json!([[["> ", 0], "echo"]]));
+    }
+
+    #[test]
+    fn styled_viewport_keeps_unchanged_rows_when_earlier_styles_change() {
+        let header = StateStyle {
+            bg: Some("#487fd4".to_string()),
+            ..StateStyle::default()
+        };
+        let selected = StateStyle {
+            fg: Some("#52aa60".to_string()),
+            bold: true,
+            ..StateStyle::default()
+        };
+        let styled_header = state_with(
+            vec![header.clone(), selected.clone()],
+            vec![
+                vec![StateSpan::Styled("Tasks".to_string(), 0)],
+                vec![StateSpan::Styled("> run test".to_string(), 1)],
+            ],
+        );
+        let plain_header = state_with(
+            vec![selected.clone()],
+            vec![
+                vec![StateSpan::Text("Tasks".to_string())],
+                vec![StateSpan::Styled("> run test".to_string(), 0)],
+            ],
+        );
+
+        // The unchanged selected row has index 1, then 0, but the same resolved style.
+        assert_ne!(styled_header.viewport[1], plain_header.viewport[1]);
+        let before = styled_header.styled_viewport();
+        let after = plain_header.styled_viewport();
+        assert_eq!(before[1], after[1]);
+        assert_eq!(
+            before[1],
+            vec![StyledSpan::Styled("> run test".to_string(), selected)]
+        );
+        assert_eq!(
+            serde_json::to_value(&after).unwrap(),
+            serde_json::json!([["Tasks"], [["> run test", { "fg": "#52aa60", "bold": true }]]])
+        );
+        assert!(styled_header.styled_scrollback().is_empty());
+    }
+
+    fn state_with(styles: Vec<StateStyle>, viewport: Vec<StateRow>) -> TerminalState {
+        TerminalState {
+            size: [20, 2],
+            total_rows: 2,
+            scrollback_rows: 0,
+            title: String::new(),
+            working_directory: String::new(),
+            cursor: StateCursor {
+                x: 0,
+                y: 0,
+                visible: false,
+            },
+            default_style: StateStyle::default(),
+            styles,
+            viewport_text: "Tasks\n> run test\n".to_string(),
+            scrollback_text: String::new(),
+            viewport,
+            scrollback: Vec::new(),
+        }
     }
 
     fn test_full_style(fg: &str, bg: &str) -> FullStateStyle {
