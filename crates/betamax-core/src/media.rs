@@ -23,7 +23,10 @@ use crate::Result;
 mod gif;
 mod webp;
 
-pub use webp::{write_webp, write_webp_animation, write_webp_animation_with_progress};
+pub use webp::{
+    write_webp, write_webp_animation, write_webp_animation_with_options,
+    write_webp_animation_with_progress, WebpCompression,
+};
 
 pub use self::gif::{write_gif, write_gif_with_progress};
 

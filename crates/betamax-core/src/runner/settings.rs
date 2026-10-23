@@ -15,6 +15,7 @@ use super::keyboard_overlay::{parse_keyboard_overlay_location, parse_keyboard_ov
 use super::presentation::Presentation;
 use super::preset::Preset;
 use crate::ghostty::TerminalTheme;
+use crate::media::WebpCompression;
 use crate::shell::DEFAULT_SHELL;
 use crate::tape::{Command, Tape, Value, WaitPattern};
 use crate::wait::regex_source;
@@ -70,6 +71,8 @@ pub(super) struct Settings {
     pub(super) typing_delay: Duration,
     /// Whether captured frames should blink the cursor according to the output framerate.
     pub(super) cursor_blink: bool,
+    /// Animated WebP compression from `Set WebpQuality`; lossless unless a quality is set.
+    pub(super) webp_compression: WebpCompression,
     /// Default wait pattern used when a wait command does not provide one.
     pub(super) wait_pattern: WaitPattern,
     /// Default timeout for wait commands.
@@ -173,6 +176,7 @@ impl Settings {
             typing_delay: DEFAULT_TYPING_DELAY,
             presentation: Presentation::new(theme)?,
             cursor_blink: true,
+            webp_compression: WebpCompression::Lossless,
             wait_pattern: WaitPattern::Regex(DEFAULT_WAIT_PATTERN.to_string()),
             wait_timeout: DEFAULT_WAIT_TIMEOUT,
             env: Vec::new(),
@@ -299,6 +303,17 @@ impl Settings {
                 self.presentation.style.border.set_opacity(*opacity)?;
             }
             ("CursorBlink", Value::Bool(cursor_blink)) => self.cursor_blink = *cursor_blink,
+            ("WebpQuality", Value::String(mode)) if mode.eq_ignore_ascii_case("lossless") => {
+                self.webp_compression = WebpCompression::Lossless;
+            }
+            ("WebpQuality", Value::Number(quality)) => {
+                if !(0.0..=100.0).contains(quality) {
+                    return Err(miette!("Set WebpQuality expects 0 to 100, got {quality}").into());
+                }
+                self.webp_compression = WebpCompression::Lossy {
+                    quality: quality.round() as u8,
+                };
+            }
             ("Shadow", Value::Bool(shadow)) => self.presentation.style.shadow.enabled = *shadow,
             ("ShadowBlur", Value::Number(blur)) => {
                 self.presentation.style.shadow.set_blur(*blur)?
@@ -511,6 +526,7 @@ fn known_setting(key: &str) -> bool {
             | "ShadowOffset"
             | "ShadowOpacity"
             | "CursorBlink"
+            | "WebpQuality"
             | "KeyboardOverlay"
             | "KeyboardOverlayLocation"
             | "WaitTimeout"
@@ -547,6 +563,7 @@ fn setting_expected_type(key: &str) -> &'static str {
         "KeyboardOverlay" => "Off, Keys, Input, or All",
         "KeyboardOverlayLocation" => "CaptionRow, TopLeft, TopRight, BottomLeft, or BottomRight",
         "LoopOffset" => "percentage or duration",
+        "WebpQuality" => "number from 0 to 100, or Lossless",
         "WaitTimeout" => "duration or number of seconds",
         _ => "known value",
     }
@@ -674,6 +691,25 @@ Set Theme "Aardvark Blue""#,
     fn rejects_invalid_runtime_typing_speed_before_startup() {
         assert!(grid_error("Type hi\nSet TypingSpeed fast")
             .contains("Set TypingSpeed expects duration or number of seconds"));
+    }
+
+    #[test]
+    fn webp_quality_opts_into_lossy_and_lossless_opts_back_out() {
+        for (source, expected) in [
+            ("", WebpCompression::Lossless),
+            ("Set WebpQuality 85", WebpCompression::Lossy { quality: 85 }),
+            ("Set WebpQuality 0", WebpCompression::Lossy { quality: 0 }),
+            (
+                "Set WebpQuality 85\nSet WebpQuality Lossless",
+                WebpCompression::Lossless,
+            ),
+            ("Set WebpQuality \"lossless\"", WebpCompression::Lossless),
+        ] {
+            let settings = Settings::from_tape(&Tape::parse(source).unwrap()).unwrap();
+            assert_eq!(settings.webp_compression, expected, "{source}");
+        }
+        assert!(grid_error("Set WebpQuality 101").contains("0 to 100"));
+        assert!(grid_error("Set WebpQuality Lossy").contains("number from 0 to 100, or Lossless"));
     }
 
     #[test]
