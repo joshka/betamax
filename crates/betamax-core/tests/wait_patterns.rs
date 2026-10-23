@@ -1,6 +1,6 @@
 //! Wait regexes reach the terminal as waits, not as key presses.
 
-use betamax_core::{RunOptions, Runner, Tape};
+use betamax_core::{Runner, Tape};
 
 #[test]
 fn wait_regex_with_plus_waits_without_typing() {
@@ -22,10 +22,5 @@ fn wait_regex_with_plus_waits_without_typing() {
         "#,
     )
     .unwrap();
-    Runner::new(RunOptions {
-        quiet: true,
-        publish: false,
-    })
-    .run_artifacts(&tape)
-    .unwrap();
+    Runner::new().run_artifacts(&tape).unwrap();
 }
