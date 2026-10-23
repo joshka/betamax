@@ -154,6 +154,122 @@ To check a snapshot from a Rust test:
 For tests that call Betamax directly from Rust, `betamax-core` exposes tape parsing, the runner,
 and terminal state types. See the [`betamax-core` API docs](https://docs.rs/betamax-core).
 
+## Snapshot state with insta
+
+A Rust test can run a tape with `betamax-core` and snapshot the screen with
+[insta](https://insta.rs/). The
+[compiled example](https://github.com/joshka/betamax/blob/main/crates/betamax-core/tests/insta_snapshot.rs)
+drives a small full-screen task picker, presses `j`, and snapshots the result twice: the styled
+rows to a file and the plain text inline. It runs in Betamax's CI on Linux and macOS.
+
+```toml title="Cargo.toml"
+[dev-dependencies]
+betamax-core = "0.3"
+indoc = "2"
+insta = { version = "1", features = ["json"] }
+```
+
+```rust title="tests/snapshot.rs"
+use betamax_core::{Runner, Tape};
+use indoc::formatdoc;
+
+#[test]
+fn selection_moves_down() {
+    let app = env!("CARGO_BIN_EXE_my-app");
+    let source = formatdoc! {r#"
+        Set Shell "{app}"
+        Set Columns 30
+        Set Rows 8
+        Wait+Screen "> write tape"
+        Type "j"
+        Wait+Screen "> run test"
+        Screenshot tests/snapshots/selection_moves_down.png
+    "#};
+    let tape = Tape::parse(&source).unwrap();
+    let artifacts = Runner::new().run_artifacts(&tape).unwrap();
+    let state = artifacts.final_state.unwrap();
+
+    insta::assert_json_snapshot!(state.styled_viewport());
+    insta::assert_snapshot!(state.viewport_text, @"
+    Tasks
+      write tape
+    > run test
+      review snapshot
+
+    j move · q quit
+    ");
+}
+```
+
+`Set Shell` starts the program directly, so no typed command line lands on the screen. Each wait
+uses `Wait+Screen` on text that only appears once the input has taken effect; `Wait` alone checks
+only the cursor's line.
+
+The file snapshot, `tests/snapshots/snapshot__selection_moves_down.snap`, holds each row's text
+with styles on the spans that have them:
+
+```json
+[
+  [["Tasks", { "fg": "#dfe5ee", "bg": "#487fd4", "bold": true }]],
+  ["  write tape"],
+  [["> run test", { "fg": "#52aa60", "bold": true }]],
+  ["  review snapshot"],
+  [],
+  [["j move · q quit", { "faint": true }]]
+]
+```
+
+`styled_viewport()` writes each style next to its text. The state JSON `viewport` field refers to
+styles by number instead, and those numbers shift when an earlier row's style changes, so a
+snapshot of it would show changes on rows that look the same. See
+[Snapshot styles from Rust](../state-json/#snapshot-styles-from-rust) for an example.
+
+The cursor, title, and working directory are left out because they can change without a visible
+difference. Snapshot `state.styled_scrollback()` too when the program prints to the main screen
+rather than the alternate screen.
+
+### Inline or file snapshots
+
+Insta can keep the expected value in the test source or in a file next to it:
+
+- **Inline**, `assert_snapshot!(value, @"…")`: the expected value sits in the test, next to the tape
+  that produced it. Use it for short values a reader checks by eye, such as `viewport_text`.
+- **File**, `assert_json_snapshot!(value)`: the expected value goes to `tests/snapshots/`. Use it
+  for styled rows, which run to dozens of lines once each style is written out.
+
+Both kinds fail the test when the screen changes, and `cargo insta review` accepts either kind:
+accepting an inline snapshot rewrites the string in the test source.
+
+Inline text can miss two kinds of change. Insta strips the indentation that every line shares
+before comparing, so a screen that shifts right by whole columns still matches. Plain text also
+has no color or attributes. The styled-row file snapshot catches both, so keep it alongside inline
+text.
+
+### Review snapshot changes
+
+When the screen changes, insta writes a pending `.snap.new` file beside a file snapshot, or a
+`.pending-snap` file beside the test for inline snapshots. The tape's `Screenshot` writes the PNG
+next to the file snapshots, so the reviewer can see the screen while reading the diff. Ignore the
+PNG and the pending files in git:
+
+```text title=".gitignore"
+*.pending-snap
+*.snap.new
+tests/snapshots/*.png
+```
+
+```sh
+cargo insta test        # run the tests and collect pending snapshots
+cargo insta review      # accept or reject each change
+```
+
+Install the reviewer with `cargo install cargo-insta`. In CI, insta does not write pending files
+and fails the test on any difference.
+
+`betamax-core` builds Ghostty's terminal library from source, so the test machine needs Zig 0.15.2
+on `PATH`. See [Build from source](../../reference/development/#build-from-source). It supports
+macOS and Linux; Windows is not supported.
+
 ## Choosing artifacts for tests
 
 State JSON should be the primary assertion artifact. Screenshots are best as debugging attachments

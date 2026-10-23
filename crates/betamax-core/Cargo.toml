@@ -21,6 +21,7 @@ include = [
     "tests/**/*.rs",
     "tests/fixtures/*.vt",
     "tests/fixtures/*.py",
+    "tests/snapshots/*.snap",
     "resources/ghostty/themes/**",
     "resources/vhs/**",
 ]
@@ -56,6 +57,7 @@ webp-animation = { version = "0.10", default-features = false, features = ["stat
 # Decodes and composites GIF frames in tests, independently of the writer.
 image = { workspace = true, features = ["gif"] }
 indoc.workspace = true
+insta.workspace = true
 
 [lints]
 workspace = true

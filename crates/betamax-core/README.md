@@ -26,6 +26,11 @@ assert!(artifacts.final_state.is_some());
 Most users should install the `betamax` CLI crate. Use this crate directly when embedding Betamax in
 Rust tests or tools.
 
+For a snapshot test that drives a terminal program and checks its state with
+[insta](https://insta.rs/), see
+[Snapshot state with insta](https://www.joshka.net/betamax/testing/terminal-testing/#snapshot-state-with-insta)
+and the [compiled example](https://github.com/joshka/betamax/blob/main/crates/betamax-core/tests/insta_snapshot.rs).
+
 Betamax currently supports macOS and Linux. Windows is not supported because the upstream
 `libghostty-vt-sys` native build does not support Windows. MP4 and WebM output require `ffmpeg` on
 `PATH`.

@@ -211,6 +211,9 @@ assert state["scrollback_rows"] == 0
 `scrollback_rows` is zero because the viewer uses the alternate screen; scrolling inside the
 application does not create terminal scrollback.
 
+To make the same kind of check in a Rust test, run the tape with `betamax-core` and snapshot the
+state with insta; see [Snapshot state with insta](../terminal-testing/#snapshot-state-with-insta).
+
 ## Slow it down for review
 
 `Type "jjjjjjjj"` delivers all eight scrolls at once, so the GIF jumps. `Type@100ms` spaces them so
