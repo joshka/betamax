@@ -5,9 +5,10 @@ use miette::miette;
 use regex::Regex;
 
 use super::diagnostics::{LateSettingEffect, TapeWarning, TapeWarningKind};
+use super::tokens::{self, Token};
 use super::{
-    tokens, Assertion, Command, Key, KeyCode, KeyModifiers, MouseButton, MouseEvent,
-    ScrollDirection, Tape, Value, ViewportDirection, WaitPattern, WaitTarget,
+    Assertion, Command, Key, KeyCode, KeyModifiers, MouseButton, MouseEvent, ScrollDirection, Tape,
+    Value, ViewportDirection, WaitPattern, WaitTarget,
 };
 use crate::Result;
 
@@ -315,13 +316,20 @@ fn resolve_source_path(path: &Path, base_dir: &Path) -> Option<PathBuf> {
 /// the next command silently disappears, so the tests focus on chained-command examples.
 fn parse_tokens(
     line_number: usize,
-    tokens: &[String],
+    tokens: &[Token],
     commands: &mut Vec<Command>,
     warnings: &mut Vec<TapeWarningKind>,
 ) -> Result<()> {
     let mut cursor = 0usize;
     while cursor < tokens.len() {
         let token = &tokens[cursor];
+        if token.quoted {
+            return Err(miette!(
+                "line {line_number}: expected a command, got quoted text `{}`",
+                token.text
+            )
+            .into());
+        }
         let (name, delay) = parse_timed_name(token)?;
         cursor += 1;
 
@@ -516,7 +524,7 @@ fn parse_assertion(
     line: usize,
     name: &str,
     delay: Option<Duration>,
-    tokens: &[String],
+    tokens: &[Token],
     cursor: usize,
 ) -> Result<(Assertion, usize)> {
     if delay.is_some() && name != "AssertAbsent" {
@@ -611,7 +619,7 @@ fn positive_grid_number(line: usize, value: &str) -> Result<u16> {
 fn parse_mouse(
     line: usize,
     name: &str,
-    tokens: &[String],
+    tokens: &[Token],
     cursor: usize,
 ) -> Result<(MouseEvent, KeyModifiers, usize)> {
     let mut modifiers = KeyModifiers::default();
@@ -699,13 +707,13 @@ fn mouse_number(line: usize, value: &str, label: &str, positive: bool) -> Result
 /// Return a required token or attach line-number context to the parse error.
 fn required_token<'a>(
     line_number: usize,
-    tokens: &'a [String],
+    tokens: &'a [Token],
     index: usize,
     name: &str,
 ) -> Result<&'a str> {
     Ok(tokens
         .get(index)
-        .map(String::as_str)
+        .map(|token| &**token)
         .ok_or_else(|| miette!("line {line_number}: missing {name}"))?)
 }
 
@@ -759,7 +767,7 @@ fn parse_loop_offset_value(value: &str) -> Value {
 /// Parse the arguments to `Sleep`, supporting both compact and split unit forms.
 fn parse_duration_tokens(
     line_number: usize,
-    tokens: &[String],
+    tokens: &[Token],
     cursor: usize,
 ) -> Result<(Duration, usize)> {
     let value = required_token(line_number, tokens, cursor, "duration")?;
@@ -849,12 +857,12 @@ fn is_duration_unit(value: &str) -> bool {
 ///
 /// Only all-digit tokens are treated as counts. Anything else is left for the main parser to treat
 /// as the next command token.
-fn optional_count(token: Option<&String>) -> Result<Option<u16>> {
+fn optional_count(token: Option<&Token>) -> Result<Option<u16>> {
     match token {
         Some(token) if token.chars().all(|ch| ch.is_ascii_digit()) => Ok(token
             .parse::<u16>()
             .map(Some)
-            .map_err(|_| miette!("invalid key repeat count `{token}`"))?),
+            .map_err(|_| miette!("invalid key repeat count `{}`", token.text))?),
         _ => Ok(None),
     }
 }
@@ -920,8 +928,11 @@ fn parse_char_key(name: &str) -> Option<KeyCode> {
 ///
 /// This is used while parsing optional arguments such as wait patterns. A false positive here is
 /// safer than a false negative because it preserves the next command rather than swallowing it as
-/// an argument.
-fn is_command_token(token: &str) -> bool {
+/// an argument. Quoted tokens are always arguments, so `Wait+Screen "Enter"` waits for the text.
+fn is_command_token(token: &Token) -> bool {
+    if token.quoted {
+        return false;
+    }
     let Ok((name, _)) = parse_timed_name(token) else {
         return false;
     };
@@ -1327,6 +1338,55 @@ Wait+Screen ready WindowTitle final"#,
                 value: Value::String(r"/\$ $/".to_string()),
             }
         );
+    }
+
+    #[test]
+    fn treats_quoted_key_and_command_names_as_text() {
+        let tape = Tape::parse(
+            r#"Wait+Screen "Enter" Wait+Line 'q' Wait Enter
+            Type "echo press" "q" "Sleep""#,
+        )
+        .unwrap();
+        let wait = |target, text: &str| Command::Wait {
+            target,
+            pattern: Some(WaitPattern::Contains(text.to_string())),
+            timeout: None,
+        };
+        assert_eq!(
+            tape.commands,
+            vec![
+                wait(WaitTarget::Screen, "Enter"),
+                wait(WaitTarget::Line, "q"),
+                Command::Wait {
+                    target: WaitTarget::Line,
+                    pattern: None,
+                    timeout: None,
+                },
+                Command::Key {
+                    key: Key::Press {
+                        key: KeyCode::Enter,
+                        modifiers: KeyModifiers::default(),
+                    },
+                    delay: None,
+                    count: 1,
+                },
+                Command::Type {
+                    text: "echo press q Sleep".to_string(),
+                    delay: None,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn rejects_quoted_text_where_a_command_starts() {
+        for (source, text) in [(r#"Wait+Screen "a" "b""#, "b"), (r#""Enter""#, "Enter")] {
+            let error = Tape::parse(source).unwrap_err().to_string();
+            assert!(
+                error.contains(&format!("expected a command, got quoted text `{text}`")),
+                "{source}: {error}"
+            );
+        }
     }
 
     #[test]

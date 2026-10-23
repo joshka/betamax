@@ -21,6 +21,8 @@ errors fail before the PTY is spawned.
   `Set WaitPattern` is the exception: it is kept exactly as written. See
   [Regex patterns](#regex-patterns).
 - One physical line may contain more than one command, such as `Type "echo hi" Enter`.
+- A word with quotes or backslash escapes is always text, never a command: `"Enter"` is the text
+  `Enter`. Quoted text where a command should start is an error.
 - Startup commands belong before runtime commands.
 
 Startup commands are `Output`, `Require`, `Set`, and `Env`. Runtime commands include typing, keys,
@@ -554,7 +556,8 @@ applies from shell start, with a warning.
 Types text into the PTY one Unicode scalar at a time. `Type@25ms "hello"` overrides the default
 typing speed for that command; otherwise the most recent `Set TypingSpeed` applies. Betamax drains
 output and captures frames after each typed character, so text appears progressively. Several
-strings are joined with one space, as in VHS: `Type "echo" "hi"` types `echo hi` and warns. Use
+strings are joined with one space, as in VHS: `Type "echo" "hi"` types `echo hi` and warns.
+Quoted strings that name a key or command are joined too, so `Type "press" "q"` types `press q`. Use
 `Type` for printable text and key commands for terminal control keys such as arrows, tab, delete,
 and interrupt.
 
@@ -685,8 +688,8 @@ Pattern forms:
 
 - `/regex/`: regular expression, validated when the tape is parsed. See
   [Regex patterns](#regex-patterns).
-- `text`: plain substring match. Text that names a command or key, such as `Enter` or `q`, starts
-  the next command instead, even when quoted; write `/Enter/` to wait for it.
+- `text`: plain substring match. Quote text that names a command or key, such as `"Enter"` or
+  `"q"`. Unquoted, `Wait Enter` waits for the default pattern and then presses Enter.
 - omitted: use `Set WaitPattern`, which defaults to the VHS-style prompt regex `>$`.
 
 `Wait@5s` sets the timeout for that command; otherwise `Set WaitTimeout` applies, defaulting to
