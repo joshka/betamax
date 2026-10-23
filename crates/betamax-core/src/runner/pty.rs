@@ -14,7 +14,7 @@ use crate::runner::TerminalSession;
 use crate::shell::{apply_terminal_environment, ensure_shell_exists, ShellLaunch};
 use crate::tape::{WaitPattern, WaitTarget};
 use crate::trace::ByteSample;
-use crate::wait::{wait_pattern_matches, wait_pattern_name, wait_target_name, wait_target_text};
+use crate::wait::{wait_pattern_name, wait_target_name, wait_target_text, WaitMatcher};
 use crate::Result;
 
 /// PTY reader buffer size.
@@ -27,6 +27,18 @@ const PTY_READ_BUFFER_SIZE: usize = 8 * 1024;
 /// This catches output emitted near the end of a `Sleep` without extending the visible sleep long
 /// enough to be noticeable.
 const POST_DURATION_IDLE: Duration = Duration::from_millis(20);
+/// Output pause that lets a due capture proceed while a program is still writing.
+///
+/// kitty waits this long for more input before repainting (its default `input_delay`), so an
+/// update written in several reads, such as an image delete followed by its replacement, lands in
+/// one frame.
+const CAPTURE_QUIET: Duration = Duration::from_millis(3);
+/// Longest a capture is skipped because an image transmission is still open.
+///
+/// A slow runner can take longer than a capture interval to parse a large chunked image; skipping
+/// those captures keeps the image area from recording blank. The cap keeps a program that never
+/// finishes a transmission from freezing the recording.
+const MAX_TRANSMISSION_DEFER: Duration = Duration::from_secs(1);
 
 /// PTY process plus non-blocking output reader.
 ///
@@ -269,11 +281,7 @@ impl PtySession {
     ) -> Result<bool> {
         match self.reader.recv_timeout(wait) {
             Ok(bytes) => {
-                terminal.write_vt(&bytes);
-                let reply = terminal.take_pending_pty_reply();
-                if !reply.is_empty() {
-                    self.write_all(&reply)?;
-                }
+                self.feed(terminal, &bytes)?;
                 Ok(true)
             }
             Err(mpsc::RecvTimeoutError::Timeout) => Ok(false),
@@ -283,6 +291,68 @@ impl PtySession {
                 Ok(false)
             }
         }
+    }
+
+    /// Read one chunk, waiting up to `wait`, then the chunks already queued behind it.
+    ///
+    /// Queued chunks are drained for at most `budget`, so output arriving faster than it parses is
+    /// still sampled. Callers check the screen once per burst rather than once per read; a program
+    /// sending megabytes of image data would otherwise leave the recording seconds behind.
+    fn read_burst_into(
+        &mut self,
+        terminal: &mut impl TerminalSession,
+        wait: Duration,
+        budget: Duration,
+    ) -> Result<bool> {
+        if !self.read_once_into(terminal, wait)? {
+            return Ok(false);
+        }
+        let started = Instant::now();
+        while started.elapsed() < budget {
+            let Ok(bytes) = self.reader.try_recv() else {
+                break;
+            };
+            self.feed(terminal, &bytes)?;
+        }
+        Ok(true)
+    }
+
+    /// Hold a due capture until output pauses and no image transmission is open, for up to `limit`.
+    ///
+    /// Programs without synchronized output replace an image by deleting it and then sending its
+    /// successor; capturing in between would record a blank image area. Returns whether the
+    /// capture can proceed: `false` when `limit` ran out with a transmission still open.
+    fn settle_for_capture(
+        &mut self,
+        terminal: &mut impl TerminalSession,
+        limit: Duration,
+    ) -> Result<bool> {
+        let started = Instant::now();
+        loop {
+            let remaining = limit.saturating_sub(started.elapsed());
+            if remaining.is_zero() {
+                return Ok(!terminal.image_transmission_in_progress());
+            }
+            let in_progress = terminal.image_transmission_in_progress();
+            let wait = if in_progress {
+                remaining
+            } else {
+                CAPTURE_QUIET.min(remaining)
+            };
+            if !self.read_burst_into(terminal, wait, remaining)? && !in_progress {
+                return Ok(true);
+            }
+        }
+    }
+
+    /// Write PTY bytes into the terminal and forward any reply it produces.
+    fn feed(&mut self, terminal: &mut impl TerminalSession, bytes: &[u8]) -> Result<()> {
+        terminal.write_vt(bytes);
+        let reply = terminal.take_pending_pty_reply();
+        if !reply.is_empty() {
+            self.write_all(&reply)?;
+        }
+        Ok(())
     }
 
     /// Drain PTY output without terminal capture.
@@ -316,11 +386,16 @@ impl PtySession {
         while started.elapsed() < duration {
             let remaining = duration.saturating_sub(started.elapsed());
             let wait = remaining.min(capture_interval);
-            self.read_once_into(terminal, wait)?;
+            let read = self.read_burst_into(terminal, wait, capture_interval)?;
+            let mut due = capture.visible
+                && (last_capture_at.elapsed() >= capture_interval || started.elapsed() >= duration);
+            if due && read && !self.settle_for_capture(terminal, capture_interval)? {
+                due = last_capture_at.elapsed() >= MAX_TRANSMISSION_DEFER;
+            }
             collect_title_changes(terminal, settings, capture)?;
             let captured_at = Instant::now();
             let elapsed = captured_at.saturating_duration_since(last_capture_at);
-            if capture.visible && (elapsed >= capture_interval || started.elapsed() >= duration) {
+            if due {
                 let frame_delay = settings.playback_delay(elapsed);
                 append_visible_frame(
                     capture,
@@ -350,18 +425,23 @@ impl PtySession {
         settings: &Settings,
         capture: &mut CaptureState,
     ) -> Result<()> {
+        let matcher = WaitMatcher::new(pattern)?;
         let started = Instant::now();
         let capture_interval = settings.capture_interval();
         let mut last_capture_at = started;
         while started.elapsed() < timeout {
             let wait = capture_interval.min(timeout.saturating_sub(started.elapsed()));
-            self.read_once_into(terminal, wait)?;
+            let read = self.read_burst_into(terminal, wait, capture_interval)?;
+            let mut due = capture.visible && last_capture_at.elapsed() >= capture_interval;
+            if due && read && !self.settle_for_capture(terminal, capture_interval)? {
+                due = last_capture_at.elapsed() >= MAX_TRANSMISSION_DEFER;
+            }
             collect_title_changes(terminal, settings, capture)?;
             let text = wait_target_text(terminal, target)?;
-            let matches = wait_pattern_matches(pattern, &text)?;
+            let matches = matcher.is_match(&text);
             let captured_at = Instant::now();
             let elapsed = captured_at.saturating_duration_since(last_capture_at);
-            if capture.visible && (elapsed >= capture_interval || matches) {
+            if capture.visible && (due || matches) {
                 let frame_delay = settings.playback_delay(elapsed);
                 append_visible_frame(
                     capture,
@@ -433,6 +513,133 @@ mod tests {
 
         assert!(error.to_string().contains("to be absent"));
         assert!(terminal.screen_text().unwrap().contains("FORBIDDEN"));
+    }
+
+    /// A program without synchronized output replaces a placed image many times: it deletes the
+    /// old image, sends the new one in kitty chunks across many PTY reads, then redraws the
+    /// placeholder cells. Every recorded frame must show an image, and the recording must keep up.
+    #[test]
+    fn rapidly_replaced_images_are_never_captured_blank_and_do_not_stall() {
+        use base64::engine::general_purpose::STANDARD;
+        use base64::Engine as _;
+
+        const UPDATES: u32 = 16;
+        const COLUMNS: u32 = 10;
+        const ROWS: u32 = 4;
+        // Diacritics for placeholder rows 0..ROWS from the kitty table.
+        const ROW_DIACRITICS: [char; ROWS as usize] =
+            ['\u{0305}', '\u{030D}', '\u{030E}', '\u{0310}'];
+        let colors = [[255u8, 0, 0, 255], [0, 0, 255, 255]];
+
+        let tape = Tape::parse(r#"Set Shell "/usr/bin/true""#).unwrap();
+        let settings = Settings::from_tape(&tape).unwrap();
+        let mut pty = PtySession::spawn(&settings).unwrap();
+        let (sender, reader) = mpsc::channel::<Vec<u8>>();
+        pty.reader = reader;
+        let text = TextSettings::default();
+        let (cell_width, cell_height) = (text.cell_width(), text.cell_height());
+        let request = CaptureRequest {
+            canvas: PixelSize::new(
+                40 * cell_width + 2 * text.padding,
+                15 * cell_height + 2 * text.padding,
+            ),
+            grid: TerminalGrid::new(40, 15),
+            text: text.clone(),
+            theme: TerminalTheme::default(),
+        };
+        let mut terminal = GhosttyFrameCapture.open(request).unwrap();
+
+        // An image twice the grid's pixel size, so each update is ~500 KB of base64.
+        let (width, height) = (2 * COLUMNS * cell_width, 2 * ROWS * cell_height);
+        // Queue every update before the wait starts, so the result does not depend on how fast
+        // this thread runs. Each update arrives as a delete plus the first chunk, the remaining
+        // chunks in 8 KiB reads, then the last chunk plus the placeholder cells, as a program
+        // writing one update would produce.
+        for update in 0..UPDATES {
+            let id = update + 1;
+            let pixels = colors[update as usize % 2].repeat((width * height) as usize);
+            let payload = STANDARD.encode(pixels);
+            let chunks: Vec<_> = payload.as_bytes().chunks(4096).collect();
+            let commands: Vec<Vec<u8>> = chunks
+                .iter()
+                .enumerate()
+                .map(|(index, chunk)| {
+                    let more = u8::from(index + 1 < chunks.len());
+                    let control = if index == 0 {
+                        format!(
+                            "a=T,U=1,i={id},f=32,s={width},v={height},c={COLUMNS},r={ROWS},q=2,m={more}"
+                        )
+                    } else {
+                        format!("m={more}")
+                    };
+                    let mut command = format!("\x1b_G{control};").into_bytes();
+                    command.extend_from_slice(chunk);
+                    command.extend_from_slice(b"\x1b\\");
+                    command
+                })
+                .collect();
+            let (first, rest) = commands.split_first().unwrap();
+            let (last, middle) = rest.split_last().unwrap();
+
+            let mut head = Vec::new();
+            if update > 0 {
+                head.extend(format!("\x1b_Ga=d,d=I,i={},q=2\x1b\\", id - 1).bytes());
+            }
+            head.extend_from_slice(first);
+            sender.send(head).unwrap();
+            for read in middle.concat().chunks(PTY_READ_BUFFER_SIZE) {
+                sender.send(read.to_vec()).unwrap();
+            }
+            let mut tail = last.clone();
+            for (row, diacritic) in ROW_DIACRITICS.iter().enumerate() {
+                let mut line = format!("\x1b[{};1H\x1b[38;2;0;0;{id}m", row + 1);
+                for _ in 0..COLUMNS {
+                    line.push('\u{10EEEE}');
+                    line.push(*diacritic);
+                }
+                tail.extend(line.bytes());
+            }
+            tail.extend_from_slice(b"\x1b[39m\x1b[6;1H");
+            sender.send(tail).unwrap();
+        }
+        sender.send(b"DONE".to_vec()).unwrap();
+
+        let mut capture = CaptureState::default();
+        let started = Instant::now();
+        pty.wait_for(
+            &mut terminal,
+            WaitTarget::Screen,
+            &WaitPattern::Regex("DONE".to_string()),
+            Duration::from_secs(20),
+            &settings,
+            &mut capture,
+        )
+        .unwrap();
+        let elapsed = started.elapsed();
+        drop(sender);
+
+        // Checking the screen after every read instead of every burst takes far longer.
+        assert!(
+            elapsed < Duration::from_secs(5),
+            "wait took {elapsed:?} for {UPDATES} image updates"
+        );
+        let centre = |frame: &crate::media::Frame| {
+            let x = text.padding + COLUMNS * cell_width / 2;
+            let y = text.padding + ROWS * cell_height / 2;
+            let offset = y as usize * frame.stride + x as usize * 4;
+            <[u8; 4]>::try_from(&frame.pixels[offset..offset + 4]).unwrap()
+        };
+        let shown: Vec<_> = capture
+            .frames
+            .iter()
+            .map(|(captured, _)| centre(&captured.frame))
+            .skip_while(|pixel| !colors.contains(pixel))
+            .collect();
+        // How many frames land depends on runner speed; a slow runner drains several updates per
+        // burst. Only blank frames are a failure.
+        assert!(!shown.is_empty(), "no frame showed the image");
+        let blank = shown.iter().filter(|pixel| !colors.contains(pixel)).count();
+        assert_eq!(blank, 0, "{blank} of {} frames lost the image", shown.len());
     }
 
     fn queued_output(initial: &[u8], output: &[u8]) -> (PtySession, GhosttySession) {

@@ -12,6 +12,7 @@ use libghostty_vt::terminal::{
 use libghostty_vt::{Terminal, TerminalOptions};
 
 use super::graphics;
+use super::graphics::transmission::TransmissionTracker;
 use super::inline_image::{Extent, InlineImages};
 use super::mouse::MouseInput;
 use super::renderer::RasterRenderer;
@@ -141,6 +142,8 @@ pub struct GhosttySession {
     cell_size: (u32, u32),
     /// Sixel and iTerm2 image translation in front of the terminal.
     inline_images: InlineImages,
+    /// Kitty command boundaries in the raw stream, so captures skip half-replaced images.
+    transmissions: TransmissionTracker,
 }
 
 impl std::fmt::Debug for GhosttySession {
@@ -231,6 +234,7 @@ impl GhosttySession {
                 width: cell_width,
                 height: cell_height,
             }),
+            transmissions: TransmissionTracker::default(),
         })
     }
 }
@@ -239,6 +243,7 @@ impl TerminalSession for GhosttySession {
     /// Feed raw PTY bytes into libghostty-vt.
     fn write_vt(&mut self, bytes: &[u8]) {
         log_pty_write_start(bytes);
+        self.transmissions.observe(bytes);
         self.inline_images.write(&mut self.terminal, bytes);
         log_pty_write_finish(bytes);
     }
@@ -332,6 +337,10 @@ impl TerminalSession for GhosttySession {
             "read terminal state from libghostty-vt",
         );
         Ok(state)
+    }
+
+    fn image_transmission_in_progress(&self) -> bool {
+        self.transmissions.in_progress()
     }
 
     fn take_pending_pty_reply(&mut self) -> Vec<u8> {

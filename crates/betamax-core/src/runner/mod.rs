@@ -226,6 +226,15 @@ pub trait TerminalSession {
     fn take_pending_pty_reply(&mut self) -> Vec<u8> {
         Vec::new()
     }
+
+    /// Whether the bytes written so far stop inside an image transmission.
+    ///
+    /// The runner keeps reading before capturing while this is true, so a frame never shows an
+    /// image area between a program deleting an image and finishing its replacement. Default is
+    /// `false` for backends without inline images.
+    fn image_transmission_in_progress(&self) -> bool {
+        false
+    }
 }
 
 /// Opens terminal sessions for captured tape runs.

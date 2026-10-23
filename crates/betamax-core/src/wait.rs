@@ -33,17 +33,35 @@ pub(crate) fn wait_target_text(
     }
 }
 
-/// Evaluate a wait pattern against text.
+/// A wait pattern prepared for repeated matching.
 ///
-/// Regex patterns are compiled on each call. This keeps the stored tape representation simple; if
-/// wait matching becomes a performance issue, precompiled patterns can be introduced in runner
-/// settings without changing the tape AST.
-pub(crate) fn wait_pattern_matches(pattern: &WaitPattern, text: &str) -> Result<bool> {
-    match pattern {
-        WaitPattern::Contains(pattern) => Ok(text.contains(pattern)),
-        WaitPattern::Regex(pattern) => Ok(Regex::new(pattern)
-            .map_err(|error| miette!("invalid wait regex `{pattern}`: {error}"))?
-            .is_match(text)),
+/// A wait checks the screen after every burst of output; compiling its regex once keeps that check
+/// cheap when a program streams megabytes of image data.
+pub(crate) enum WaitMatcher<'a> {
+    /// Plain substring search.
+    Contains(&'a str),
+    /// Compiled regex.
+    Regex(Regex),
+}
+
+impl<'a> WaitMatcher<'a> {
+    /// Prepare `pattern`, reporting an invalid regex before any output is read.
+    pub(crate) fn new(pattern: &'a WaitPattern) -> Result<Self> {
+        Ok(match pattern {
+            WaitPattern::Contains(pattern) => Self::Contains(pattern),
+            WaitPattern::Regex(pattern) => Self::Regex(
+                Regex::new(pattern)
+                    .map_err(|error| miette!("invalid wait regex `{pattern}`: {error}"))?,
+            ),
+        })
+    }
+
+    /// Whether `text` satisfies the pattern.
+    pub(crate) fn is_match(&self, text: &str) -> bool {
+        match self {
+            Self::Contains(pattern) => text.contains(pattern),
+            Self::Regex(regex) => regex.is_match(text),
+        }
     }
 }
 
@@ -81,9 +99,16 @@ mod tests {
 
     #[test]
     fn wait_patterns_match_text_or_regex() {
-        assert!(wait_pattern_matches(&WaitPattern::Contains("ok".to_string()), "api ok").unwrap());
-        assert!(wait_pattern_matches(&WaitPattern::Regex("a.*ok".to_string()), "api ok").unwrap());
-        assert!(!wait_pattern_matches(&WaitPattern::Contains("no".to_string()), "api ok").unwrap());
+        let matches = |pattern| WaitMatcher::new(&pattern).unwrap().is_match("api ok");
+        assert!(matches(WaitPattern::Contains("ok".to_string())));
+        assert!(matches(WaitPattern::Regex("a.*ok".to_string())));
+        assert!(!matches(WaitPattern::Contains("no".to_string())));
+    }
+
+    #[test]
+    fn invalid_wait_regexes_fail_before_matching() {
+        let pattern = WaitPattern::Regex("(".to_string());
+        assert!(WaitMatcher::new(&pattern).is_err());
     }
 
     #[test]

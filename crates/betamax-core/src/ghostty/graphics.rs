@@ -9,6 +9,7 @@
 //! `inline_image`.
 
 pub(super) mod placeholder;
+pub(super) mod transmission;
 
 use std::collections::HashMap;
 use std::rc::Rc;
