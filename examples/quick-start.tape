@@ -8,6 +8,8 @@ Require cargo-binstall
 # in step with site/quick-start.tape, which renders the frameless homepage version.
 Set Shell "bash"
 Set Theme "Betamax Brownout"
+# Fit cargo-binstall's longest status line on one row.
+Set FontSize 20
 Set Framerate 12
 Set TypingSpeed 8ms
 Set CursorBlink false

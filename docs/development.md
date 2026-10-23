@@ -40,101 +40,9 @@ the update before changing its Zig pin.
 
 ## Build troubleshooting
 
-### Cargo finds Zig 0.16
-
-An error such as `Your Zig version v0.16.0 does not meet the required build version of v0.15.2`
-means Cargo found an incompatible compiler. `mise install` installs tools; `mise run` and
-`mise exec` select them for a command. Cargo's `--locked` option pins Rust dependencies, not Zig.
-
-In a checkout, use:
-
-```sh
-mise install
-mise exec -- sh -c 'command -v zig; zig version'
-mise run cargo-check
-mise run install-local
-```
-
-The version check should print `0.15.2`. For a custom command, use
-`mise exec -- cargo run -- run examples/basic.tape` instead of invoking Cargo outside mise.
-If a terminal or IDE still selects system Zig, check its inherited `PATH` and mise activation;
-opening a fresh shell can help isolate stale activation state.
-
-For a crates.io source install without a checkout, select Zig explicitly:
-
-```sh
-mise install zig@0.15.2
-export PATH="$(mise where zig@0.15.2)/bin:$PATH"
-zig version # should print 0.15.2
-cargo install betamax --locked
-```
-
-## Building on macOS Tahoe
-
-To build Betamax on macOS Tahoe, use the pinned Zig 0.15.2 with a compatible macOS SDK. If your
-default SDK comes from Xcode 26.4 or newer, select an older installed SDK using the local mise
-configuration below. This is a build-toolchain requirement; Betamax can run on Tahoe.
-
-With an incompatible SDK, the build can fail with undefined symbols such as
-`__availability_version_check`, `_abort`, or `_bzero` while linking Zig's build runner, before
-Ghostty or Betamax code compiles.
-The [upstream Ghostty report](https://github.com/ghostty-org/ghostty/issues/11991) tracks this
-SDK incompatibility. Keep Zig at 0.15.2 until the published Rust bindings support Zig 0.16.
-
-Inspect the selected developer tools and available SDKs:
-
-```sh
-xcode-select -p
-/usr/bin/xcrun --sdk macosx --show-sdk-path
-ls /Library/Developer/CommandLineTools/SDKs
-```
-
-If you have a compatible SDK installed, copy the tracked `mise.local.toml.example` from the
-checkout root to `mise.local.toml`:
-
-```sh
-cp -i mise.local.toml.example mise.local.toml
-```
-
-If you already have local mise settings, merge the example's entries into that file instead,
-preserving any existing `_.path` entries. `mise.local.toml` is ignored by version control; the
-example is tracked but is not loaded by mise. Use only one local filename (`mise.local.toml` or
-`.mise.local.toml`), since mise supports both.
-
-Set the absolute path to a compatible SDK already installed on your machine. macOS SDK 15.2 has
-been verified with the pinned Ghostty build on Tahoe:
-
-```toml
-[env]
-BETAMAX_MACOS_SDK = "/Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk"
-_.path = ["tools/macos-sdk"]
-```
-
-Verify the selected compiler and SDK, then build or install normally:
-
-```sh
-mise exec -- sh -c 'zig version; xcrun --sdk macosx --show-sdk-path'
-mise run test
-mise run install-local
-```
-
-The version should be `0.15.2`, and the SDK path should match your local configuration. The
-`tools/macos-sdk/xcrun` wrapper overrides only the SDK lookup used by Zig and Ghostty, and forwards
-other commands to `/usr/bin/xcrun`. It leaves the machine-wide Xcode selection unchanged.
-`SDKROOT` alone does not override this lookup, and `zig build --sysroot` alone does not override
-Ghostty's separate SDK discovery. No Zig wrapper or additional linker flags are needed.
-
-If an IDE or agent still selects the wrong tools because it inherited stale mise activation,
-retry from a fresh shell, or clear that activation state for the command:
-
-```sh
-env -u __MISE_DIFF -u __MISE_SESSION -u __MISE_ORIG_PATH mise run test
-```
-
-To stop using the override, remove these entries from `mise.local.toml`. If you have no compatible
-SDK installed, use a compatible developer-tool installation or Betamax's prebuilt binaries.
-`DEVELOPER_DIR` can select another installation for a command, but only helps if that
-installation's default macOS SDK is compatible.
+The docs site's [Development page][site-development] covers building from source, including
+[Cargo finding the wrong Zig][site-wrong-zig] and [building on macOS Tahoe][site-tahoe] with an
+older SDK through `mise.local.toml.example` and `tools/macos-sdk/xcrun`.
 
 ## Formatting
 
@@ -228,25 +136,11 @@ pnpm install
 mise run docs-site-dev
 ```
 
-## Installation modes
+## Release archives
 
-Users can install Betamax with Homebrew from [joshka/homebrew-tap][homebrew-tap]:
-
-```sh
-brew install joshka/tap/betamax
-```
-
-If Homebrew requires trusted taps, trust the formula first:
-
-```sh
-brew trust --formula joshka/tap/betamax
-```
-
-They can also install from crates.io with [cargo-binstall][cargo-binstall]:
-
-```sh
-cargo binstall betamax
-```
+Users install Betamax as described in the site's
+[Quick start](https://www.joshka.net/betamax/quick-start/#install): Homebrew from
+[joshka/homebrew-tap][homebrew-tap], or [cargo-binstall][cargo-binstall].
 
 The CLI crate declares `[package.metadata.binstall]` in
 [`crates/betamax/Cargo.toml`](../crates/betamax/Cargo.toml). The metadata points cargo-binstall at
@@ -352,16 +246,8 @@ build does not support Windows.
 Betamax writes GIF, PNG, screenshots, and state JSON in process. MP4 and WebM require
 [ffmpeg][ffmpeg] on `PATH`. Video output fails at runtime if ffmpeg is missing.
 
-Install ffmpeg with the platform package manager before rendering `.mp4` or `.webm` outputs:
-
-```sh
-# macOS
-brew install ffmpeg
-
-# Debian/Ubuntu
-sudo apt-get update
-sudo apt-get install ffmpeg
-```
+See [Video encoding](https://www.joshka.net/betamax/authoring/outputs/#video-encoding) for installing
+ffmpeg.
 
 ## READMEs and media
 
@@ -385,3 +271,6 @@ limits, refreshing the hero recording, and uploading example media.
 [trusted-publishing]: https://doc.rust-lang.org/cargo/reference/registry-authentication.html#trusted-publishing
 [typescript]: https://www.typescriptlang.org/
 [zig]: https://ziglang.org/
+[site-development]: https://www.joshka.net/betamax/reference/development/
+[site-tahoe]: https://www.joshka.net/betamax/reference/development/#building-on-macos-tahoe
+[site-wrong-zig]: https://www.joshka.net/betamax/reference/development/#cargo-finds-zig-016

@@ -48,6 +48,21 @@ State ready.json
 `betamax run demo.tape` renders it. Most VHS tapes run unchanged; see
 [Differences from VHS][vhs-differences].
 
+## What it writes
+
+| Output                     | Use it for                                                    |
+| -------------------------- | ------------------------------------------------------------- |
+| GIF, WebP                  | README demos, release notes, and docs                         |
+| PNG, `Screenshot`          | The final frame, or a checkpoint mid-run                      |
+| JSON, `State`              | Viewport, scrollback, cursor, and styles for snapshot tests   |
+| MP4, WebM                  | Video, encoded with `ffmpeg`                                  |
+| Frame directory            | Every rendered frame as a PNG, for custom tooling             |
+| `.txt`, `.ascii`           | Plain screen text, for VHS-style golden files                 |
+
+![ANSI colors in the Dracula theme, one of the bundled Ghostty themes][themes-gif]
+
+![Typing a command and waiting for its output][basic-gif]
+
 ## Install
 
 ```sh
@@ -73,6 +88,7 @@ video output.
 To embed Betamax in Rust tests, use [`betamax-core`][betamax-core]. Source, issues, and discussions
 are on [GitHub][github].
 
+[basic-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/basic.gif
 [betamax-core]: https://crates.io/crates/betamax-core
 [examples]: https://www.joshka.net/betamax/examples/
 [github]: https://github.com/joshka/betamax
@@ -83,5 +99,6 @@ are on [GitHub][github].
 [state-json]: https://www.joshka.net/betamax/testing/state-json/
 [tape-files]: https://www.joshka.net/betamax/authoring/tape-files/
 [tape-reference]: https://www.joshka.net/betamax/reference/tape-reference/
+[themes-gif]: https://github.com/joshka/betamax/releases/download/readme-assets/themes.gif
 [terminal-testing]: https://www.joshka.net/betamax/testing/terminal-testing/
 [vhs-differences]: https://www.joshka.net/betamax/reference/vhs-differences/
