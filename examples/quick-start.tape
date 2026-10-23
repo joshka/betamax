@@ -73,7 +73,7 @@ Sleep 2s
 Type "ls -lh new.gif"
 Sleep 500ms
 Enter
-Wait+Screen "/-rw.*new\\.gif/"
+Wait+Screen /-rw.*new\.gif/
 Sleep 4s
 
 # Remove temporary files after recording stops.

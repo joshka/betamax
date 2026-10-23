@@ -34,6 +34,7 @@
 mod diagnostics;
 mod model;
 mod parser;
+mod tokens;
 
 #[doc(inline)]
 pub use diagnostics::{LateSettingEffect, TapeWarning, TapeWarningKind};

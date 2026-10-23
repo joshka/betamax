@@ -6,8 +6,8 @@ use regex::Regex;
 
 use super::diagnostics::{LateSettingEffect, TapeWarning, TapeWarningKind};
 use super::{
-    Assertion, Command, Key, KeyCode, KeyModifiers, MouseButton, MouseEvent, ScrollDirection, Tape,
-    Value, ViewportDirection, WaitPattern, WaitTarget,
+    tokens, Assertion, Command, Key, KeyCode, KeyModifiers, MouseButton, MouseEvent,
+    ScrollDirection, Tape, Value, ViewportDirection, WaitPattern, WaitTarget,
 };
 use crate::Result;
 
@@ -148,7 +148,7 @@ fn parse_lines(
             continue;
         }
 
-        let tokens = shell_words::split(trimmed)
+        let tokens = tokens::split_line(trimmed)
             .map_err(|err| miette!("line {line_number}: failed to tokenize tape line: {err}"))?;
         let mut line_commands = Vec::new();
         let mut line_warnings = Vec::new();
@@ -1301,6 +1301,31 @@ Wait+Screen ready WindowTitle final"#,
                     count: 1,
                 },
             ]
+        );
+    }
+
+    #[test]
+    fn keeps_backslashes_and_spaces_in_unquoted_wait_regexes() {
+        let tape = Tape::parse(
+            r"Wait+Screen@2s /v[0-9]+\.[0-9]+ ready/ Enter
+            Set WaitPattern /\$ $/",
+        )
+        .unwrap();
+        assert_eq!(
+            tape.commands[0],
+            Command::Wait {
+                target: WaitTarget::Screen,
+                pattern: Some(WaitPattern::Regex(r"v[0-9]+\.[0-9]+ ready".to_string())),
+                timeout: Some(Duration::from_secs(2)),
+            }
+        );
+        assert!(matches!(tape.commands[1], Command::Key { .. }));
+        assert_eq!(
+            tape.commands[2],
+            Command::Set {
+                key: "WaitPattern".to_string(),
+                value: Value::String(r"/\$ $/".to_string()),
+            }
         );
     }
 

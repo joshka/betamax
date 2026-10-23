@@ -17,7 +17,9 @@ errors fail before the PTY is spawned.
 - A tape is line oriented.
 - Blank lines are ignored.
 - Lines whose trimmed form starts with `#` are comments.
-- Tokens are parsed with shell-like quoting and escaping through `shell_words`.
+- Tokens follow shell-like quoting and escaping. An unquoted `/regex/` after a wait or
+  `Set WaitPattern` is the exception: it is kept exactly as written. See
+  [Regex patterns](#regex-patterns).
 - One physical line may contain more than one command, such as `Type "echo hi" Enter`.
 - Startup commands belong before runtime commands.
 
@@ -681,9 +683,10 @@ any sleep that only exists to make a GIF, video, or review artifact readable.
 
 Pattern forms:
 
-- `/regex/`: regular expression, validated when the tape is parsed. A slash-delimited token after
-  a wait is always its pattern, quoted or not.
-- `text`: plain substring match.
+- `/regex/`: regular expression, validated when the tape is parsed. See
+  [Regex patterns](#regex-patterns).
+- `text`: plain substring match. Text that names a command or key, such as `Enter` or `q`, starts
+  the next command instead, even when quoted; write `/Enter/` to wait for it.
 - omitted: use `Set WaitPattern`, which defaults to the VHS-style prompt regex `>$`.
 
 `Wait@5s` sets the timeout for that command; otherwise `Set WaitTimeout` applies, defaulting to
@@ -692,6 +695,39 @@ Pattern forms:
 On timeout, the tape fails with the target and pattern in the error. If the shell exits before the
 pattern matches, the wait fails at once with the exit status instead of running out the timeout.
 Either failure leaves a [failure bundle](#failure-bundles).
+
+#### Regex patterns
+
+Wait regexes use the Rust [`regex`](https://docs.rs/regex/latest/regex/#syntax) syntax, which
+has no lookaround or backreferences.
+
+Write the regex unquoted. After `Wait`, `Wait+Line`, `Wait+Screen`, or `Set WaitPattern`, an
+unquoted `/regex/` is kept exactly as written, as in VHS:
+
+```tape
+Wait+Screen /v[0-9]+\.[0-9]+/
+Wait+Screen@10s /it's (ok|done)/
+Wait+Screen /(?m)^ready *$/
+```
+
+- Backslashes are kept, so `\.` matches a literal dot.
+- Spaces and quote characters are part of the pattern. The regex ends at the first `/` that ends a
+  word and is not escaped, so `/a/b/` is the pattern `a/b`. Write `\/` for a slash followed by a
+  space.
+- A quoted pattern such as `"/v[0-9]+\.[0-9]+/"` is a string first. Single quotes keep it
+  unchanged. Double quotes keep `\.` but turn `\\` into `\` and `\"` into `"`.
+- `Set WaitPattern` treats its value as a regex with or without slashes, so `>$` and `/>$/` are
+  the same.
+
+What the regex sees depends on the target:
+
+- `Wait` and `Wait+Line` match the cursor row with trailing blanks removed, so the default `>$`
+  matches a prompt that ends in `>` and a space.
+- `Wait+Screen` matches every visible row joined into one string. Each row is padded with spaces
+  to the terminal width and ends in a newline. `^` and `$` match only at the start and end of the
+  whole screen, so the default `>$` never matches and a bare `Wait+Screen` times out. To anchor
+  to the end of a row, turn on multi-line mode and allow the padding, as in `/(?m)^ready *$/`. A
+  row-anchored prompt pattern also matches earlier prompts still on screen.
 
 ### `Wait+Line[@duration] [/regex/|text]`
 

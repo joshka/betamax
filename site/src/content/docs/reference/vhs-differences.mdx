@@ -91,7 +91,6 @@ These tapes parse, but run differently or print a warning that VHS doesn't.
 | `Type "a" "b"` (several strings)      | Types `a b`, as VHS does, and warns             | One string: `Type "a b"`                    |
 | `Env` before a `Set`                  | `Set` applies; VHS ignores it                   | Nothing                                     |
 | Backtick strings or `\` in `"…"`      | Strings follow shell quoting rules              | Single quotes for literal text: `'C:\path'` |
-| `Wait /foo bar/` (regex with a space) | Split into two tokens                           | Quote it: `Wait "/foo bar/"`                |
 | `Output frames.png`                   | Writes one PNG of the final frame               | `Output frames/` for a frames directory     |
 
 A `Set` after runtime commands works as in VHS: `Set TypingSpeed` applies from that point, and other
