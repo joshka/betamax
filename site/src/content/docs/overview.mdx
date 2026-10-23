@@ -62,7 +62,8 @@ explains where to store and host the resulting files.
 
 A test tape can run an interactive program, wait for expected text, and save state JSON for snapshot
 assertions. Screenshots help you inspect failures. See [Terminal testing][terminal-testing] for
-setup and [State JSON][state-json] for the snapshot format.
+setup and [State JSON][state-json] for the snapshot format. The [GitHub Action][github-action]
+renders tapes on pull requests and posts a gallery comment so reviewers can see the change.
 
 ## Compatibility
 
@@ -72,6 +73,15 @@ Betamax supports macOS and Linux. Windows is not supported because the upstream
 Video output requires [ffmpeg][video-encoding] on `PATH`. Other output formats do not require an
 external encoder.
 
+## Getting help
+
+Ask questions and share what you made in
+[Discussions](https://github.com/joshka/betamax/discussions). Report bugs as
+[issues](https://github.com/joshka/betamax/issues), with the tape that misbehaves. To build from
+source or contribute, see [Development][development].
+
+[development]: ../reference/development/
+[github-action]: ../testing/github-action/
 [cosmic-text]: https://github.com/pop-os/cosmic-text
 [examples]: ../examples/
 [generated-media]: ../authoring/generated-media/

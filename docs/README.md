@@ -11,8 +11,9 @@
 - [Differences from VHS](vhs-differences.md): architecture, parity, intentional omissions, and
   remaining fidelity gaps.
 - [Roadmap](roadmap.md): suggested follow-up work that is not part of the VHS differences list.
-- [Development](development.md): local checks, formatting, packaging checks, and README asset
-  maintenance.
+- [Development](development.md): local checks, formatting, packaging checks, and releases.
+- [READMEs and media](readmes-and-media.md): which README serves which reader, crates.io limits,
+  and refreshing the hero recording and example media.
 - [Module design](module-design.md): feature ownership, extending modules, choosing siblings or
   children, and reviewing boundaries and size.
 - [Pull request descriptions](pr-writing.md): caller context, scannable behavior, visual evidence,
