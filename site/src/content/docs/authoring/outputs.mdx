@@ -62,6 +62,15 @@ To give viewers time to read, try 300-700 ms after simple transitions and 1.5-2.
 screen of short output. Reserve 4-5 second pauses for the final screen. Allow more time for dense
 output.
 
+## GIF encoding
+
+GIF stores each frame's duration in hundredths of a second, and browsers play a frame of 10 ms or
+less as 100 ms. Betamax therefore keeps every GIF frame at least 20 ms long, which caps GIF at 50
+FPS, the default `Framerate`. When a higher `Framerate` or fast typing captures a state that would
+show for less than 20 ms, the GIF drops it and shows the next state for the combined time. The
+total duration still follows the capture, within 10 ms. WebP, video, and frame directories keep
+every captured state.
+
 ## WebP encoding
 
 Use `Output demo.webp` for an infinitely looping lossless animation. Use `Screenshot ready.webp`

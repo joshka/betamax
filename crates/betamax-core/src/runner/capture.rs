@@ -1,6 +1,6 @@
 //! Frame collection helpers for captured runs.
 
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use super::keyboard_overlay::KeyboardOverlayState;
 use super::settings::Settings;
@@ -33,6 +33,12 @@ pub(super) struct CaptureState {
     pub(super) caption: Option<String>,
     /// Keyboard overlay labels that are currently visible.
     pub(super) keyboard_overlay: KeyboardOverlayState,
+    /// Wall-clock instant that the recorded timeline has reached, while visible.
+    ///
+    /// This persists across commands so time spent between drains (input writes, rendering,
+    /// assertions) still lands in a frame hold. Resetting it per command made recorded holds
+    /// shorter than real time, which compressed typing to well under its `TypingSpeed`.
+    pub(super) recorded_until: Option<Instant>,
 }
 
 impl Default for CaptureState {
@@ -43,6 +49,7 @@ impl Default for CaptureState {
             frames: Vec::new(),
             caption: None,
             keyboard_overlay: KeyboardOverlayState::default(),
+            recorded_until: None,
         }
     }
 }
@@ -114,6 +121,29 @@ pub(super) fn append_visible_frame(capture: &mut CaptureState, frame: Frame, del
     capture.keyboard_overlay.advance(delay);
 }
 
+/// Extend the last frame's hold without rendering when its presentation metadata still applies.
+///
+/// Callers use this only when no PTY output arrived since that frame was captured, so its pixels
+/// are known to be current. Returns `false` when a new frame must be rendered instead: there is no
+/// previous frame, or its title, caption, or keyboard overlay differs from the current state. This
+/// matches the coalescing in [`append_visible_frame`], minus the cost of a render.
+pub(super) fn extend_unchanged_frame(capture: &mut CaptureState, delay: Duration) -> bool {
+    let labels = capture.keyboard_overlay.labels();
+    let Some((last_frame, last_delay)) = capture.frames.last_mut() else {
+        return false;
+    };
+    if last_frame.window_title != capture.window_title
+        || last_frame.caption != capture.caption
+        || !labels.is_empty()
+        || !last_frame.keyboard_overlay_labels.is_empty()
+    {
+        return false;
+    }
+    *last_delay += delay;
+    capture.keyboard_overlay.advance(delay);
+    true
+}
+
 /// Consume notifications before changing caption/visibility or taking a checkpoint.
 pub(super) fn collect_title_changes(
     terminal: &mut impl TerminalSession,
@@ -156,8 +186,10 @@ pub(super) fn assign_title(
 
 /// Ensure title transitions survive GIF and CFR video quantization without double-counting
 /// naturally recorded dwell time. This runs once, before loop rotation and all encoders.
+///
+/// The 20 ms floor is the shortest GIF hold browsers honor; GIF merges shorter frames away.
 pub(super) fn protect_title_holds(capture: &mut CaptureState, settings: &Settings) {
-    let seconds = (1.0 / settings.output_framerate().max(1.0)).max(0.01);
+    let seconds = (1.0 / settings.output_framerate().max(1.0)).max(0.02);
     let hold = Duration::from_nanos((seconds * 1_000_000_000.0).ceil() as u64);
     for (frame, delay) in &mut capture.frames {
         if frame.title_transition {

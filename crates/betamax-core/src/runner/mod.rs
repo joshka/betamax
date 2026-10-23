@@ -793,11 +793,23 @@ where
             Command::Type { text, delay } => {
                 let delay = delay.unwrap_or(settings.typing_delay);
                 terminal.scroll_viewport_to_bottom();
-                for ch in text.chars() {
+                // Pace keystrokes against absolute deadlines so per-key overhead (rendering, the
+                // post-drain read) does not accumulate and slow typing below `TypingSpeed`.
+                let mut deadline = Instant::now();
+                let mut chars = text.chars().peekable();
+                while let Some(ch) = chars.next() {
                     let mut buf = [0u8; 4];
                     session.write_all(ch.encode_utf8(&mut buf).as_bytes())?;
-                    session.drain_for(terminal, delay, settings, capture)?;
+                    deadline += delay;
+                    if chars.peek().is_none() {
+                        // When pacing has fallen behind, the last deadline has already passed.
+                        // Give the final key its full delay to echo so the next command (and text
+                        // output snapshots) see the whole typed line.
+                        deadline = deadline.max(Instant::now() + delay);
+                    }
+                    session.drain_until(terminal, deadline, settings, capture)?;
                 }
+                session.drain_for(terminal, Duration::ZERO, settings, capture)?;
             }
             Command::Key { key, delay, count } => {
                 terminal.scroll_viewport_to_bottom();
@@ -917,7 +929,10 @@ where
                 session.drain_into(terminal, CHECKPOINT_IDLE)?;
                 write_json(path, &terminal.terminal_state()?)?;
             }
-            Command::Hide => capture.visible = false,
+            Command::Hide => {
+                capture.visible = false;
+                capture.recorded_until = None;
+            }
             Command::Show => {
                 if settings.presentation.style.window_title.follow_terminal {
                     session.drain_queued(terminal)?;
@@ -929,6 +944,7 @@ where
                     capture_frame(terminal, settings, capture.frames.len())?,
                     settings.frame_delay(),
                 );
+                capture.recorded_until = Some(Instant::now());
             }
             Command::Env { .. }
             | Command::Output(_)

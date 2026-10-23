@@ -15,7 +15,7 @@ use std::time::Duration;
 
 use ::gif::DisposalMethod;
 
-use super::{gif_delay, GIF_TRANSPARENT_INDEX};
+use super::{gif_delay, gif_units, GIF_TRANSPARENT_INDEX, MIN_GIF_DELAY_UNITS};
 
 /// Rectangle of a GIF frame within the logical screen, in pixels.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -83,6 +83,10 @@ pub(super) struct FrameDelta {
     pending: Option<Pending>,
     /// First frame, kept when it has clear pixels so the loop back to it can clear them again.
     first_with_clear: Option<Vec<u8>>,
+    /// Captured time covered by settled frames, before rounding.
+    elapsed: Duration,
+    /// Hundredths of a second already written, so rounding error does not accumulate.
+    written: u128,
 }
 
 impl FrameDelta {
@@ -98,6 +102,8 @@ impl FrameDelta {
             canvas: clear,
             pending: None,
             first_with_clear: None,
+            elapsed: Duration::ZERO,
+            written: 0,
         }
     }
 
@@ -177,6 +183,20 @@ impl FrameDelta {
         written
     }
 
+    /// Convert a frame hold to GIF units by rounding its cumulative end time.
+    ///
+    /// Truncating each hold separately loses up to 10 ms per frame, which shortened typing and
+    /// other dense stretches by roughly a quarter. Rounding the running total keeps every frame
+    /// within 10 ms of its captured timestamp. Frames reach here at least 20 ms long, so only a
+    /// short last frame is stretched to the minimum.
+    fn settle_delay(&mut self, delay: Duration) -> u16 {
+        self.elapsed = self.elapsed.saturating_add(delay);
+        let end = gif_units(self.elapsed).max(self.written + MIN_GIF_DELAY_UNITS);
+        let units = u16::try_from(end - self.written).unwrap_or(u16::MAX);
+        self.written += u128::from(units);
+        units
+    }
+
     /// Encode the pending frame from the canvas before and after it was drawn.
     fn settle_pending(&mut self) -> Option<DeltaFrame> {
         let pending = self.pending.take()?;
@@ -195,7 +215,7 @@ impl FrameDelta {
         Some(DeltaFrame {
             rect: pending.rect,
             buffer,
-            delay: gif_delay(pending.delay),
+            delay: self.settle_delay(pending.delay),
             dispose: pending.dispose,
         })
     }

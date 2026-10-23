@@ -78,7 +78,9 @@ margins, gradient and transparent fills, window bars and titles, borders, corner
 
 ## Timing and cursor styling
 
-`Framerate` controls capture cadence. `PlaybackSpeed` changes output playback speed without
+`Framerate` controls capture cadence. GIF plays at most 50 FPS, so rates above 50 only add frames
+to WebP, video, and frame directories; see [GIF encoding](../outputs/#gif-encoding).
+`PlaybackSpeed` changes output playback speed without
 speeding up shell execution. `LoopOffset` rotates animated frames so a GIF loop can begin at a less
 jarring point.
 

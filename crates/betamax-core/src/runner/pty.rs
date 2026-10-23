@@ -8,7 +8,10 @@ use std::time::{Duration, Instant};
 use miette::{miette, Context, IntoDiagnostic};
 use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 
-use super::capture::{append_visible_frame, capture_frame, collect_title_changes, CaptureState};
+use super::capture::{
+    append_visible_frame, capture_frame, collect_title_changes, extend_unchanged_frame,
+    CaptureState,
+};
 use super::settings::Settings;
 use crate::runner::TerminalSession;
 use crate::shell::{apply_terminal_environment, ensure_shell_exists, ShellLaunch};
@@ -432,35 +435,63 @@ impl PtySession {
         settings: &Settings,
         capture: &mut CaptureState,
     ) -> Result<()> {
-        let started = Instant::now();
-        let capture_interval = settings.capture_interval();
-        let mut last_capture_at = started;
-        while started.elapsed() < duration {
-            let remaining = duration.saturating_sub(started.elapsed());
-            let wait = remaining.min(capture_interval);
-            let read = self.read_burst_into(terminal, wait, capture_interval)?;
-            let mut due = capture.visible
-                && (last_capture_at.elapsed() >= capture_interval || started.elapsed() >= duration);
-            if due && read && !self.settle_for_capture(terminal, capture_interval)? {
-                due = last_capture_at.elapsed() >= MAX_TRANSMISSION_DEFER;
-            }
-            collect_title_changes(terminal, settings, capture)?;
-            let captured_at = Instant::now();
-            let elapsed = captured_at.saturating_duration_since(last_capture_at);
-            if due {
-                let frame_delay = settings.playback_delay(elapsed);
-                append_visible_frame(
-                    capture,
-                    capture_frame(terminal, settings, capture.frames.len())?,
-                    frame_delay,
-                );
-                last_capture_at = captured_at;
-            }
-        }
+        self.drain_until(terminal, Instant::now() + duration, settings, capture)?;
         // Input pacing must not wait for the child to stop producing output. Leave buffered
         // chunks for the next command, whose wait or assertion owns its own deadline.
         self.read_once_into(terminal, POST_DURATION_IDLE)?;
         collect_title_changes(terminal, settings, capture)?;
+        Ok(())
+    }
+
+    /// Drain PTY output until `deadline` and append frames at the capture cadence.
+    ///
+    /// Unlike [`Self::drain_for`], this returns at the deadline without a trailing idle read, so
+    /// callers pacing input (such as `Type`) keep their schedule. Captures with no PTY output since
+    /// the previous one extend its hold instead of rendering an identical frame; rendering takes
+    /// long enough at large sizes that redundant renders would push input past its deadline.
+    pub(super) fn drain_until(
+        &mut self,
+        terminal: &mut impl TerminalSession,
+        deadline: Instant,
+        settings: &Settings,
+        capture: &mut CaptureState,
+    ) -> Result<()> {
+        let started = Instant::now();
+        let capture_interval = settings.capture_interval();
+        let mut last_capture_at = *capture.recorded_until.get_or_insert(started);
+        // The terminal may have changed since the last capture (input, resize, scrolling), so
+        // the first capture in each drain always renders.
+        let mut changed = true;
+        while Instant::now() < deadline {
+            let now = Instant::now();
+            // Hidden periods never capture, so waiting for a capture slot would busy-spin until
+            // the deadline and starve the child process of CPU.
+            let next_due = if capture.visible {
+                (last_capture_at + capture_interval).max(now)
+            } else {
+                deadline
+            };
+            let wait = deadline.min(next_due).saturating_duration_since(now);
+            let read = self.read_burst_into(terminal, wait, capture_interval)?;
+            changed |= read;
+            let mut due = capture.visible
+                && (last_capture_at.elapsed() >= capture_interval || Instant::now() >= deadline);
+            if due && read && !self.settle_for_capture(terminal, capture_interval)? {
+                due = last_capture_at.elapsed() >= MAX_TRANSMISSION_DEFER;
+            }
+            collect_title_changes(terminal, settings, capture)?;
+            if due {
+                last_capture_at = record_capture(terminal, settings, capture, changed)?;
+                changed = false;
+            }
+        }
+        // A capture deferred for streaming output, or a drain that starts after its deadline,
+        // would leave time before the deadline unrecorded. Nothing records it if the tape ends
+        // here, so capture now even if output is mid-update.
+        if capture.visible && last_capture_at < deadline {
+            collect_title_changes(terminal, settings, capture)?;
+            record_capture(terminal, settings, capture, changed)?;
+        }
         Ok(())
     }
 
@@ -482,7 +513,7 @@ impl PtySession {
         let matcher = WaitMatcher::new(pattern)?;
         let started = Instant::now();
         let capture_interval = settings.capture_interval();
-        let mut last_capture_at = started;
+        let mut last_capture_at = *capture.recorded_until.get_or_insert(started);
         while started.elapsed() < timeout {
             let wait = capture_interval.min(timeout.saturating_sub(started.elapsed()));
             let read = self.read_burst_into(terminal, wait, capture_interval)?;
@@ -503,6 +534,7 @@ impl PtySession {
                     frame_delay,
                 );
                 last_capture_at = captured_at;
+                capture.recorded_until = Some(captured_at);
             }
             if matches {
                 return Ok(());
@@ -546,6 +578,30 @@ fn log_pty_drain(message: &'static str, bytes: &[u8]) {
         sample = %ByteSample(bytes),
         message,
     );
+}
+
+/// Record the time since the last capture as a frame hold, rendering only if output arrived.
+///
+/// Returns the capture instant, which becomes the start of the next hold.
+fn record_capture(
+    terminal: &mut impl TerminalSession,
+    settings: &Settings,
+    capture: &mut CaptureState,
+    changed: bool,
+) -> Result<Instant> {
+    let captured_at = Instant::now();
+    let last_capture_at = capture.recorded_until.unwrap_or(captured_at);
+    let frame_delay =
+        settings.playback_delay(captured_at.saturating_duration_since(last_capture_at));
+    if changed || !extend_unchanged_frame(capture, frame_delay) {
+        append_visible_frame(
+            capture,
+            capture_frame(terminal, settings, capture.frames.len())?,
+            frame_delay,
+        );
+    }
+    capture.recorded_until = Some(captured_at);
+    Ok(captured_at)
 }
 
 #[cfg(test)]
