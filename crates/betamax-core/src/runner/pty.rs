@@ -54,6 +54,32 @@ pub(super) struct PtySession {
     reader: Receiver<Vec<u8>>,
     /// Child process handle kept alive for the session lifetime.
     child: Box<dyn portable_pty::Child + Send + Sync>,
+    /// Whether the reader thread has finished, so no more output can arrive.
+    output_closed: bool,
+}
+
+/// Whether the shell is still running, reported in failure bundles.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) enum ShellStatus {
+    /// The tape failed before the shell was spawned.
+    NotStarted,
+    /// The shell is still running.
+    Running,
+    /// The shell exited with a status code.
+    Exited(u32),
+    /// The shell was terminated by a signal.
+    Signaled(String),
+}
+
+impl std::fmt::Display for ShellStatus {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::NotStarted => formatter.write_str("not started"),
+            Self::Running => formatter.write_str("running"),
+            Self::Exited(code) => write!(formatter, "exited with status {code}"),
+            Self::Signaled(signal) => write!(formatter, "terminated by {signal}"),
+        }
+    }
 }
 
 impl PtySession {
@@ -113,7 +139,32 @@ impl PtySession {
             writer,
             reader: output_rx,
             child,
+            output_closed: false,
         })
+    }
+
+    /// Report whether the shell is still running without waiting for it.
+    pub(super) fn shell_status(&mut self) -> ShellStatus {
+        match self.child.try_wait() {
+            Ok(Some(status)) => match status.signal() {
+                Some(signal) => ShellStatus::Signaled(signal.to_string()),
+                None => ShellStatus::Exited(status.exit_code()),
+            },
+            Ok(None) | Err(_) => ShellStatus::Running,
+        }
+    }
+
+    /// Describe the shell after its output closed: its exit status, once the process is reaped.
+    fn closed_shell_status(&mut self) -> ShellStatus {
+        // The PTY closes as the shell exits; give the kernel a moment to make the status visible.
+        let deadline = Instant::now() + Duration::from_millis(200);
+        loop {
+            let status = self.shell_status();
+            if status != ShellStatus::Running || Instant::now() >= deadline {
+                return status;
+            }
+            thread::sleep(Duration::from_millis(10));
+        }
     }
 
     /// Change kernel winsize and notify the child through the normal PTY resize mechanism.
@@ -287,6 +338,7 @@ impl PtySession {
             Err(mpsc::RecvTimeoutError::Timeout) => Ok(false),
             Err(mpsc::RecvTimeoutError::Disconnected) => {
                 // A completed child has stable final output. Avoid spinning on a closed channel.
+                self.output_closed = true;
                 thread::sleep(wait);
                 Ok(false)
             }
@@ -415,7 +467,9 @@ impl PtySession {
     /// Wait for terminal text to match a pattern while continuing to capture frames.
     ///
     /// The timeout is checked against wall-clock time. If the pattern never matches, the error
-    /// names the target and pattern so failing tapes are diagnosable without inspecting code.
+    /// names the target and pattern so failing tapes are diagnosable without inspecting code. If
+    /// the shell exits first, the wait fails at once with its exit status instead of running out
+    /// the timeout.
     pub(super) fn wait_for(
         &mut self,
         terminal: &mut impl TerminalSession,
@@ -452,6 +506,19 @@ impl PtySession {
             }
             if matches {
                 return Ok(());
+            }
+            if self.output_closed {
+                // No more output can arrive, so the pattern can never match.
+                let status = match self.closed_shell_status() {
+                    ShellStatus::Running => "closed the terminal".to_string(),
+                    status => status.to_string(),
+                };
+                return Err(miette!(
+                    "shell {status} before {} matched {}",
+                    wait_target_name(target),
+                    wait_pattern_name(pattern)
+                )
+                .into());
             }
         }
 

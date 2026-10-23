@@ -33,6 +33,11 @@ pub struct Run {
     /// Do not log messages. If publish flag is provided, it will log shareable URL
     #[arg(long, short)]
     quiet: bool,
+
+    /// Write failure bundles under DIR [env: BETAMAX_FAILURE_DIR; default:
+    /// target/betamax-failures]
+    #[arg(long, value_name = "DIR")]
+    failure_dir: Option<PathBuf>,
 }
 
 impl Run {
@@ -73,6 +78,9 @@ impl Run {
                 .parent()
                 .unwrap_or(Path::new(""));
             runner = runner.with_tape_dir(tape_dir);
+        }
+        if let Some(failure_dir) = &self.failure_dir {
+            runner = runner.with_failure_dir(failure_dir);
         }
         if !self.quiet {
             runner = runner.with_media_progress(CliMediaProgress::default());

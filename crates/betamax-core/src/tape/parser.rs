@@ -53,9 +53,10 @@ pub(super) fn parse_tape(source: &str, mut context: Option<SourceContext<'_>>) -
     }
     let tape = Tape {
         commands: parsed.commands,
+        locations: parsed.locations,
     };
     let mut warnings = parsed.warnings;
-    warnings.extend(late_startup_warnings(&tape, &parsed.locations));
+    warnings.extend(late_startup_warnings(&tape));
     // Report in command order; the sort is stable, so same-position warnings keep parse order.
     warnings.sort_by_key(|(index, _)| *index);
     if let Some(context) = context {
@@ -980,11 +981,11 @@ fn parse_wait_pattern(line_number: usize, pattern: &str) -> Result<WaitPattern> 
 ///
 /// VHS accepts these, so Betamax does too. [`Tape::header_len`] and [`Tape::startup_commands`]
 /// define what each one does; this only reports them.
-fn late_startup_warnings(tape: &Tape, locations: &[String]) -> Vec<(usize, TapeWarning)> {
+fn late_startup_warnings(tape: &Tape) -> Vec<(usize, TapeWarning)> {
     let header_len = tape.header_len();
     tape.commands
         .iter()
-        .zip(locations)
+        .zip(&tape.locations)
         .enumerate()
         .skip(header_len)
         .filter_map(|(index, (command, location))| {
@@ -1486,6 +1487,25 @@ Wait+Screen ready WindowTitle final"#,
                     text: "hi".into(),
                     delay: None
                 },
+            ]
+        );
+        let setup = dir.join("lib/setup.tape");
+        let main = dir.join("main.tape");
+        assert_eq!(
+            tape.locations,
+            [
+                "line 1".to_string(),
+                format!(
+                    "{} line 2, sourced at {} line 2",
+                    setup.display(),
+                    main.display()
+                ),
+                format!(
+                    "{} line 3, sourced at {} line 2",
+                    setup.display(),
+                    main.display()
+                ),
+                "line 3".to_string(),
             ]
         );
         assert_eq!(warnings.len(), 1);

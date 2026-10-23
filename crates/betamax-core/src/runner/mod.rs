@@ -35,9 +35,9 @@
 
 use std::path::PathBuf;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
-use miette::{miette, Context};
+use miette::miette;
 
 use crate::Result;
 
@@ -46,6 +46,7 @@ mod border;
 mod canvas;
 mod caption;
 mod capture;
+mod failure;
 mod keyboard_overlay;
 mod margin;
 mod oklch;
@@ -65,9 +66,10 @@ mod window_title;
 pub use artifacts::RunArtifacts;
 use caption::active_caption;
 use capture::{append_final_gif_frame, append_visible_frame, capture_frame, CaptureState};
+use failure::{failure_root, Failure, FailureBundle, WaitReport};
 #[doc(inline)]
 pub use options::RunOptions;
-use pty::PtySession;
+use pty::{PtySession, ShellStatus};
 use requirements::validate_required_programs;
 use settings::Settings;
 use text_output::TextOutput;
@@ -289,6 +291,8 @@ pub struct Runner<C = GhosttyFrameCapture> {
     media_progress: Box<dyn MediaProgressReporter>,
     /// Directory of the tape file, used as a fallback base for relative asset paths.
     tape_dir: Option<PathBuf>,
+    /// Root for failure bundles, overriding `BETAMAX_FAILURE_DIR`.
+    failure_dir: Option<PathBuf>,
 }
 
 impl<C> std::fmt::Debug for Runner<C> {
@@ -302,6 +306,7 @@ impl<C> std::fmt::Debug for Runner<C> {
                 &std::any::type_name::<Box<dyn MediaProgressReporter>>(),
             )
             .field("tape_dir", &self.tape_dir)
+            .field("failure_dir", &self.failure_dir)
             .finish()
     }
 }
@@ -314,6 +319,7 @@ impl Runner<GhosttyFrameCapture> {
             capture: GhosttyFrameCapture,
             media_progress: Box::new(NoMediaProgress),
             tape_dir: None,
+            failure_dir: None,
         }
     }
 }
@@ -404,6 +410,7 @@ impl<C> Runner<C> {
             capture,
             media_progress: Box::new(NoMediaProgress),
             tape_dir: None,
+            failure_dir: None,
         }
     }
 
@@ -424,6 +431,18 @@ impl<C> Runner<C> {
     #[must_use]
     pub fn with_tape_dir(mut self, tape_dir: impl Into<PathBuf>) -> Self {
         self.tape_dir = Some(tape_dir.into());
+        self
+    }
+
+    /// Set the directory that receives failure bundles.
+    ///
+    /// When a tape command fails, the runner writes a new subdirectory here holding a screenshot
+    /// and state JSON of the terminal at the failure plus `report.txt` and `report.json` naming the
+    /// failed command, its tape line, how long it ran, and what it was waiting for. Without this,
+    /// bundles go under `BETAMAX_FAILURE_DIR`, or `target/betamax-failures` when that is unset.
+    #[must_use]
+    pub fn with_failure_dir(mut self, failure_dir: impl Into<PathBuf>) -> Self {
+        self.failure_dir = Some(failure_dir.into());
         self
     }
 }
@@ -485,7 +504,18 @@ where
         }
 
         let outputs = classify_outputs(tape)?;
-        validate_required_programs(tape)?;
+        if let Err((index, error)) = validate_required_programs(tape) {
+            let failure = Failure {
+                tape,
+                index,
+                error: &error,
+                elapsed: None,
+                run_elapsed: None,
+                wait: None,
+                shell: ShellStatus::NotStarted,
+            };
+            return Err(self.save_failure(&failure, |_| {}));
+        }
 
         if outputs.requires_capture() {
             return self.run_with_capture(tape, outputs);
@@ -555,6 +585,7 @@ where
         }
         tracing::debug!("spawning PTY session");
         let mut session = PtySession::spawn(&settings)?;
+        let run_started = Instant::now();
         tracing::trace!("spawned PTY session");
         let mut capture = CaptureState::default();
         let mut text_output = TextOutput::new(outputs.texts.clone());
@@ -580,6 +611,7 @@ where
                 kind = command_kind(command),
             );
             let _enter = span.enter();
+            let command_started = Instant::now();
             if let Err(error) = self
                 .run_capture_command(
                     command,
@@ -591,14 +623,18 @@ where
                 )
                 .and_then(|()| text_output.after_command(command, capture.visible, &mut terminal))
             {
-                let diagnostics =
-                    save_failure(&mut terminal, &settings, &capture, index + 1, &error);
-                let summary = format!(
-                    "tape command {} ({}) failed: {error}; diagnostics: {diagnostics}",
-                    index + 1,
-                    describe_command(command)
-                );
-                return Err(error).wrap_err(summary).map_err(Into::into);
+                let failure = Failure {
+                    tape,
+                    index,
+                    error: &error,
+                    elapsed: Some(command_started.elapsed()),
+                    run_elapsed: Some(run_started.elapsed()),
+                    wait: WaitReport::for_command(command, &settings),
+                    shell: session.shell_status(),
+                };
+                return Err(self.save_failure(&failure, |bundle| {
+                    bundle.add_terminal(&mut terminal, &settings, &capture);
+                }));
             }
         }
 
@@ -1001,6 +1037,27 @@ where
         })
     }
 
+    /// Write a failure bundle and return the error to report.
+    ///
+    /// `add_evidence` adds terminal files when a terminal exists. The error keeps the command's
+    /// own message and adds its location and the bundle path. A bundle that cannot be created is
+    /// noted in the message rather than replacing the tape's own error.
+    fn save_failure(
+        &self,
+        failure: &Failure<'_>,
+        add_evidence: impl FnOnce(&mut FailureBundle),
+    ) -> crate::Error {
+        let root = failure_root(self.failure_dir.as_deref());
+        let bundle = match FailureBundle::create(&root, failure.index) {
+            Ok(mut bundle) => {
+                add_evidence(&mut bundle);
+                bundle.finish(failure)
+            }
+            Err(error) => format!("not written ({error})"),
+        };
+        miette!("{}", failure.message(&bundle)).into()
+    }
+
     fn progress_command(&self, index: usize, count: usize, command: &Command) {
         let (style, label) = match command {
             Command::Output(_)
@@ -1027,62 +1084,6 @@ where
         if !self.options.quiet {
             println!("{style}{args}{ANSI_RESET}");
         }
-    }
-}
-
-fn save_failure(
-    terminal: &mut impl TerminalSession,
-    settings: &Settings,
-    capture: &CaptureState,
-    index: usize,
-    error: &crate::Error,
-) -> String {
-    let stamp = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_nanos();
-    let root = std::env::var_os("BETAMAX_FAILURE_DIR")
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| "target/betamax-failures".into());
-    let directory = root.join(format!("{}-{stamp}-command-{index}", std::process::id()));
-    if let Err(write_error) = std::fs::create_dir_all(&directory) {
-        return format!("unable to create {}: {write_error}", directory.display());
-    }
-    let mut failures = Vec::new();
-    let state = terminal.terminal_state();
-    let state_output = state.and_then(|state| write_json(&directory.join("actual.json"), &state));
-    if let Err(write_error) = state_output {
-        failures.push(write_error.to_string());
-    }
-    let frame_output = capture_frame(terminal, settings, capture.frames.len())
-        .and_then(|frame| {
-            settings.presentation.decorate_frame_with_title(
-                &frame,
-                capture.caption.as_deref(),
-                &capture.keyboard_overlay.labels(),
-                capture.window_title.as_deref(),
-            )
-        })
-        .and_then(|frame| write_png(&directory.join("actual.png"), &frame));
-    if let Err(write_error) = frame_output {
-        failures.push(write_error.to_string());
-    }
-    if let Ok(cells) = terminal.viewport_cells() {
-        if let Err(write_error) = write_json(&directory.join("cells.json"), &cells) {
-            failures.push(write_error.to_string());
-        }
-    }
-    if let Err(write_error) = std::fs::write(directory.join("diff.txt"), error.to_string()) {
-        failures.push(write_error.to_string());
-    }
-    if failures.is_empty() {
-        directory.display().to_string()
-    } else {
-        format!(
-            "{} (artifact errors: {})",
-            directory.display(),
-            failures.join("; ")
-        )
     }
 }
 
@@ -1140,7 +1141,7 @@ fn describe_command(command: &Command) -> String {
                 format!("{key}{suffix} {count}")
             }
         }
-        Command::Assert(assertion) => format!("Assert {assertion:?}"),
+        Command::Assert(assertion) => describe_assertion(assertion),
         Command::Resize { columns, rows } => format!("Resize {columns} {rows}"),
         Command::ScrollViewport {
             direction,
@@ -1167,6 +1168,32 @@ fn describe_command(command: &Command) -> String {
         Command::Source(path) => format!("Source {}", path.display()),
         Command::Screenshot(path) => format!("Screenshot {}", path.display()),
         Command::State(path) => format!("State {}", path.display()),
+    }
+}
+
+fn describe_assertion(assertion: &Assertion) -> String {
+    match assertion {
+        Assertion::Text(text) => format!("AssertText \"{}\"", describe_text(text)),
+        Assertion::Absent { text, duration } => {
+            let suffix = duration
+                .map(|duration| format!("@{}", describe_duration(duration)))
+                .unwrap_or_default();
+            format!("AssertAbsent{suffix} \"{}\"", describe_text(text))
+        }
+        Assertion::Cells { column, row, text } => {
+            let text = serde_json::to_string(text).unwrap_or_default();
+            format!("AssertCells {column} {row} '{text}'")
+        }
+        Assertion::Style {
+            column,
+            row,
+            width,
+            expected,
+        } => format!(
+            "AssertStyle {column} {row} {width} '{}'",
+            serde_json::to_string(expected).unwrap_or_default()
+        ),
+        Assertion::State(path) => format!("AssertState {}", path.display()),
     }
 }
 
@@ -1280,6 +1307,25 @@ mod tests {
     use super::*;
     use crate::media::Frame;
     use crate::runner::capture::{frames_equal, CapturedFrame};
+
+    #[test]
+    fn assertions_are_described_in_tape_syntax() {
+        let tape = Tape::parse(
+            r#"AssertText "ready" AssertAbsent@100ms "error" AssertCells 0 1 '["界", " "]' AssertStyle 0 1 2 '{"bold":true}' AssertState baseline.json"#,
+        )
+        .unwrap();
+        let described: Vec<_> = tape.commands.iter().map(describe_command).collect();
+        assert_eq!(
+            described,
+            [
+                r#"AssertText "ready""#,
+                r#"AssertAbsent@100ms "error""#,
+                r#"AssertCells 0 1 '["界"," "]'"#,
+                r#"AssertStyle 0 1 2 '{"bold":true}'"#,
+                "AssertState baseline.json",
+            ]
+        );
+    }
 
     #[test]
     fn transparent_margin_rejects_mp4_before_spawning_the_shell() {
