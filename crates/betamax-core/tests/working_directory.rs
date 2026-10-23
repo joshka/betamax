@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use betamax_core::{RunOptions, Runner, Tape};
+use betamax_core::{Runner, Tape};
 use indoc::formatdoc;
 
 #[test]
@@ -26,10 +26,5 @@ fn shell_starts_in_current_directory() {
         expected = expected.display(),
     })
     .unwrap();
-    Runner::new(RunOptions {
-        quiet: true,
-        publish: false,
-    })
-    .run_artifacts(&tape)
-    .unwrap();
+    Runner::new().run_artifacts(&tape).unwrap();
 }

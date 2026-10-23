@@ -8,7 +8,7 @@
 //! # Examples
 //!
 //! ```no_run
-//! use betamax_core::runner::{RunOptions, Runner};
+//! use betamax_core::runner::Runner;
 //! use betamax_core::Tape;
 //!
 //! # fn main() -> betamax_core::Result<()> {
@@ -21,7 +21,7 @@
 //! Wait+Screen "ready"
 //! "#,
 //! )?;
-//! let artifacts = Runner::new(RunOptions::default()).run_artifacts(&tape)?;
+//! let artifacts = Runner::new().run_artifacts(&tape)?;
 //!
 //! assert_eq!(artifacts.output_paths.len(), 1);
 //! assert!(artifacts
@@ -50,7 +50,6 @@ mod failure;
 mod keyboard_overlay;
 mod margin;
 mod oklch;
-mod options;
 mod presentation;
 mod preset;
 mod pty;
@@ -68,7 +67,6 @@ use caption::active_caption;
 use capture::{append_final_gif_frame, append_visible_frame, capture_frame, CaptureState};
 use failure::{failure_root, Failure, FailureBundle, WaitReport};
 #[doc(inline)]
-pub use options::RunOptions;
 use pty::{PtySession, ShellStatus};
 use requirements::validate_required_programs;
 use settings::Settings;
@@ -283,8 +281,8 @@ const ANSI_YELLOW: &str = "\x1b[33m";
 /// frames. The capture type is generic internally so tests and future library users can swap in a
 /// compatible implementation without changing tape parsing.
 pub struct Runner<C = GhosttyFrameCapture> {
-    /// User-selected run behavior that is independent of the tape contents.
-    options: RunOptions,
+    /// Whether to print a status line to stdout for each tape command.
+    progress: bool,
     /// Capture implementation used when any command or output needs rendered terminal state.
     capture: C,
     /// Optional sink for deterministic media-writing progress.
@@ -299,7 +297,7 @@ impl<C> std::fmt::Debug for Runner<C> {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter
             .debug_struct("Runner")
-            .field("options", &self.options)
+            .field("progress", &self.progress)
             .field("capture", &std::any::type_name::<C>())
             .field(
                 "media_progress",
@@ -313,14 +311,16 @@ impl<C> std::fmt::Debug for Runner<C> {
 
 impl Runner<GhosttyFrameCapture> {
     /// Construct a runner backed by the built-in libghostty-vt raster capture implementation.
-    pub fn new(options: RunOptions) -> Self {
-        Self {
-            options,
-            capture: GhosttyFrameCapture,
-            media_progress: Box::new(NoMediaProgress),
-            tape_dir: None,
-            failure_dir: None,
-        }
+    ///
+    /// The runner prints nothing; call [`Runner::with_progress`] to log each tape command.
+    pub fn new() -> Self {
+        Self::with_capture(GhosttyFrameCapture)
+    }
+}
+
+impl Default for Runner<GhosttyFrameCapture> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -337,7 +337,7 @@ impl<C> Runner<C> {
     ///     CaptureRequest, StateCursor, StateSpan, StateStyle, TerminalState,
     /// };
     /// use betamax_core::media::{Frame, PixelFormat};
-    /// use betamax_core::{FrameCapture, Result, RunOptions, Runner, Tape, TerminalSession};
+    /// use betamax_core::{FrameCapture, Result, Runner, Tape, TerminalSession};
     ///
     /// #[derive(Debug)]
     /// struct FakeCapture;
@@ -399,14 +399,14 @@ impl<C> Runner<C> {
     ///
     /// # fn main() -> betamax_core::Result<()> {
     /// let tape = Tape::parse(r#"Output /tmp/state.json Type "ok" Wait+Screen "ok""#)?;
-    /// let mut runner = Runner::with_capture(RunOptions::default(), FakeCapture);
+    /// let mut runner = Runner::with_capture(FakeCapture);
     /// let _artifacts = runner.run_artifacts(&tape)?;
     /// # Ok(())
     /// # }
     /// ```
-    pub fn with_capture(options: RunOptions, capture: C) -> Self {
+    pub fn with_capture(capture: C) -> Self {
         Self {
-            options,
+            progress: false,
             capture,
             media_progress: Box::new(NoMediaProgress),
             tape_dir: None,
@@ -414,9 +414,18 @@ impl<C> Runner<C> {
         }
     }
 
+    /// Print a status line to stdout for each tape command.
+    ///
+    /// Runners are silent by default so library callers and tests produce no output. The `betamax`
+    /// CLI enables this unless `--quiet` is passed.
+    pub fn with_progress(mut self) -> Self {
+        self.progress = true;
+        self
+    }
+
     /// Attach a reporter for media-writing progress.
     ///
-    /// The default runner only reports normal status lines. CLI callers can use this hook to render
+    /// Runners report no media progress by default. CLI callers can use this hook to render
     /// progress bars without making terminal UI a core dependency.
     pub fn with_media_progress(mut self, progress: impl MediaProgressReporter + 'static) -> Self {
         self.media_progress = Box::new(progress);
@@ -474,7 +483,7 @@ where
     /// # Examples
     ///
     /// ```no_run
-    /// use betamax_core::{RunOptions, Runner, Tape};
+    /// use betamax_core::{Runner, Tape};
     ///
     /// # fn main() -> betamax_core::Result<()> {
     /// let tape = Tape::parse(
@@ -485,7 +494,7 @@ where
     /// Wait+Screen "ready"
     /// "#,
     /// )?;
-    /// let artifacts = Runner::new(RunOptions::default()).run_artifacts(&tape)?;
+    /// let artifacts = Runner::new().run_artifacts(&tape)?;
     ///
     /// assert!(artifacts.final_state.is_some());
     /// assert_eq!(artifacts.output_paths.len(), 1);
@@ -499,10 +508,6 @@ where
     /// startup fails, terminal capture fails, requested media/state outputs cannot be written, a
     /// wait times out, or a parsed-but-unimplemented command is executed.
     pub fn run_artifacts(&mut self, tape: &Tape) -> Result<RunArtifacts> {
-        if self.options.publish {
-            return Err(miette!("publish is not implemented in the Ghostty-first runner").into());
-        }
-
         let outputs = classify_outputs(tape)?;
         if let Err((index, error)) = validate_required_programs(tape) {
             let failure = Failure {
@@ -1081,7 +1086,7 @@ where
     }
 
     fn progress(&self, style: &str, args: std::fmt::Arguments<'_>) {
-        if !self.options.quiet {
+        if self.progress {
             println!("{style}{args}{ANSI_RESET}");
         }
     }
@@ -1333,10 +1338,7 @@ mod tests {
             "Output target/betamax-transparent.mp4\nSet MarginFill transparent\nSleep 1ms",
         )
         .unwrap();
-        let error = Runner::new(RunOptions::default())
-            .run_artifacts(&tape)
-            .unwrap_err()
-            .to_string();
+        let error = Runner::new().run_artifacts(&tape).unwrap_err().to_string();
         assert!(
             error.contains("MP4 cannot carry MarginFill transparency"),
             "{error}"

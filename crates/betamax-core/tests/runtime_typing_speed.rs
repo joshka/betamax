@@ -2,7 +2,7 @@
 
 use std::time::{Duration, Instant};
 
-use betamax_core::{RunOptions, Runner, Tape};
+use betamax_core::{Runner, Tape};
 use indoc::formatdoc;
 
 #[test]
@@ -32,11 +32,6 @@ fn run_with_late_typing_speed(speed: &str) -> Duration {
     .unwrap();
 
     let started = Instant::now();
-    Runner::new(RunOptions {
-        quiet: true,
-        publish: false,
-    })
-    .run_artifacts(&tape)
-    .unwrap();
+    Runner::new().run_artifacts(&tape).unwrap();
     started.elapsed()
 }

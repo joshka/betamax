@@ -2,7 +2,7 @@
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use betamax_core::{RunOptions, Runner, Tape};
+use betamax_core::{Runner, Tape};
 
 fn image(path: &Path) -> (usize, Vec<u8>) {
     let decoder = png::Decoder::new(std::io::BufReader::new(std::fs::File::open(path).unwrap()));
@@ -82,10 +82,7 @@ fn title_changes_follow_last_writer_and_preserve_bursts_and_raw_json() {
         fixture = fixture.display()
     );
     let tape = Tape::parse(&source).unwrap();
-    let mut runner = Runner::new(RunOptions {
-        quiet: true,
-        publish: false,
-    });
+    let mut runner = Runner::new();
     runner.run(&tape).unwrap();
     let tape = bar(&root.join("tape.png"));
     let app = bar(&root.join("app.png"));
@@ -166,10 +163,7 @@ fn app_titles_do_not_change_the_bar_without_opt_in() {
         root = root.display()
     );
     let tape = Tape::parse(&source).unwrap();
-    let mut runner = Runner::new(RunOptions {
-        quiet: true,
-        publish: false,
-    });
+    let mut runner = Runner::new();
     runner.run(&tape).unwrap();
     assert_eq!(bar(&root.join("before.png")), bar(&root.join("after.png")));
     assert_ne!(bar(&root.join("after.png")), bar(&root.join("reset.png")));
@@ -221,10 +215,7 @@ fn hidden_title_bursts_only_show_the_latest_value() {
         root = root.display()
     );
     let tape = Tape::parse(&source).unwrap();
-    let mut runner = Runner::new(RunOptions {
-        quiet: true,
-        publish: false,
-    });
+    let mut runner = Runner::new();
     runner.run(&tape).unwrap();
     assert_eq!(
         state_title(&root.join("shown.json")).as_deref(),

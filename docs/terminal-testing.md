@@ -32,7 +32,7 @@ JSON/YAML/TOML/JSONC tradeoffs.
 The same runner is available as a Rust library for tests:
 
 ```rust
-use betamax_core::{RunOptions, Runner, Tape};
+use betamax_core::{Runner, Tape};
 
 let tape = Tape::parse(r#"
 Output /tmp/state.json
@@ -44,7 +44,7 @@ Hide
 Type "exit"
 Enter
 "#)?;
-let artifacts = Runner::new(RunOptions::default()).run_artifacts(&tape)?;
+let artifacts = Runner::new().run_artifacts(&tape)?;
 assert!(artifacts.final_state.unwrap().viewport_text.contains("hello"));
 # Ok::<(), miette::Report>(())
 ```
