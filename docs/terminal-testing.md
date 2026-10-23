@@ -73,8 +73,8 @@ files, mode/resize continuity, and start/end navigation.
 Betamax's own [event fixture](../crates/betamax-core/tests/fixtures/terminal_events.py) runs in a real
 PTY and independently decodes input with Python's standard library. It covers named keys, mouse
 press/drag/release, wheel direction, and normal child resize notification. The `terminal_input` and
-`terminal_assertions` integration tests run in macOS and Linux CI. Failure PNG/JSON/diff artifacts
-are uploaded even when tests fail.
+`terminal_assertions` integration tests run in macOS and Linux CI, and CI uploads their [failure
+bundles](https://www.joshka.net/betamax/reference/tape-reference/#failure-bundles) when they fail.
 
 Checkpoint text and cell/style assertions provide the first baseline surface. Pixel baselines need
 pinned fonts, theme, and geometry plus meaningful tolerances and an explicit approval workflow;

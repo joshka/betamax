@@ -513,7 +513,8 @@ Fails early if a program is not present on `PATH`. This is useful for tapes that
 tools such as `git`, `rg`, `cargo`, or `ffmpeg`. The check runs before any PTY or output side
 effects, including for a `Require` placed after runtime commands, which also warns. It looks for a
 file with that name in each `PATH` directory; executable-bit failures are left to the process that
-later runs the program.
+later runs the program. A missing program leaves a [failure bundle](#failure-bundles) with the
+report.
 
 ### `Set <name> <value>`
 
@@ -682,6 +683,10 @@ Pattern forms:
 `Wait@5s` sets the timeout for that command; otherwise `Set WaitTimeout` applies, defaulting to
 `15s`. On timeout, the tape fails with the target and pattern in the error message.
 
+On timeout, the tape fails with the target and pattern in the error. If the shell exits before the
+pattern matches, the wait fails at once with the exit status instead of running out the timeout.
+Either failure leaves a [failure bundle](#failure-bundles).
+
 ### `Wait+Line[@duration] [/regex/|text]`
 
 Waits against the current cursor line. This is equivalent to bare `Wait` with an explicit target,
@@ -730,11 +735,9 @@ AssertState baselines/ready.json
   Capture baselines with `State`, inspect their text/styles and corresponding screenshot, and
   approve changes explicitly. Assertions never create or replace baselines automatically.
 
-Failures identify the command number and expected/actual text, cells, or styles. The runner writes
-`actual.json`, `actual.png`, `cells.json` (when the backend provides cells), and `diff.txt` under a
-unique `target/betamax-failures/` directory. Set `BETAMAX_FAILURE_DIR` to choose another artifact
-root. Wait, input, and other runtime failures retain the same diagnostics. Media stays local or in
-CI artifacts; no pixel golden comparison is performed. Custom backends can implement the optional
+Failures name the tape line and the expected and actual text, cells, or styles, and leave a
+[failure bundle](#failure-bundles) with a screenshot and state JSON of the checked screen. No pixel
+golden comparison is performed. Custom backends can implement the optional
 `viewport_cells` method for cell/style assertions; text and baseline assertions use existing
 methods.
 
@@ -833,6 +836,55 @@ Type "make demo"
 - `Tape::parse` rejects `Source` because it has no file to resolve paths against. Rust callers
   use `Tape::parse_file` or `Tape::parse_with_sources`.
 
+## Failure bundles
+
+When a tape command fails, Betamax saves what you need to debug it without a rerun: a screenshot
+and state JSON of the terminal at that moment, plus a report of which command failed, at which tape
+line, after how long, and what it was waiting for. The error names the line and the bundle:
+
+```text
+line 6: `Wait+Screen@1s "Ready"` failed after 1.04s (tape command 5 of 5): timed out waiting
+for screen to match text `Ready`
+failure bundle: target/betamax-failures/24623-1792732654799368000-command-5
+```
+
+Bundles go under `betamax run --failure-dir <dir>`, else `BETAMAX_FAILURE_DIR`, else
+`target/betamax-failures` in the working directory. Each failure gets a new
+`<pid>-<timestamp>-command-<n>` directory, so reruns and parallel tapes never overwrite each other.
+Nothing is written when a tape passes. Library callers choose the root with
+`Runner::with_failure_dir`.
+
+| File          | Contents                                                    |
+| ------------- | ----------------------------------------------------------- |
+| `report.txt`  | Failed command and line, timing, wait pattern, shell status |
+| `report.json` | The same report for scripts                                 |
+| `actual.png`  | Screenshot at the failure, decorated like the tape's images |
+| `actual.json` | [State JSON](../../testing/state-json/) at the failure      |
+| `cells.json`  | Visible cells with styles, when the backend provides them   |
+| `diff.txt`    | The error message                                           |
+
+`report.txt` also lists the recent commands, the visible screen, and the last 20 scrollback lines;
+`actual.json` holds all of the scrollback. A missing `Require` program fails before the shell
+starts, so its bundle has only the reports and `diff.txt`.
+
+`report.json` has these fields:
+
+- `schema`: `1`. It increases when a field changes meaning or is removed.
+- `command`: the failed command's `number` (counted after `Source` expansion), `location` (`line 6`,
+  or `setup.tape line 2, sourced at demo.tape line 1`), and `text`.
+- `error`: the error message.
+- `elapsed_ms`: how long the failed command ran, or `null` if the shell had not started.
+- `run_elapsed_ms`: time since the shell started, or `null`.
+- `wait`: for a failed wait, its `target` (`screen` or `current line`), `pattern`
+  (`{"text": …}` or `{"regex": …}`), and `timeout_ms`, with `WaitPattern` and `WaitTimeout`
+  defaults resolved. Otherwise `null`.
+- `shell`: `{"status": "running"}`, `{"status": "exited", "code": 3}`,
+  `{"status": "signaled", "signal": …}`, or `{"status": "not_started"}`.
+- `recent_commands`: up to six commands ending with the failed one, shaped like `command`.
+- `files`: the files written, keyed by `screenshot`, `state`, `cells`, `error`, `report_text`, and
+  `report_json`.
+- `artifact_errors`: evidence that could not be written. The rest of the bundle is still saved.
+
 ## CLI commands
 
 Betamax currently exposes these CLI commands:
@@ -843,6 +895,7 @@ Betamax currently exposes these CLI commands:
 | `betamax run <path>`               | Parse, execute, render, and write requested outputs    |
 | `betamax run -`                    | Read a tape from standard input                        |
 | `betamax run -o out.gif demo.tape` | Append one CLI-provided output to the tape             |
+| `betamax run --failure-dir <dir>`  | Put [failure bundles](#failure-bundles) in `<dir>`     |
 | `betamax validate <path-or-glob>`  | Parse tapes without starting shells or writing outputs |
 | `betamax validate --strict <path>` | Also fail when a tape has warnings                     |
 | `betamax themes`                   | List theme names available to `Set Theme`              |

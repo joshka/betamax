@@ -134,8 +134,9 @@ BETAMAX_FAILURE_DIR=media/terminal-ux/sticky/failures betamax run examples/termi
 ```
 
 Tape errors such as an unknown command (`Esc` instead of `Escape`) fail before the application
-launches. Runtime failures keep `diff.txt`, `actual.json`, `actual.png`, and, when the backend
-provides cells, `cells.json` in a unique subdirectory.
+launches. Runtime failures leave a [failure bundle](../terminal-testing/#when-a-tape-fails) in a
+unique subdirectory: `report.txt` names the failed command, its tape line, and what it waited for,
+beside a screenshot and state JSON of the terminal at that moment.
 
 The first run of the new build timed out waiting for `src/routes.txt`. Its `actual.json` showed why
 (the usage line wraps at 92 columns):

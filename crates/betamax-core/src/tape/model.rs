@@ -18,6 +18,12 @@ pub struct Tape {
     /// and [`Command::Output`] are kept in this same stream because they are ordered in the input
     /// language. See [`Tape::header_len`] for how their position changes what they do.
     pub commands: Vec<Command>,
+    /// Where each parsed command came from, in the same order as [`Tape::commands`]: `line 4`, or
+    /// for a sourced tape, `setup.tape line 2, sourced at demo.tape line 1`.
+    ///
+    /// Commands added after parsing, such as by [`Tape::add_output`], have no entry. Use
+    /// [`Tape::location`] to look up a command's location.
+    pub locations: Vec<String>,
 }
 
 impl Tape {
@@ -143,11 +149,28 @@ impl Tape {
         })
     }
 
+    /// Where the command at `index` came from, or `None` for a command added after parsing.
+    ///
+    /// ```
+    /// use betamax_core::Tape;
+    ///
+    /// # fn main() -> betamax_core::Result<()> {
+    /// let tape = Tape::parse("Type \"ls\"\n\nEnter Sleep 1s")?;
+    /// assert_eq!(tape.location(0), Some("line 1"));
+    /// assert_eq!(tape.location(2), Some("line 3"));
+    /// assert_eq!(tape.location(3), None);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn location(&self, index: usize) -> Option<&str> {
+        self.locations.get(index).map(String::as_str)
+    }
+
     /// Append a primary output path.
     ///
     /// The CLI uses this when a user supplies an output path outside the tape file. Appending keeps
     /// the operation simple and preserves the same behavior as writing an `Output` command at the
-    /// end of the configuration block.
+    /// end of the configuration block. The appended command has no [`Tape::location`].
     pub fn add_output(&mut self, path: PathBuf) {
         self.commands.push(Command::Output(path));
     }

@@ -169,6 +169,10 @@ If a tape fails or times out, the action continues with the remaining tapes and 
 media and diagnostics before failing the step. Download the diagnostics artifact to inspect process
 logs. Setup or discovery errors stop rendering immediately.
 
+Betamax also saves a [failure bundle](../terminal-testing/#when-a-tape-fails) for each failed tape
+under `target/betamax-failures` in the `working-directory`. The action does not upload it; add an
+upload step with `if: ${{ failure() }}` after the action.
+
 If no comment appears, check that the report workflow is on the default branch, the workflow name
 and filename match, and the reporter has both required permissions. If a gallery has expired, rerun
 the render workflow for the current PR head. For missing inline attachments, inspect report warnings

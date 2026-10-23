@@ -77,6 +77,71 @@ Keep validation sleeps short and rare. If a sleep is compensating for behavior t
 matched with visible text, a prompt, or a status line, keep it as small as the program allows and
 leave a tape comment explaining what external effect it covers.
 
+## When a tape fails
+
+A wait that times out, a failed assertion, a missing `Require` program, or a shell that exits early
+fails the tape. Betamax then saves a failure bundle so you can see what happened without running the
+tape again:
+
+```text
+target/betamax-failures/24623-1792732654799368000-command-5/
+├── report.txt    which command failed, at which line, after how long, and what it awaited
+├── report.json   the same report for scripts
+├── actual.png    screenshot at the failure
+├── actual.json   state JSON at the failure
+├── cells.json    visible cells with styles
+└── diff.txt      the error message
+```
+
+Start with `report.txt`:
+
+```text
+Tape command 5 of 5 failed at line 6 after 1.04s.
+
+Command:  Wait+Screen@1s "Ready"
+Waiting:  screen to match text "Ready" within 1.00s
+Shell:    running
+Run time: 1.57s since the shell started
+
+Error:
+  timed out waiting for screen to match text `Ready`
+
+Recent commands:
+  line 1  Set Shell "bash"
+  line 2  Set TypingSpeed 0
+  line 4  Type "printf 'loading...\\n'"
+  line 5  Enter
+> line 6  Wait+Screen@1s "Ready"
+
+Screen (87x28, cursor at column 2, row 2):
+  > printf 'loading...\n'
+  loading...
+  >
+```
+
+The screen shows the program printed `loading...` and returned to the prompt, so it never got as
+far as printing `Ready`. Open `actual.png` when colors or layout matter.
+
+Choose another location with `betamax run --failure-dir <dir>` or `BETAMAX_FAILURE_DIR`. See
+[Failure bundles](../../reference/tape-reference/#failure-bundles) for the `report.json` fields.
+
+In CI, upload the bundles when the job fails:
+
+```yaml
+- name: Terminal tests
+  run: betamax run tests/app.tape
+- name: Upload failure bundles
+  if: ${{ failure() }}
+  uses: actions/upload-artifact@v7
+  with:
+    name: betamax-failures
+    path: target/betamax-failures
+    if-no-files-found: ignore
+```
+
+The [GitHub Action](../github-action/) runs Betamax from its `working-directory`, so bundles land in
+`target/betamax-failures` under that directory. Add the same upload step after the action.
+
 ## Snapshot workflow
 
 To check a snapshot from a Rust test:

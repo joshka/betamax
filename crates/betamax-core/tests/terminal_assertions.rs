@@ -107,10 +107,17 @@ fn continuous_output_cannot_extend_output_wait_forever() {
 fn check_diagnostics(error: &betamax_core::Error) {
     let summary = error.to_string();
     let path = summary
-        .split("diagnostics: ")
+        .split("failure bundle: ")
         .nth(1)
-        .expect("artifact directory in error");
-    for file in ["actual.json", "actual.png", "cells.json", "diff.txt"] {
+        .expect("failure bundle directory in error");
+    for file in [
+        "actual.json",
+        "actual.png",
+        "cells.json",
+        "diff.txt",
+        "report.txt",
+        "report.json",
+    ] {
         assert!(
             PathBuf::from(path).join(file).is_file(),
             "missing {file} in {path}"

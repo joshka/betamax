@@ -6,14 +6,18 @@ use std::path::PathBuf;
 use miette::miette;
 
 use crate::tape::{Command, Tape};
-use crate::Result;
 
 /// Validate all `Require` commands, wherever they appear, before any PTY side effects occur.
-pub(super) fn validate_required_programs(tape: &Tape) -> Result<()> {
-    for command in &tape.commands {
+///
+/// # Errors
+///
+/// Returns the index of the first `Require` whose program is missing, with its error.
+pub(super) fn validate_required_programs(tape: &Tape) -> Result<(), (usize, crate::Error)> {
+    for (index, command) in tape.commands.iter().enumerate() {
         if let Command::Require(program) = command {
             if find_on_path(program).is_none() {
-                return Err(miette!("required program was not found on PATH: {program}").into());
+                let error = miette!("required program was not found on PATH: {program}");
+                return Err((index, error.into()));
             }
         }
     }
