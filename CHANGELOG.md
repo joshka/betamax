@@ -5,6 +5,15 @@ versions and identify the core version shipped in the release lockfile.
 
 ## [Unreleased]
 
+## [0.2.2](https://github.com/joshka/betamax/compare/betamax-v0.2.1...betamax-v0.2.2) - 2026-10-23
+
+### Other
+
+- Keep up with and never split rapid kitty image replacements ([#242](https://github.com/joshka/betamax/pull/242))
+- Answer OSC 4, 10, 11, and 12 colour queries with the theme ([#241](https://github.com/joshka/betamax/pull/241))
+- Store only changed pixels in GIF frames ([#238](https://github.com/joshka/betamax/pull/238))
+- Bundle JetBrains Mono as the default font ([#237](https://github.com/joshka/betamax/pull/237))
+
 ## [0.2.1](https://github.com/joshka/betamax/compare/betamax-v0.2.0...betamax-v0.2.1) - 2026-10-23
 
 ### Other
