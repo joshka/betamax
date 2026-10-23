@@ -22,6 +22,11 @@ Set Theme "Aardvark Blue"
 
 ## Theme lookup
 
+Betamax searches user Ghostty theme directories, then the bundled Ghostty themes, then the bundled
+VHS-only themes. A name with no exact match falls back to the VHS alias table, so `tokyonight`
+loads `TokyoNight`, and then to a match that ignores case, spaces, and punctuation. Unknown names
+fail with close suggestions.
+
 Bundled themes make tapes portable across machines. User Ghostty themes make local experimentation
 convenient. Because user themes are searched first, a local theme with the same name as a bundled
 theme can change a recording on that machine. For reproducible project assets, prefer a bundled

@@ -1,7 +1,8 @@
 # Betamax documentation
 
-- [Tape reference](tape-reference.md): supported tape outputs, settings with defaults, command
-  behavior, durations, and theme lookup.
+- [Tape reference][tape-reference]: supported tape outputs, settings with defaults, and command
+  behavior. It lives only on the docs site; [tape-reference.md](tape-reference.md) points to its
+  source.
 - [Terminal testing](terminal-testing.md): using Betamax tapes and state JSON for CLI/TUI tests.
 - [Renderer Fidelity](renderer-fidelity.md): controlled renderer fixtures, image assertions, and
   known coverage limits.
@@ -18,3 +19,5 @@
   children, and reviewing boundaries and size.
 - [Pull request descriptions](pr-writing.md): caller context, scannable behavior, visual evidence,
   and validation reporting.
+
+[tape-reference]: https://www.joshka.net/betamax/reference/tape-reference/

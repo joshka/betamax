@@ -7,9 +7,11 @@ Betamax is a Rust workspace with two crates. `crates/betamax` is the installable
 contains tape parsing, terminal running, Ghostty VT integration, rendering, media writing, themes,
 and state snapshots. Keep CLI-only dependencies out of the core crate.
 
-Documentation lives under `docs/`, with user-facing command behavior in
-`docs/tape-reference.md`. Small smoke-test tapes live under `examples/`; rendered media goes to
-`examples/output` and `target/betamax-examples` and is not tracked. Scripts live in `scripts/`.
+Contributor documentation lives under `docs/`. User-facing documentation lives in the docs site
+under `site/src/content/docs/`, with command behavior in
+`site/src/content/docs/reference/tape-reference.mdx`. Small smoke-test tapes live under
+`examples/`; rendered media goes to `examples/output` and `target/betamax-examples` and is not
+tracked. Scripts live in `scripts/`.
 
 ## Build, Test, and Development Commands
 

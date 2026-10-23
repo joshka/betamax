@@ -1,5 +1,5 @@
 # Betamax tape reference:
-# https://github.com/joshka/betamax/blob/main/docs/tape-reference.md
+# https://www.joshka.net/betamax/reference/tape-reference/
 #
 # This file includes a compact command summary. The canonical reference documents each command's
 # behavior, each setting's default value, and the current VHS differences.

@@ -33,7 +33,7 @@ pretend to test a full editor. Tape-local clipboard operations never access the 
 
 ## Coverage map
 
-This inventory follows the public tape commands and settings in [Tape reference](tape-reference.md),
+This inventory follows the public tape commands and settings in [Tape reference][tape-reference],
 checked against `Command` and `Settings::apply_set`. A setting being configured is not proof of all
 its values. The table distinguishes representative behavior from exhaustive parameter testing.
 
@@ -177,3 +177,4 @@ smoke. The protected reporter, PAT and environment configuration stay unchanged;
 [speed]: https://github.com/joshka/betamax/issues/149
 [styles]: https://github.com/joshka/betamax/issues/151
 [names]: https://github.com/joshka/betamax-action/pull/8
+[tape-reference]: https://www.joshka.net/betamax/reference/tape-reference/
