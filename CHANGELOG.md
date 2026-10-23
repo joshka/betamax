@@ -5,7 +5,7 @@ versions and identify the core version shipped in the release lockfile.
 
 ## [Unreleased]
 
-## [0.2.3](https://github.com/joshka/betamax/compare/betamax-v0.2.2...betamax-v0.2.3) - 2026-10-23
+## [0.3.0](https://github.com/joshka/betamax/compare/betamax-v0.2.2...betamax-v0.3.0) - 2026-10-23
 
 ### Other
 
