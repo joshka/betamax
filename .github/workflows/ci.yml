@@ -254,6 +254,7 @@ jobs:
     name: Package and smoke (${{ matrix.os }})
     if: *check-source
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     permissions:
       contents: read
     strategy:
@@ -302,19 +303,42 @@ jobs:
 
       # Build scripts and the resulting CLI can compromise this whole disposable runner.
       # Never give this job publication credentials.
-      - name: Build the PR CLI for action previews
+      # install-smoke builds the release CLI into target/release; the previews reuse it.
+      - name: Identify the PR CLI for action previews
         if: runner.os == 'Linux'
         run: |
-          mise exec -- cargo build -p betamax --locked
-          target/debug/betamax --version
-          sha256sum target/debug/betamax
+          target/release/betamax --version
+          sha256sum target/release/betamax
+
+      # The packages are about 170 MB, and the runner mirror sometimes serves them at under
+      # 1 MB/s. Reusing the downloaded archives keeps the install independent of mirror speed.
+      - name: Cache preview dependency archives
+        if: runner.os == 'Linux'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/apt-archives
+          key: preview-apt-v1-${{ runner.os }}-${{ runner.arch }}-${{ env.ImageOS }}
+
+      # Installed here, not inside the action, so apt output is visible and bounded.
+      - name: Install preview dependencies
+        if: runner.os == 'Linux'
+        timeout-minutes: 10
+        run: |
+          mkdir -p ~/apt-archives
+          sudo cp ~/apt-archives/*.deb /var/cache/apt/archives/ 2>/dev/null || true
+          sudo apt-get update
+          sudo apt-get install -y -o APT::Keep-Downloaded-Packages=true ffmpeg \
+            fonts-dejavu-core fonts-jetbrains-mono fonts-noto-core fonts-noto-cjk
+          cp /var/cache/apt/archives/*.deb ~/apt-archives/
 
       - name: Render tapes with the PR CLI
         id: previews
         if: runner.os == 'Linux'
-        uses: joshka/betamax-action@841f2eaa1772841fcae285ea6a3fe46f96c5d3ba # local binary support
+        timeout-minutes: 5
+        uses: joshka/betamax-action@80d342bbcf8f8833a5422a8dfc53b5af298bf63b # bounded setup and progress
         with:
-          binary: target/debug/betamax
+          binary: target/release/betamax
+          install-dependencies: false
           tapes: |
             examples/ci-playback.tape
           formats: gif,png,mp4,webm
@@ -332,9 +356,11 @@ jobs:
         if: runner.os == 'Linux'
         env:
           BETAMAX_FEATURE_ROOT: ${{ github.workspace }}
-        uses: joshka/betamax-action@841f2eaa1772841fcae285ea6a3fe46f96c5d3ba # local binary support
+        timeout-minutes: 10
+        uses: joshka/betamax-action@80d342bbcf8f8833a5422a8dfc53b5af298bf63b # bounded setup and progress
         with:
-          binary: target/debug/betamax
+          binary: target/release/betamax
+          install-dependencies: false
           tapes: examples/features/*.tape
           formats: gif,png
           variant: features
