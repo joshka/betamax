@@ -31,8 +31,8 @@ and [Zig][zig]. Betamax uses the safe `libghostty-vt` wrapper through `betamax-c
 native VT library. Zig 0.15.2 is required by the published dependency. Upstream Ghostty supports
 Zig 0.16, but Betamax is waiting for a `libghostty-rs` release containing that update. Run repository
 commands through `mise run ...` so Cargo sees the pinned Zig version. See
-[build troubleshooting](docs/development.md#build-troubleshooting) if the wrong version is used.
-For SDK setup on Tahoe, see [Building on macOS Tahoe](docs/development.md#building-on-macos-tahoe).
+[build troubleshooting][site-build-troubleshooting] if the wrong version is used. For SDK setup on
+Tahoe, see [Building on macOS Tahoe][site-tahoe].
 
 Other toolchain managers can work too, including [Nix][nix] or a manually installed Zig 0.15.2 on
 `PATH`. If you use another approach, contributions with tested setup instructions are welcome.
@@ -164,3 +164,5 @@ bug fixes, and known limitations.
 [pnpm]: https://pnpm.io/
 [rustup]: https://rustup.rs/
 [zig]: https://ziglang.org/
+[site-build-troubleshooting]: https://www.joshka.net/betamax/reference/development/#build-troubleshooting
+[site-tahoe]: https://www.joshka.net/betamax/reference/development/#building-on-macos-tahoe

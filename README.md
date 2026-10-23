@@ -1,8 +1,8 @@
 # Betamax
 
 Betamax records terminal sessions from [VHS](https://github.com/charmbracelet/vhs)-style tape files
-as GIFs, screenshots, videos, and JSON snapshots for tests. The [docs site][docs-site] has the
-details; this page points to them.
+as GIFs, screenshots, videos, and JSON snapshots for tests, on macOS and Linux. The
+[docs site][docs-site] has the details; this page points to them.
 
 ![Installing Betamax, creating a tape, and rendering it, recorded with Betamax][hero-gif]
 
