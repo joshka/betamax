@@ -152,6 +152,17 @@ model. Those archive names must stay aligned with
 `libghostty-vt-sys` links the native VT library statically by default. The cargo-binstall archive
 therefore only needs the `betamax` executable and does not need a companion shared library payload.
 
+Each release also publishes `SHA256SUMS` and a GitHub [artifact attestation][attestations] covering
+the archives and `SHA256SUMS`. Users and packagers verify them as described in the site's
+[Verify release archives][site-verify] section. Keep that section's commands in step with the
+asset names and the signing workflow path.
+
+One `SHA256SUMS` file, rather than a `.sha256` file per archive, gives packagers a single list to
+fetch, attest, and check with `sha256sum --check --ignore-missing`. cargo-binstall reads neither
+form today: it verifies only minisign signatures declared in `[package.metadata.binstall.signing]`,
+and its checksum and attestation support are open requests ([#440][binstall-440],
+[#1683][binstall-1683]).
+
 ## Scripts and tasks
 
 Use mise tasks as the primary developer entrypoints. They load the repository toolchain before
@@ -234,8 +245,19 @@ The first run populates these caches; later compatible runs can restore them.
 Binary release assets are built by the `prepare-release-assets` and `release-assets` jobs in
 [`release-plz.yml`](../.github/workflows/release-plz.yml) after release-plz reports that the
 `betamax` package was released. Release-plz remains the owner of crates.io publishing, tags,
-changelog content, and GitHub Release creation; the asset jobs upload cargo-binstall archives for
-supported native targets.
+changelog content, and GitHub Release creation.
+
+The `release-assets` matrix builds and packages one archive per supported native target with a
+read-only token, then hands it on as a workflow artifact. `publish-release-assets` downloads those
+artifacts, writes `SHA256SUMS`, attests the archives and checksum file in one attestation, and
+uploads them to the release. Only this job holds `contents: write`, `id-token: write`, and
+`attestations: write`; it runs no checkout, build, or cache step. It publishes whichever targets
+built, so a failed target does not hold back the others. The Homebrew bump waits for every target
+and for publishing.
+
+To repair a failed target, re-run the failed jobs in the same workflow run. The publish job re-runs
+with them, re-uploads every archive with `--clobber`, rewrites `SHA256SUMS` to list all targets,
+and creates a new attestation; earlier attestations for unchanged archives stay valid.
 
 ## Platform and tooling notes
 
@@ -255,6 +277,9 @@ See [READMEs and media](readmes-and-media.md) for what each README is for, crate
 limits, refreshing the hero recording, and uploading example media.
 
 [astro]: https://astro.build/
+[attestations]: https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations
+[binstall-440]: https://github.com/cargo-bins/cargo-binstall/issues/440
+[binstall-1683]: https://github.com/cargo-bins/cargo-binstall/issues/1683
 [binstall-support]: https://github.com/cargo-bins/cargo-binstall/blob/main/SUPPORT.md
 [cargo-binstall]: https://github.com/cargo-bins/cargo-binstall
 [cargo-deny]: https://github.com/EmbarkStudios/cargo-deny
@@ -272,5 +297,6 @@ limits, refreshing the hero recording, and uploading example media.
 [typescript]: https://www.typescriptlang.org/
 [zig]: https://ziglang.org/
 [site-development]: https://www.joshka.net/betamax/reference/development/
+[site-verify]: https://www.joshka.net/betamax/reference/development/#verify-release-archives
 [site-tahoe]: https://www.joshka.net/betamax/reference/development/#building-on-macos-tahoe
 [site-wrong-zig]: https://www.joshka.net/betamax/reference/development/#cargo-finds-zig-016
