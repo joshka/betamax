@@ -1,11 +1,9 @@
 //! Caption semantics and typography, plus single-line text rendering shared with window titles.
 
-use cosmic_text::{
-    Attrs, Buffer, Color, Family, FontSystem, Metrics, Shaping, SwashCache, Weight, Wrap,
-};
+use cosmic_text::{Attrs, Buffer, Color, FontSystem, Metrics, Shaping, SwashCache, Weight, Wrap};
 
 use super::canvas::{Canvas, PixelRect};
-use crate::ghostty::TextSettings;
+use crate::ghostty::{fonts, TextSettings};
 
 /// Caption font size relative to the tape font size.
 const CAPTION_FONT_SCALE: f32 = 0.9;
@@ -64,7 +62,7 @@ impl CaptionRenderer {
     /// Create a caption renderer with reusable font and glyph caches.
     pub(super) fn new() -> Self {
         Self {
-            font_system: FontSystem::new(),
+            font_system: fonts::font_system(),
             swash_cache: SwashCache::new(),
         }
     }
@@ -105,11 +103,7 @@ impl CaptionRenderer {
         color: libghostty_vt::style::RgbColor,
         style: LineStyle<'_>,
     ) {
-        let family = text_settings
-            .font_family
-            .as_deref()
-            .map(Family::Name)
-            .unwrap_or(Family::Monospace);
+        let family = fonts::resolve_family(&self.font_system, text_settings.font_family.as_deref());
         let attrs = Attrs::new().family(family).weight(style.weight);
         let metrics = Metrics::new(layout.font_size, layout.line_height);
         let caption = self.truncate_text(caption, layout, metrics, &attrs, style.ellipsis);
@@ -231,6 +225,8 @@ pub(super) fn active_caption(text: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
+    use cosmic_text::Family;
+
     use super::*;
 
     #[test]

@@ -2,6 +2,7 @@
 members = [
     "crates/betamax",
     "crates/betamax-core",
+    "crates/betamax-fonts",
 ]
 default-members = ["crates/betamax"]
 resolver = "2"
@@ -19,6 +20,7 @@ documentation = "https://www.joshka.net/betamax/"
 anyhow = "1.0.102"
 base64 = "0.22"
 betamax-core = { path = "crates/betamax-core", version = "0.2.1" }
+betamax-fonts = { path = "crates/betamax-fonts", version = "0.2.1" }
 clap = { version = "4.5.20", features = ["derive", "wrap_help"] }
 clap-stdin = "0.8"
 color_quant = "1.1"

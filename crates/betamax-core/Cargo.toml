@@ -25,8 +25,15 @@ include = [
     "resources/vhs/**",
 ]
 
+[features]
+default = ["bundled-font"]
+# Embed JetBrains Mono, the default `FontFamily`, through the OFL-1.1 `betamax-fonts` crate so
+# default output does not depend on installed fonts.
+bundled-font = ["dep:betamax-fonts"]
+
 [dependencies]
 base64.workspace = true
+betamax-fonts = { workspace = true, optional = true }
 color_quant.workspace = true
 cosmic-text.workspace = true
 gif.workspace = true

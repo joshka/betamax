@@ -1,8 +1,8 @@
 //! Key-chip panel measurement, wrapping, glyph shaping, and drawing.
 
-use cosmic_text::{Attrs, Buffer, Color, Family, FontSystem, Metrics, Shaping, SwashCache};
+use cosmic_text::{Attrs, Buffer, Color, FontSystem, Metrics, Shaping, SwashCache};
 
-use crate::ghostty::TextSettings;
+use crate::ghostty::{fonts, TextSettings};
 use crate::runner::canvas::{rgb, Canvas, PixelRect};
 
 /// Maximum number of recent overlay events drawn over the output frame.
@@ -111,7 +111,7 @@ impl OverlayTextRenderer {
     fn new(font_family: Option<String>) -> Self {
         Self {
             font_family,
-            font_system: FontSystem::new(),
+            font_system: fonts::font_system(),
             swash_cache: SwashCache::new(),
         }
     }
@@ -123,13 +123,9 @@ impl OverlayTextRenderer {
         }
 
         let metrics = Metrics::new(KEYBOARD_OVERLAY_FONT_SIZE, KEYBOARD_OVERLAY_LINE_HEIGHT);
+        let family = fonts::resolve_family(&self.font_system, self.font_family.as_deref());
         let mut buffer = Buffer::new(&mut self.font_system, metrics);
         let mut buffer = buffer.borrow_with(&mut self.font_system);
-        let family = self
-            .font_family
-            .as_deref()
-            .map(Family::Name)
-            .unwrap_or(Family::Monospace);
         let attrs = Attrs::new().family(family);
 
         buffer.set_size(Some(width as f32), Some(KEYBOARD_OVERLAY_LINE_HEIGHT));

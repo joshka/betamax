@@ -1,0 +1,24 @@
+[package]
+name = "betamax-fonts"
+description = "JetBrains Mono font data bundled as Betamax's default font"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+# The Rust code is MIT OR Apache-2.0; the embedded font files are OFL-1.1.
+license = "(MIT OR Apache-2.0) AND OFL-1.1"
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+readme = "README.md"
+keywords = ["font", "jetbrains-mono", "betamax"]
+categories = ["multimedia"]
+include = [
+    "Cargo.toml",
+    "README.md",
+    "OFL.txt",
+    "src/**/*.rs",
+    "fonts/*.ttf",
+]
+
+[lints]
+workspace = true

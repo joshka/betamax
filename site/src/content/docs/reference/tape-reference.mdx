@@ -66,7 +66,7 @@ Defaults below describe `Default`, which currently selects `Framed`. See [Preset
 | ------------------------- | ------------------------------------------------------ | ---------------- | ------------------------------------------- |
 | `Shell`                   | string                                                 | `bash`           | Shell argv is split with shell-like rules.  |
 | `Theme`                   | theme name or inline JSON string                       | `Aardvark Ink`   | Ghostty or VHS name, any case.              |
-| `FontFamily`              | string                                                 | `JetBrains Mono` | Falls back through the font system.         |
+| `FontFamily`              | string                                                 | `JetBrains Mono` | Bundled; see [Fonts](#fonts).               |
 | `FontSize`                | number                                                 | `22`             | Pixels.                                     |
 | `LetterSpacing`           | number                                                 | `0`              | Additional pixels between cells.            |
 | `LineHeight`              | number                                                 | `1`              | Multiplier applied to font size.            |
@@ -104,6 +104,17 @@ Defaults below describe `Default`, which currently selects `Framed`. See [Preset
 
 Unknown settings and type mismatches are errors. For example, `Set Wdith 900` and
 `Set Width "wide"` fail before the shell starts instead of silently falling back to defaults.
+
+### Fonts
+
+Betamax embeds JetBrains Mono 2.304, so the default `FontFamily` renders the same whether or not
+JetBrains Mono is installed; an installed copy is ignored. Other families come from installed fonts.
+When the requested family is not installed, Betamax logs
+`FontFamily "<name>" is not installed; using "JetBrains Mono"` and renders with the bundled font.
+
+Glyphs that JetBrains Mono lacks, such as CJK, emoji, and Nerd Font icons, still come from installed
+fallback fonts. For matching output, install the same fallback fonts in CI as locally, for example
+`sudo apt-get install -y fonts-noto-cjk fonts-noto-color-emoji` on Ubuntu.
 
 The terminal grid is derived after all settings are applied. Margin, window-bar decoration, and any
 presentation row needed for captions or `KeyboardOverlayLocation CaptionRow` are subtracted from
