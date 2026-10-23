@@ -61,7 +61,7 @@ python3 scripts/renderer-gallery.py target/renderer-fidelity \
 ```
 
 Open the HTML file in a browser, or open the PNGs alongside their JSON files. CI uploads these as
-`renderer-fidelity-ubuntu-latest` and `renderer-fidelity-macos-14` artifacts, including on test
+`renderer-fidelity-ubuntu-26.04` and `renderer-fidelity-macos-14` artifacts, including on test
 failure. Filenames identify each transition; reruns overwrite matching files. Use a separate output
 directory for concurrent suite runs. These diagnostic outputs belong under ignored `target/` and
 must not be committed. The suite does not use tracked image baselines.

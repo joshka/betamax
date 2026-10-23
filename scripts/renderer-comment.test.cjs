@@ -42,7 +42,7 @@ async function run({ comments = [], artifacts = [], head = {}, state = 'open', f
 
 test('fork lookup creates a comment with available links and explicit partial output', async () => {
   const [comment] = await run({ fork: true, artifacts: [
-    { id: 1, name: 'renderer-fidelity-ubuntu-latest.html' },
+    { id: 1, name: 'renderer-fidelity-ubuntu-26.04.html' },
     { id: 2, name: 'renderer-fidelity-macos-14.html', expired: true },
     { id: 3, name: '[untrusted](https://example.com)' },
   ] });
