@@ -1245,7 +1245,7 @@ fn describe_value(value: &Value) -> String {
 fn describe_wait_pattern(pattern: &WaitPattern) -> String {
     match pattern {
         WaitPattern::Contains(text) => format!("\"{}\"", describe_text(text)),
-        WaitPattern::Regex(regex) => format!("/{}/", describe_text(regex)),
+        WaitPattern::Regex(regex) => format!("/{}/", describe_regex(regex)),
     }
 }
 
@@ -1292,7 +1292,17 @@ fn describe_duration(duration: Duration) -> String {
     }
 }
 
+/// Describe text as a double-quoted tape string.
 fn describe_text(text: &str) -> String {
+    describe_chars(text, true)
+}
+
+/// Describe a regex as written between slashes, where backslashes and quotes are literal.
+fn describe_regex(regex: &str) -> String {
+    describe_chars(regex, false)
+}
+
+fn describe_chars(text: &str, quoted: bool) -> String {
     const MAX_CHARS: usize = 72;
     let mut output = String::new();
     let mut chars = text.chars();
@@ -1301,8 +1311,8 @@ fn describe_text(text: &str) -> String {
             '\n' => output.push_str("\\n"),
             '\r' => output.push_str("\\r"),
             '\t' => output.push_str("\\t"),
-            '"' => output.push_str("\\\""),
-            '\\' => output.push_str("\\\\"),
+            '"' if quoted => output.push_str("\\\""),
+            '\\' if quoted => output.push_str("\\\\"),
             ch => output.push(ch),
         }
     }
@@ -1334,6 +1344,16 @@ mod tests {
                 r#"AssertStyle 0 1 2 '{"bold":true}'"#,
                 "AssertState baseline.json",
             ]
+        );
+    }
+
+    #[test]
+    fn wait_regexes_are_described_as_written() {
+        let tape = Tape::parse(r#"Wait+Screen /v1\.23 "ok"/ Wait "a\\b""#).unwrap();
+        let described: Vec<_> = tape.commands.iter().map(describe_command).collect();
+        assert_eq!(
+            described,
+            [r#"Wait+Screen /v1\.23 "ok"/"#, r#"Wait+Line "a\\b""#]
         );
     }
 

@@ -18,7 +18,7 @@ Paste
 Backspace
 Type "ok"
 Enter
-Wait+Screen "/^ENV=injected INPUT=paste-ok/"
+Wait+Screen /^ENV=injected INPUT=paste-ok/
 Wait+Line />$/
 Show
 State target/ci-tapes/interaction.json

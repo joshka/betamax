@@ -75,7 +75,7 @@ newlines, regex characters, ANSI escapes, or shell syntax.
 ```tape
 Type "printf 'hello from betamax\n'"
 Wait+Screen "hello from betamax"
-Wait+Screen "/item-[0-9]+/"
+Wait+Screen /item-[0-9]+/
 
 Type "printf 'done\n'"
 Enter

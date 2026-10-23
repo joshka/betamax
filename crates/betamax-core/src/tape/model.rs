@@ -29,10 +29,10 @@ pub struct Tape {
 impl Tape {
     /// Parse a VHS-style tape source string into commands.
     ///
-    /// Tokenization uses `shell_words`, so quoted strings and backslash escaping follow shell-like
-    /// rules rather than a bespoke parser. Blank lines and lines whose trimmed form starts with
-    /// `#` are ignored. A single physical line may contain multiple commands, for example
-    /// `Type "echo hi" Enter Sleep 1s`.
+    /// Words follow shell-like quoting and backslash escaping, except that an unquoted `/regex/`
+    /// after a wait command or `Set WaitPattern` is kept exactly as written, as in VHS. Blank lines
+    /// and lines whose trimmed form starts with `#` are ignored. A single physical line may
+    /// contain multiple commands, for example `Type "echo hi" Enter Sleep 1s`.
     ///
     /// This parser validates syntax, known command names, duration literals, and regex literals. It
     /// deliberately does not validate executable availability, output extension support, theme

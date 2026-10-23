@@ -34,7 +34,7 @@ Sleep 2s
 
 # Open the main menu, which shows the version, and move to Quit.
 Type "m"
-Wait+Screen "/v[0-9]+\.[0-9]+\.[0-9]+/"
+Wait+Screen /v[0-9]+\.[0-9]+\.[0-9]+/
 Sleep 2s
 Down@600ms 2
 Sleep 1500ms

@@ -24,7 +24,7 @@ Wait+Screen "screen marker"
 
 Type "printf 'regex marker: item-42\n'"
 Enter
-Wait+Screen "/item-[0-9]+/"
+Wait+Screen /item-[0-9]+/
 
 Sleep 700ms
 Hide
