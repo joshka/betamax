@@ -8,7 +8,7 @@ default-members = ["crates/betamax"]
 resolver = "2"
 
 [workspace.package]
-version = "0.2.2"
+version = "0.2.3"
 edition = "2021"
 rust-version = "1.93"
 license = "MIT OR Apache-2.0"
@@ -19,8 +19,8 @@ documentation = "https://www.joshka.net/betamax/"
 [workspace.dependencies]
 anyhow = "1.0.102"
 base64 = "0.22"
-betamax-core = { path = "crates/betamax-core", version = "0.2.2" }
-betamax-fonts = { path = "crates/betamax-fonts", version = "0.2.2" }
+betamax-core = { path = "crates/betamax-core", version = "0.2.3" }
+betamax-fonts = { path = "crates/betamax-fonts", version = "0.2.3" }
 clap = { version = "4.5.20", features = ["derive", "wrap_help"] }
 clap-stdin = "0.8"
 color_quant = "1.1"
