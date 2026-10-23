@@ -127,6 +127,13 @@ def check(source):
     require("ARCHIVE" not in alternate["viewport_text"], "Primary leaked into alternate screen")
     require(primary == restored, "Alternate-screen exit did not restore exact state")
     require(frame("archive-primary") == frame("scrollback-and-screens"), "Restored pixels changed")
+    pictures = frame("inline-images")
+    require("IMAGES READY" in state("inline-images")["viewport_text"], "Image scene incomplete")
+    # Each protocol draws a disc of its own swatch color; about 3,600 pixels at native size.
+    for protocol, swatch in [("kitty", (255, 102, 0)), ("kitty placeholders", (0, 204, 255)),
+                             ("sixel", (153, 255, 0)), ("iTerm2", (204, 0, 255))]:
+        drawn = count_color(pictures, lambda r, g, b, swatch=swatch: (r, g, b) == swatch)
+        require(drawn > 2000, f"Missing {protocol} image: {drawn} swatch pixels")
     return [scene["title"] + ": " + scene["expected"] for scene in SCENES]
 
 
@@ -163,7 +170,7 @@ font-size:13px} summary {cursor:pointer;color:#5eead4;margin:16px 0} .pairs {dis
 grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px} figure {margin:0}
 figcaption {font:14px monospace;overflow-wrap:anywhere} .missing {color:#fda4af} a {color:#5eead4}
 </style><header><p>BETAMAX / FIELD GUIDE</p><h1>Terminal features you can see.</h1>
-<p>Seven small scenes, shared visual language, explicit expected results. Animations demonstrate
+<p>Eight small scenes, shared visual language, explicit expected results. Animations demonstrate
 behavior; named checkpoints make before/after comparisons inspectable.</p></header>'''
         + f'<p>{escape(provenance)} · Assertions: <strong>{escape(outcome)}</strong></p>'
         + f'<details><summary>Assertion results</summary><pre>{escape(diagnostics)}</pre></details>'

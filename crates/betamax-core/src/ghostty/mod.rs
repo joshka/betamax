@@ -28,6 +28,8 @@
 
 mod color;
 mod engine;
+mod graphics;
+mod inline_image;
 mod mouse;
 mod render_theme;
 mod renderer;

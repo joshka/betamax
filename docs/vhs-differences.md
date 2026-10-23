@@ -99,7 +99,9 @@ commands follow the same ordering rule as the rest of the tape.
 Betamax uses its own renderer, so output can differ from Ghostty and VHS. Known limitations:
 
 - no ligature shaping parity guarantee with Ghostty;
-- no image/Kitty graphics rendering path;
+- inline images cover the kitty graphics protocol (including unicode placeholders), sixel, and
+  iTerm2 `OSC 1337 File=inline=1`; kitty animation frames and iTerm2 multipart transfers are not
+  rendered;
 - limited cursor/text composition compared with full terminal renderers;
 - possible differences in wide glyphs, combining marks, emoji, and fallback fonts.
 
@@ -112,6 +114,7 @@ state remain future fidelity work.
 Betamax also provides:
 
 - strict JSON state snapshots for viewport, scrollback, and styles;
+- inline images drawn by programs with kitty graphics, sixel, or iTerm2 sequences;
 - scrollback-inclusive state capture;
 - `Runner::run_artifacts` for Rust callers;
 - local README demo preview workflow under `target/betamax-examples`.
