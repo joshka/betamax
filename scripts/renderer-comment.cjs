@@ -1,7 +1,7 @@
 // Executed from the default-branch commit, never from the triggering PR.
 const COMMENT_MARKER = '<!-- betamax-renderer-galleries -->';
 const GALLERIES = [
-  { label: 'Linux', name: 'renderer-fidelity-ubuntu-latest.html' },
+  { label: 'Linux', name: 'renderer-fidelity-ubuntu-26.04.html' },
   { label: 'macOS', name: 'renderer-fidelity-macos-14.html' },
 ];
 

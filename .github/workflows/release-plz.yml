@@ -27,7 +27,7 @@ jobs:
   release-plz-release:
     name: Release-plz release
     environment: release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     # This job publishes crates and therefore enters the protected `release` environment. Keep it
     # off ordinary `main` pushes so non-release merges do not require release approval.
     #
@@ -78,7 +78,7 @@ jobs:
 
   prepare-release-assets:
     name: Prepare release assets
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: release-plz-release
     if: ${{ needs.release-plz-release.outputs.releases_created == 'true' }}
     # The workspace can release betamax-core without a matching CLI release. Only the CLI package
@@ -121,9 +121,9 @@ jobs:
             target: x86_64-apple-darwin
           - runner: macos-14
             target: aarch64-apple-darwin
-          - runner: ubuntu-latest
+          - runner: ubuntu-26.04
             target: x86_64-unknown-linux-gnu
-          - runner: ubuntu-24.04-arm
+          - runner: ubuntu-26.04-arm
             target: aarch64-unknown-linux-gnu
     steps:
       - name: Checkout repository
@@ -172,7 +172,7 @@ jobs:
 
   bump-homebrew-tap:
     name: Bump Homebrew tap
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs:
       - prepare-release-assets
       - release-assets
@@ -194,7 +194,7 @@ jobs:
 
   release-plz-pr:
     name: Release-plz PR
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     # release-plz's quickstart runs `release` and `release-pr` as sibling jobs on every `main` push.
     # In this repo the release job publishes via a protected environment and then uploads binary
     # assets in the same workflow run. If `release-pr` also runs on a release-PR merge, it can read

@@ -24,7 +24,7 @@ jobs:
     # The release PR has already scanned the source being published.
     if: >-
       ${{ github.event_name != 'push' || !(startsWith(github.event.head_commit.message, 'chore: release') || contains(github.event.head_commit.message, '): release')) }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
       security-events: write
