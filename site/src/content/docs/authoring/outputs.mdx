@@ -68,19 +68,31 @@ Use `Output demo.webp` for an infinitely looping lossless animation. Use `Screen
 for a static image, including at the end of the tape for a final screenshot. CLI
 `betamax run demo.tape --output demo.webp` adds an animated output.
 
-WebP uses the original RGBA frames, preserving colors and transparency without GIF palette
-quantization. It runs entirely in Rust on the supported macOS and Linux platforms; no `ffmpeg`,
-`cwebp`, or system WebP library is needed. The encoder favors straightforward full-frame lossless
-output over smaller files: it does not use libwebp's frame-difference optimization or lossy modes.
+Lossless WebP uses the original RGBA frames, preserving colors and transparency without GIF palette
+quantization. After the first frame, each frame stores only the region that changed, so typing
+costs a small rectangle per keystroke. No `ffmpeg`, `cwebp`, or system WebP library is needed.
+
+Inline images, plots, and gradients make lossless frames large. `Set WebpQuality 85` switches
+animated WebP to lossy frames encoded by a bundled libwebp, which is usually several times smaller.
+`Set WebpQuality Lossless` switches back; screenshots stay lossless. Keep the quality at 85 or
+higher for terminal text: below that, libwebp treats small changes as unchanged, and erased dim text
+can leave faint ghosts.
+
+GitHub shows images up to 10 MB. A 23-second 1200×720 recording with an inline image animation
+measured 22.7 MB as lossless WebP, 9.1 MB as GIF, and 5.2 MB with `Set WebpQuality 85`. To shrink
+further, lower `Framerate`, reduce `Width` and `Height`, or shorten long holds.
 
 Captured holds, including the final frame, are stored with millisecond precision. Cumulative
 boundaries round to the nearest millisecond, with a minimum of 1 ms per frame. Viewers may lengthen
 very short delays (especially 10 ms or less), so use normal presentation pacing for browser demos.
-A single-frame animation retains its hold. Dimensions must be 1–16384 pixels on each axis, each
-frame hold must fit in 16,777,215 ms (about 4.66 hours), and the file must be smaller than 4 GiB.
+A single-frame animation retains its hold, and is written losslessly even when `WebpQuality` is set.
+Dimensions must be 1–16384 pixels on each axis, each frame hold must fit in 16,777,215 ms (about
+4.66 hours), and the file must be smaller than 4 GiB.
 
 See [`examples/webp.tape`](https://github.com/joshka/betamax/blob/main/examples/webp.tape) for
-animated and static output from the same capture.
+animated and static output from the same capture, and
+[`examples/webp-lossy.tape`](https://github.com/joshka/betamax/blob/main/examples/webp-lossy.tape)
+for lossy output.
 
 ## Video encoding
 

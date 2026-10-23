@@ -86,6 +86,7 @@ Defaults below describe `Default`, which currently selects `Framed`. See [Preset
 | `PlaybackSpeed`           | number                                                 | `1.0`            | Changes output playback, not PTY timing.    |
 | `LoopOffset`              | percentage or duration                                 | `0`              | Percent of frames, like VHS; or `2s`.       |
 | `CursorBlink`             | bool                                                   | `true`           | Simulates a half-second blink cadence.      |
+| `WebpQuality`             | number from 0 to 100, or `Lossless`                    | `Lossless`       | Lossy animated WebP; see [WebP][webp].      |
 | KeyboardOverlay           | `Off`, `Keys`, `Input`, or `All`                       | `Off`            | Shows recent input chips in media.          |
 | KeyboardOverlayLocation   | `CaptionRow`, `TopLeft`, `TopRight`, etc.              | `CaptionRow`     | Places keyboard overlay chips.              |
 | `WaitTimeout`             | duration or number                                     | `15s`            | Number values are seconds.                  |
@@ -482,7 +483,9 @@ shell; unsupported extensions fail before shell startup.
 
 - `.gif`: animated GIF. After the first frame, each frame stores only the region that changed, and
   unchanged frames extend the previous frame's hold.
-- `.webp`: lossless animated WebP with millisecond frame holds.
+- `.webp`: animated WebP with millisecond frame holds. Lossless by default; after the first frame,
+  each frame stores only the region that changed. `Set WebpQuality 85` makes it lossy and several
+  times smaller for recordings with images; see [WebP encoding](../../authoring/outputs/#webp-encoding).
 - `.png`: final-frame PNG.
 - `.mp4` and `.webm`: video written through `ffmpeg`.
 - `.json`: final terminal-state JSON.
@@ -912,3 +915,4 @@ lookup, aliases, and name matching are described in
 
 [Text outputs]: #text-outputs
 [video-encoding]: ../../authoring/outputs/#video-encoding
+[webp]: ../../authoring/outputs/#webp-encoding

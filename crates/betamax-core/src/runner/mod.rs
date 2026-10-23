@@ -78,7 +78,7 @@ use crate::key::key_bytes;
 use crate::media::{
     write_gif_with_progress, write_json, write_mp4_with_progress, write_png,
     write_png_sequence_with_progress, write_webm_with_progress, write_webp,
-    write_webp_animation_with_progress, Frame, MediaProgressReporter, NoMediaProgress,
+    write_webp_animation_with_options, Frame, MediaProgressReporter, NoMediaProgress,
 };
 use crate::output::{classify_outputs, Outputs};
 use crate::tape::{
@@ -712,7 +712,12 @@ where
                 ANSI_YELLOW,
                 format_args!("encoding webp {}", path.display()),
             );
-            write_webp_animation_with_progress(&path, &media_frames, &mut self.media_progress)?;
+            write_webp_animation_with_options(
+                &path,
+                &media_frames,
+                settings.webp_compression,
+                &mut self.media_progress,
+            )?;
             self.progress(ANSI_GREEN, format_args!("wrote {}", path.display()));
         }
         for path in outputs.frame_dirs {

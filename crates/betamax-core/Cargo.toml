@@ -50,6 +50,7 @@ serde_json.workspace = true
 shell-words.workspace = true
 tiny-skia.workspace = true
 tracing.workspace = true
+webp-animation = { version = "0.10", default-features = false, features = ["static"] }
 
 [dev-dependencies]
 # Decodes and composites GIF frames in tests, independently of the writer.
