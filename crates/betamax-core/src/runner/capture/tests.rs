@@ -92,17 +92,19 @@ fn title_transitions_survive_gif_webp_and_png_sequences() {
     let (frames, _) = protected_burst(30, 8.0);
     let gif = root.join("burst.gif");
     write_gif(&gif, &frames).unwrap();
-    let mut options = gif::DecodeOptions::new();
-    options.set_color_output(gif::ColorOutput::RGBA);
-    let mut decoder = options
-        .read_info(std::fs::File::open(gif).unwrap())
+    // Composite frames: later GIF frames only store the pixels that changed.
+    let decoded = ::image::codecs::gif::GifDecoder::new(std::io::BufReader::new(
+        std::fs::File::open(gif).unwrap(),
+    ))
+    .unwrap();
+    let decoded = ::image::AnimationDecoder::into_frames(decoded)
+        .collect_frames()
         .unwrap();
-    for (expected, _) in &frames {
-        let actual = decoder.read_next_frame().unwrap().unwrap();
-        assert_eq!(actual.buffer.as_ref(), expected.pixels);
-        assert!(actual.delay >= 1);
+    assert_eq!(decoded.len(), frames.len());
+    for ((expected, _), actual) in frames.iter().zip(decoded) {
+        assert!(actual.delay().numer_denom_ms().0 >= 10);
+        assert_eq!(actual.into_buffer().as_raw(), &expected.pixels);
     }
-    assert!(decoder.read_next_frame().unwrap().is_none());
     let webp = root.join("burst.webp");
     write_webp_animation(&webp, &frames).unwrap();
     let mut decoder =

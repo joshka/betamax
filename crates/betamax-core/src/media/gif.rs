@@ -6,7 +6,7 @@ use std::io::BufWriter;
 use std::path::Path;
 use std::time::Duration;
 
-use ::gif::{DisposalMethod, Encoder as GifEncoder, Frame as GifFrame, Repeat};
+use ::gif::{Encoder as GifEncoder, Frame as GifFrame, Repeat};
 use miette::{miette, IntoDiagnostic};
 
 use super::{
@@ -15,9 +15,13 @@ use super::{
 };
 use crate::Result;
 
+mod delta;
+
+use delta::{DeltaFrame, FrameDelta};
+
 /// Entries in a GIF color table.
 const GIF_PALETTE_SIZE: usize = 256;
-/// Palette index reserved for transparent pixels when any frame has them.
+/// Palette index reserved for clear pixels and, in animations, for pixels left unchanged.
 const GIF_TRANSPARENT_INDEX: u8 = 255;
 /// Most frequent colors given exact palette entries when an animation needs quantizing.
 const GIF_EXACT_COLORS: usize = 128;
@@ -76,34 +80,49 @@ pub fn write_gif_with_progress(
         any_transparent |= gif_binary_alpha(&mut rgba);
         GifPalette::count_colors(&mut counts, &rgba);
     }
-    let mut palette = GifPalette::new(counts, any_transparent);
+    // Unchanged pixels reuse the transparent index, so animations reserve it even when opaque,
+    // unless that slot is the only thing standing between 256 colors and exact entries.
+    let reserve_transparent =
+        any_transparent || (frames.len() > 1 && counts.len() != GIF_PALETTE_SIZE);
+    let mut palette = GifPalette::new(counts, reserve_transparent);
+    let transparent = reserve_transparent.then_some(GIF_TRANSPARENT_INDEX);
 
     let mut encoder =
         GifEncoder::new(BufWriter::new(file), width, height, palette.rgb()).into_diagnostic()?;
     encoder.set_repeat(Repeat::Infinite).into_diagnostic()?;
+    let mut write = |frame: DeltaFrame| -> Result<()> {
+        let rect = frame.rect;
+        let gif_frame = GifFrame {
+            left: u16::try_from(rect.left).expect("frame fits the GIF screen"),
+            top: u16::try_from(rect.top).expect("frame fits the GIF screen"),
+            width: u16::try_from(rect.width).expect("frame fits the GIF screen"),
+            height: u16::try_from(rect.height).expect("frame fits the GIF screen"),
+            buffer: frame.buffer.into(),
+            delay: frame.delay,
+            dispose: frame.dispose,
+            transparent,
+            ..GifFrame::default()
+        };
+        encoder.write_frame(&gif_frame).into_diagnostic()?;
+        Ok(())
+    };
 
+    let mut delta = FrameDelta::new(usize::from(width), usize::from(height), reserve_transparent);
     let total = frames.len();
     for (index, (frame, delay)) in frames.iter().enumerate() {
         let mut rgba = frame.rgba()?;
-        let transparent = gif_binary_alpha(&mut rgba);
-        let mut gif_frame = GifFrame {
-            width,
-            height,
-            buffer: palette.indices(&rgba).into(),
-            delay: gif_delay(*delay),
-            ..GifFrame::default()
-        };
-        if transparent {
-            gif_frame.transparent = Some(GIF_TRANSPARENT_INDEX);
-            // Clear before the next frame; otherwise earlier pixels show through its clear areas.
-            gif_frame.dispose = DisposalMethod::Background;
+        gif_binary_alpha(&mut rgba);
+        if let Some(finished) = delta.push(palette.indices(&rgba), *delay) {
+            write(finished)?;
         }
-        encoder.write_frame(&gif_frame).into_diagnostic()?;
         progress.report(MediaProgress {
             kind: MediaProgressKind::Gif,
             position: index + 1,
             total,
         });
+    }
+    if let Some(last) = delta.finish() {
+        write(last)?;
     }
 
     Ok(())
@@ -267,8 +286,74 @@ mod tests {
     use crate::media::tests::{temp_path, test_frames, RecordingProgress};
     use crate::media::PixelFormat;
 
+    /// Decode `path` with an independent decoder that composites each frame onto the canvas.
+    fn decode_composited(path: &Path) -> Result<Vec<(Vec<u8>, Duration)>> {
+        use image::AnimationDecoder;
+
+        let file = std::io::BufReader::new(File::open(path).into_diagnostic()?);
+        let frames = image::codecs::gif::GifDecoder::new(file)
+            .into_diagnostic()?
+            .into_frames()
+            .collect_frames()
+            .into_diagnostic()?;
+        Ok(frames
+            .into_iter()
+            .map(|frame| {
+                let delay = Duration::from(frame.delay());
+                (frame.into_buffer().into_raw(), delay)
+            })
+            .collect())
+    }
+
+    /// Frame rectangle as (left, top, width, height), and delay, as stored in the file.
+    type StoredFrame = ((u16, u16, u16, u16), u16);
+
+    /// Raw frame rectangles and delays as stored in the file, before compositing.
+    fn stored_frames(path: &Path) -> Result<Vec<StoredFrame>> {
+        let mut options = ::gif::DecodeOptions::new();
+        options.set_color_output(::gif::ColorOutput::Indexed);
+        let mut decoder = options
+            .read_info(File::open(path).into_diagnostic()?)
+            .into_diagnostic()?;
+        let mut frames = Vec::new();
+        while let Some(frame) = decoder.read_next_frame().into_diagnostic()? {
+            let rect = (frame.left, frame.top, frame.width, frame.height);
+            frames.push((rect, frame.delay));
+        }
+        Ok(frames)
+    }
+
+    fn rgba_frame(width: u32, height: u32, pixels: Vec<u8>) -> Frame {
+        Frame {
+            width,
+            height,
+            stride: width as usize * BYTES_PER_PIXEL,
+            format: PixelFormat::Rgba8,
+            pixels,
+        }
+    }
+
+    /// A 40x20 frame of two colors, with a `color` block of 3x2 pixels at (`x`, `y`).
+    fn block_frame(x: usize, y: usize, color: [u8; 4]) -> Frame {
+        let mut pixels = Vec::new();
+        for row in 0..20 {
+            for column in 0..40 {
+                pixels.extend_from_slice(&if (x..x + 3).contains(&column)
+                    && (y..y + 2).contains(&row)
+                {
+                    color
+                } else if row < 4 {
+                    [40, 40, 60, 255]
+                } else {
+                    [10, 10, 10, 255]
+                });
+            }
+        }
+        rgba_frame(40, 20, pixels)
+    }
+
     #[test]
-    fn gif_keeps_only_opaque_pixels_and_clears_between_transparent_frames() -> Result<()> {
+    fn gif_keeps_only_opaque_pixels() -> Result<()> {
         let mut rgba = vec![10, 20, 30, 255, 0, 0, 0, 140, 9, 9, 9, 0];
         assert!(gif_binary_alpha(&mut rgba));
         assert_eq!(rgba, vec![10, 20, 30, 255, 0, 0, 0, 0, 0, 0, 0, 0]);
@@ -276,24 +361,122 @@ mod tests {
         assert!(!gif_binary_alpha(&mut opaque));
 
         let path = temp_path("betamax-transparent.gif");
-        let frame = Frame {
-            width: 2,
-            height: 1,
-            stride: 8,
-            format: PixelFormat::Rgba8,
-            pixels: vec![10, 20, 30, 255, 0, 0, 0, 140],
-        };
+        let frame = rgba_frame(2, 1, vec![10, 20, 30, 255, 0, 0, 0, 140]);
         write_gif(&path, &[(frame, Duration::from_millis(100))])?;
-        let mut options = gif::DecodeOptions::new();
-        options.set_color_output(gif::ColorOutput::Indexed);
-        let mut decoder = options
-            .read_info(File::open(&path).into_diagnostic()?)
-            .into_diagnostic()?;
-        let decoded = decoder.read_next_frame().into_diagnostic()?.unwrap();
-        assert_eq!(decoded.dispose, DisposalMethod::Background);
-        let transparent = decoded.transparent.expect("transparent index");
-        assert_ne!(decoded.buffer[0], transparent);
-        assert_eq!(decoded.buffer[1], transparent);
+        let decoded = decode_composited(&path)?;
+        assert_eq!(decoded.len(), 1);
+        assert_eq!(decoded[0].0, vec![10, 20, 30, 255, 0, 0, 0, 0]);
+        fs::remove_file(&path).into_diagnostic()?;
+        Ok(())
+    }
+
+    #[test]
+    fn gif_crops_frames_to_the_changed_region() -> Result<()> {
+        let path = temp_path("betamax-cropped.gif");
+        let frames = [
+            (
+                block_frame(5, 6, [10, 10, 10, 255]),
+                Duration::from_millis(100),
+            ),
+            (
+                block_frame(5, 6, [200, 80, 80, 255]),
+                Duration::from_millis(100),
+            ),
+        ];
+        write_gif(&path, &frames)?;
+
+        let stored = stored_frames(&path)?;
+        assert_eq!(stored[0].0, (0, 0, 40, 20));
+        assert_eq!(stored[1].0, (5, 6, 3, 2));
+        fs::remove_file(&path).into_diagnostic()?;
+        Ok(())
+    }
+
+    #[test]
+    fn gif_merges_unchanged_frames_into_one_delay() -> Result<()> {
+        let path = temp_path("betamax-merged.gif");
+        let frames = [
+            (
+                block_frame(5, 6, [200, 80, 80, 255]),
+                Duration::from_millis(100),
+            ),
+            (
+                block_frame(5, 6, [200, 80, 80, 255]),
+                Duration::from_millis(250),
+            ),
+            (
+                block_frame(9, 6, [200, 80, 80, 255]),
+                Duration::from_millis(100),
+            ),
+        ];
+        write_gif(&path, &frames)?;
+
+        let stored = stored_frames(&path)?;
+        assert_eq!(stored.len(), 2);
+        assert_eq!((stored[0].1, stored[1].1), (35, 10));
+        fs::remove_file(&path).into_diagnostic()?;
+        Ok(())
+    }
+
+    #[test]
+    fn gif_frames_decode_to_the_original_pixels() -> Result<()> {
+        // A moving block with a transparent margin that appears, grows and disappears, so frames
+        // need cropping, kept pixels and clearing. Few colors keep every pixel exact.
+        let frame = |step: usize| {
+            let mut frame = block_frame(4 * step, 2 * step, [200, 80, 80, 255]);
+            for (index, pixel) in frame
+                .pixels
+                .as_chunks_mut::<BYTES_PER_PIXEL>()
+                .0
+                .iter_mut()
+                .enumerate()
+            {
+                let (x, y) = (index % 40, index / 40);
+                if !step.is_multiple_of(3) && (x < step || y + step >= 20) {
+                    pixel.copy_from_slice(&[0, 0, 0, 0]);
+                }
+            }
+            (frame, Duration::from_millis(100))
+        };
+        let frames: Vec<_> = (0..7).map(frame).collect();
+        let path = temp_path("betamax-round-trip.gif");
+        write_gif(&path, &frames)?;
+
+        let decoded = decode_composited(&path)?;
+        assert_eq!(decoded.len(), frames.len());
+        for (index, ((expected, _), (actual, delay))) in frames.iter().zip(&decoded).enumerate() {
+            assert!(expected.pixels == *actual, "frame {index} differs");
+            assert_eq!(*delay, Duration::from_millis(100));
+        }
+        fs::remove_file(&path).into_diagnostic()?;
+        Ok(())
+    }
+
+    #[test]
+    fn gif_keeps_exactly_256_colors_exact_across_frames() -> Result<()> {
+        // Every gray level, so reserving a slot for unchanged pixels would force quantizing.
+        let frame = |swap: bool| {
+            let mut pixels: Vec<u8> = (0..=u8::MAX)
+                .flat_map(|gray| [gray, gray, gray, 255])
+                .collect();
+            if swap {
+                pixels[..2 * BYTES_PER_PIXEL].rotate_left(BYTES_PER_PIXEL);
+            }
+            rgba_frame(16, 16, pixels)
+        };
+        let frames = [
+            (frame(false), Duration::from_millis(100)),
+            (frame(true), Duration::from_millis(100)),
+        ];
+        let path = temp_path("betamax-256-colors.gif");
+        write_gif(&path, &frames)?;
+
+        let decoded = decode_composited(&path)?;
+        assert_eq!(decoded.len(), 2);
+        for ((expected, _), (actual, _)) in frames.iter().zip(&decoded) {
+            assert!(expected.pixels == *actual);
+        }
+        assert_eq!(stored_frames(&path)?[1].0, (0, 0, 2, 1));
         fs::remove_file(&path).into_diagnostic()?;
         Ok(())
     }
@@ -307,13 +490,7 @@ mod tests {
                 let [high, low] = index.to_be_bytes();
                 pixels.extend_from_slice(&[low.wrapping_add(shift), high * 100, shift, 255]);
             }
-            Frame {
-                width: 301,
-                height: 1,
-                stride: 301 * 4,
-                format: PixelFormat::Rgba8,
-                pixels,
-            }
+            rgba_frame(301, 1, pixels)
         };
         let path = temp_path("betamax-stable-palette.gif");
         let frames: Vec<_> = (0..4)
@@ -321,17 +498,16 @@ mod tests {
             .collect();
         write_gif(&path, &frames)?;
 
-        let mut options = gif::DecodeOptions::new();
-        options.set_color_output(gif::ColorOutput::RGBA);
-        let mut decoder = options
-            .read_info(File::open(&path).into_diagnostic()?)
-            .into_diagnostic()?;
-        let mut dots = Vec::new();
-        while let Some(decoded) = decoder.read_next_frame().into_diagnostic()? {
-            dots.push(decoded.buffer[..BYTES_PER_PIXEL].to_vec());
-        }
+        let dots: Vec<_> = decode_composited(&path)?
+            .into_iter()
+            .map(|(pixels, _)| pixels[..BYTES_PER_PIXEL].to_vec())
+            .collect();
         assert_eq!(dots.len(), 4);
         assert!(dots.windows(2).all(|pair| pair[0] == pair[1]), "{dots:?}");
+        // The dot never changes, so no frame after the first redraws it.
+        assert!(stored_frames(&path)?[1..]
+            .iter()
+            .all(|((left, ..), _)| *left > 0));
         fs::remove_file(&path).into_diagnostic()?;
         Ok(())
     }

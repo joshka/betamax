@@ -462,7 +462,8 @@ before starting the shell.
 
 Supported output paths:
 
-- `.gif`: animated GIF written in process.
+- `.gif`: animated GIF written in process. After the first frame, each frame stores only the
+  region that changed, and unchanged frames extend the previous frame's hold.
 - `.webp`: lossless animated WebP written in process, with millisecond frame holds.
 - `.png`: final-frame PNG written in process.
 - `.mp4`: MP4 written through `ffmpeg`.
