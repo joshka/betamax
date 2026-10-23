@@ -5,6 +5,25 @@ versions and identify the core version shipped in the release lockfile.
 
 ## [Unreleased]
 
+## [0.3.0](https://github.com/joshka/betamax/compare/betamax-v0.2.2...betamax-v0.3.0) - 2026-10-23
+
+### Other
+
+- Explain that betamax run --publish is unsupported ([#260](https://github.com/joshka/betamax/pull/260))
+- Make Runner silent by default and remove RunOptions ([#258](https://github.com/joshka/betamax/pull/258))
+- Add a btop example to the homepage, README, and Examples ([#250](https://github.com/joshka/betamax/pull/250))
+- Save a failure report with the screenshot when a tape fails ([#252](https://github.com/joshka/betamax/pull/252))
+- Clean up docs duplication and list every example ([#246](https://github.com/joshka/betamax/pull/246))
+- Split README roles and fix docs site navigation ([#244](https://github.com/joshka/betamax/pull/244))
+- Record real time while typing and cap GIF at 50 FPS ([#251](https://github.com/joshka/betamax/pull/251))
+- Treat quoted words as text, never commands ([#259](https://github.com/joshka/betamax/pull/259))
+- Add an insta terminal-state snapshot example ([#247](https://github.com/joshka/betamax/pull/247))
+- Read wait regexes as written ([#257](https://github.com/joshka/betamax/pull/257))
+- Update wait pattern tests for Runner::new() ([#261](https://github.com/joshka/betamax/pull/261))
+- Add lossy WebP and store only changed regions in lossless WebP ([#254](https://github.com/joshka/betamax/pull/254))
+- Keep + in wait regexes from becoming key presses ([#255](https://github.com/joshka/betamax/pull/255))
+- Add styled viewport rows for readable state snapshots ([#256](https://github.com/joshka/betamax/pull/256))
+
 ## [0.2.2](https://github.com/joshka/betamax/compare/betamax-v0.2.1...betamax-v0.2.2) - 2026-10-23
 
 ### Other
