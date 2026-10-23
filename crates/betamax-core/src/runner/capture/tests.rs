@@ -19,6 +19,31 @@ fn caption_changes_keep_repeated_frames_separate() {
 }
 
 #[test]
+fn unchanged_frames_extend_without_rendering_only_while_presentation_matches() {
+    let mut capture = CaptureState::default();
+    assert!(!extend_unchanged_frame(
+        &mut capture,
+        Duration::from_millis(20)
+    ));
+
+    append_visible_frame(&mut capture, test_frame(), Duration::from_millis(20));
+    assert!(extend_unchanged_frame(
+        &mut capture,
+        Duration::from_millis(15)
+    ));
+    assert_eq!(capture.frames.len(), 1);
+    assert_eq!(capture.frames[0].1, Duration::from_millis(35));
+
+    // A new caption is a visible change, so the frame must be rendered again.
+    capture.caption = Some("Next".to_string());
+    assert!(!extend_unchanged_frame(
+        &mut capture,
+        Duration::from_millis(15)
+    ));
+    assert_eq!(capture.frames[0].1, Duration::from_millis(35));
+}
+
+#[test]
 fn title_assignments_preserve_bursts_and_only_extend_short_holds() {
     let source = "Set WindowBar Colorful\nSet WindowTitle Initial\nSet Framerate 30";
     let tape = crate::tape::Tape::parse(&format!("Set Preset Default-0.1\n{source}")).unwrap();

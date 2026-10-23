@@ -36,13 +36,14 @@ const GIF_MIN_TRAINING_PIXELS: usize = 4096;
 const GIF_QUANTIZATION_SPEED: i32 = 10;
 /// Milliseconds represented by one GIF delay unit.
 const GIF_DELAY_UNIT_MS: u128 = 10;
-/// Minimum non-zero delay GIF viewers reliably honor.
-const MIN_GIF_DELAY_UNITS: u128 = 1;
+/// Shortest delay browsers honor; they play 10 ms and shorter as 100 ms, capping GIF at 50 fps.
+const MIN_GIF_DELAY_UNITS: u128 = 2;
 
 /// Write an animated GIF with an infinite loop.
 ///
-/// GIF frame delays are stored in hundredths of a second, so sub-10 ms delays are rounded up to the
-/// smallest representable non-zero delay.
+/// GIF frame delays are stored in hundredths of a second, and browsers slow anything under 20 ms to
+/// 100 ms. Frames that would show for less than 20 ms are merged into the next frame, so faster
+/// captures play back at up to 50 fps with their total time kept.
 ///
 /// # Errors
 ///
@@ -437,6 +438,61 @@ mod tests {
         let stored = stored_frames(&path)?;
         assert_eq!(stored.len(), 2);
         assert_eq!((stored[0].1, stored[1].1), (35, 10));
+        fs::remove_file(&path).into_diagnostic()?;
+        Ok(())
+    }
+
+    #[test]
+    fn gif_rounds_running_time_instead_of_truncating_each_hold() -> Result<()> {
+        // Ten 35 ms keystrokes: truncating each hold would store 30 ms and lose 50 ms in total.
+        let frames: Vec<_> = (0..10)
+            .map(|step| {
+                (
+                    block_frame(2 * step, 6, [200, 80, 80, 255]),
+                    Duration::from_millis(35),
+                )
+            })
+            .collect();
+        let path = temp_path("betamax-rounding.gif");
+        write_gif(&path, &frames)?;
+
+        let stored: Vec<u16> = stored_frames(&path)?
+            .into_iter()
+            .map(|(_, delay)| delay)
+            .collect();
+        assert_eq!(stored, [4, 3, 4, 3, 4, 3, 4, 3, 4, 3]);
+        fs::remove_file(&path).into_diagnostic()?;
+        Ok(())
+    }
+
+    #[test]
+    fn gif_merges_frames_browsers_would_slow_down() -> Result<()> {
+        // Thirty changing 60 fps frames: browsers play 10 ms holds as 100 ms, so none may remain.
+        let frames: Vec<_> = (0..30)
+            .map(|step| {
+                (
+                    block_frame(step % 15, 6, [200, 80, 80, 255]),
+                    Duration::from_micros(16_667),
+                )
+            })
+            .collect();
+        let path = temp_path("betamax-min-delay.gif");
+        write_gif(&path, &frames)?;
+
+        let stored: Vec<u16> = stored_frames(&path)?
+            .into_iter()
+            .map(|(_, delay)| delay)
+            .collect();
+        assert!(stored.iter().all(|&delay| delay >= 2), "{stored:?}");
+        assert_eq!(
+            stored.iter().map(|&delay| u32::from(delay)).sum::<u32>(),
+            50
+        );
+        assert!(
+            stored.len() >= 20,
+            "kept only {} of 30 frames",
+            stored.len()
+        );
         fs::remove_file(&path).into_diagnostic()?;
         Ok(())
     }
