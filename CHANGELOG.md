@@ -5,6 +5,22 @@ versions and identify the core version shipped in the release lockfile.
 
 ## [Unreleased]
 
+## [0.2.1](https://github.com/joshka/betamax/compare/betamax-v0.2.0...betamax-v0.2.1) - 2026-10-23
+
+### Other
+
+- Warn instead of failing on VHS ordering quirks ([#235](https://github.com/joshka/betamax/pull/235))
+- Support VHS Source command ([#233](https://github.com/joshka/betamax/pull/233))
+- Support VHS Set Rows and Set Columns ([#228](https://github.com/joshka/betamax/pull/228))
+- Support VHS ScrollUp and ScrollDown ([#226](https://github.com/joshka/betamax/pull/226))
+- Allow an image as MarginFill ([#225](https://github.com/joshka/betamax/pull/225))
+- Render kitty, sixel, and iTerm2 inline images ([#236](https://github.com/joshka/betamax/pull/236))
+- Support .txt and .ascii outputs ([#234](https://github.com/joshka/betamax/pull/234))
+- Read bare LoopOffset as a percentage like VHS ([#232](https://github.com/joshka/betamax/pull/232))
+- Default to bash when a tape has no Set Shell ([#231](https://github.com/joshka/betamax/pull/231))
+- Accept bare TypingSpeed numbers as seconds ([#230](https://github.com/joshka/betamax/pull/230))
+- Resolve VHS theme names ([#229](https://github.com/joshka/betamax/pull/229))
+
 ## [0.2.0](https://github.com/joshka/betamax/compare/betamax-v0.1.22...betamax-v0.2.0) - 2026-10-19
 
 ### Other
