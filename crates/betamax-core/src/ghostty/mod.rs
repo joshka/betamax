@@ -43,6 +43,8 @@ mod title;
 #[doc(inline)]
 pub use engine::{CaptureRequest, GhosttyFrameCapture, GhosttySession, PixelSize, TerminalGrid};
 #[doc(inline)]
-pub use state::{StateCursor, StateRow, StateSpan, StateStyle, TerminalCell, TerminalState};
+pub use state::{
+    StateCursor, StateRow, StateSpan, StateStyle, StyledSpan, TerminalCell, TerminalState,
+};
 #[doc(inline)]
 pub use theme::{theme_names, TerminalTheme, TextSettings};

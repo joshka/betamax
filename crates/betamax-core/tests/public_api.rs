@@ -3,7 +3,8 @@ use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use betamax_core::ghostty::{
-    CaptureRequest, PixelSize, StateCursor, StateSpan, StateStyle, TerminalGrid, TerminalState,
+    CaptureRequest, PixelSize, StateCursor, StateSpan, StateStyle, StyledSpan, TerminalGrid,
+    TerminalState,
 };
 use betamax_core::media::{Frame, PixelFormat};
 use betamax_core::tape::{Command, Key, KeyCode, KeyModifiers, Value, WaitPattern, WaitTarget};
@@ -27,6 +28,7 @@ fn public_api_types_are_send_where_expected() {
     assert_send::<Runner>();
     assert_send::<StateCursor>();
     assert_send::<StateSpan>();
+    assert_send::<StyledSpan>();
     assert_send::<StateStyle>();
     assert_send::<Tape>();
     assert_send::<TerminalState>();

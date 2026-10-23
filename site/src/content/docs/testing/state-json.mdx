@@ -72,6 +72,11 @@ Rows are arrays of spans:
 `default_style` is fully expanded so plain strings are self-describing. Entries in `styles` are
 deltas from `default_style`; fields that match the default are omitted.
 
+Style indices are local to one capture. Betamax numbers styles in the order they first appear,
+reading from the top of the screen, so the same style can have a different index in another
+capture. Compare resolved styles, not index numbers; see
+[Snapshot styles from Rust](#snapshot-styles-from-rust).
+
 Style objects may include:
 
 | Field           | Meaning                                                    |
@@ -108,6 +113,42 @@ hard to read in diffs:
   `["foo", 1]`.
 - YAML, TOML, and JSONC each add parsing tradeoffs. Betamax writes strict JSON so tests can consume
   snapshots with standard parsers.
+
+## Snapshot styles from Rust
+
+Because style numbers depend on what appears earlier on the screen, a snapshot of `viewport` and
+`styles` changes in places that look the same. Take this screen, where the header is blue and the
+selected row is green:
+
+```json
+"styles": [{ "bg": "#487fd4" }, { "fg": "#52aa60", "bold": true }],
+"viewport": [[["Tasks", 0]], [["> run test", 1]]]
+```
+
+If the header stops being blue, the selected row becomes the first styled text and its number
+changes from `1` to `0`:
+
+```json
+"styles": [{ "fg": "#52aa60", "bold": true }],
+"viewport": [["Tasks"], [["> run test", 0]]]
+```
+
+The diff then reports the selected row as changed, and checking that it is not means looking up
+both numbers. `TerminalState::styled_viewport` and `styled_scrollback` return rows with each style
+written next to its text, so this change touches only the header:
+
+```json
+[["Tasks"], [["> run test", { "fg": "#52aa60", "bold": true }]]]
+```
+
+Snapshot these rows instead of `viewport` and `styles`:
+
+```rust
+let state = artifacts.final_state.unwrap();
+insta::assert_json_snapshot!(state.styled_viewport());
+```
+
+The JSON files Betamax writes keep the indexed form, which stays compact for style-heavy screens.
 
 ## Terminal title and window presentation
 
