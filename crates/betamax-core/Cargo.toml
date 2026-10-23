@@ -52,6 +52,8 @@ tiny-skia.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
+# Decodes and composites GIF frames in tests, independently of the writer.
+image = { workspace = true, features = ["gif"] }
 indoc.workspace = true
 
 [lints]

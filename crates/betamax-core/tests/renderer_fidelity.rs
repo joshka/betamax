@@ -1,5 +1,6 @@
 //! Controlled VT acceptance fixtures. See docs/renderer-fidelity.md for scope and diagnostics.
 
+use std::io::Cursor;
 use std::path::PathBuf;
 use std::sync::OnceLock;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -10,6 +11,8 @@ use betamax_core::ghostty::{
 };
 use betamax_core::media::{write_gif, write_png, Frame};
 use betamax_core::TerminalSession;
+use image::codecs::gif::GifDecoder;
+use image::AnimationDecoder;
 
 const COLUMNS: u16 = 32;
 const ROWS: u16 = 10;
@@ -288,22 +291,22 @@ fn assert_demo_gif(full: &Frame, half: &Frame) {
     if path == temporary {
         std::fs::remove_file(&path).unwrap();
     }
-    let mut options = gif::DecodeOptions::new();
-    options.set_color_output(gif::ColorOutput::RGBA);
-    let mut decoder = options.read_info(bytes.as_slice()).unwrap();
-    assert_eq!((decoder.width(), decoder.height()), (780, 350));
-    for (expected, delay) in [(full, 10), (half, 25)] {
-        let decoded = decoder.read_next_frame().unwrap().expect("animation frame");
-        assert_eq!(
-            (decoded.left, decoded.top, decoded.width, decoded.height),
-            (0, 0, 780, 350)
-        );
-        assert_eq!(decoded.delay, delay);
+    // Composite frames: later GIF frames only store the pixels that changed.
+    let decoded = GifDecoder::new(Cursor::new(bytes))
+        .unwrap()
+        .into_frames()
+        .collect_frames()
+        .unwrap();
+    assert_eq!(decoded.len(), 2);
+    for ((expected, delay), decoded) in [(full, 100), (half, 250)].into_iter().zip(decoded) {
+        assert_eq!(decoded.delay().numer_denom_ms(), (delay, 1));
+        let decoded = decoded.into_buffer();
+        assert_eq!(decoded.dimensions(), (780, 350));
         // GIF palette quantization may shift colors slightly; every fill/border pixel must remain.
         for y in 40 + 4 * 24..=40 + 5 * 24 + 12 {
             for x in 40 + 6..=40 + 45 * 13 + 6 {
                 let offset = ((y * 780 + x) * 4) as usize;
-                let actual = &decoded.buffer[offset..offset + 4];
+                let actual = &decoded.as_raw()[offset..offset + 4];
                 let expected = pixel(expected, x, y);
                 assert!(
                     actual.iter().zip(expected).all(|(a, b)| a.abs_diff(b) <= 3),
@@ -312,7 +315,6 @@ fn assert_demo_gif(full: &Frame, half: &Frame) {
             }
         }
     }
-    assert!(decoder.read_next_frame().unwrap().is_none());
 }
 
 #[test]

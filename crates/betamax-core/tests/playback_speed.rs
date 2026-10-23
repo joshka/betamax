@@ -1,11 +1,13 @@
 //! Exercise real PTY capture and decode animation holds at faster and slower playback speeds.
 
 use std::fs;
-use std::io::Cursor;
+use std::io::{BufReader, Cursor};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use betamax_core::{RunOptions, Runner, Tape};
+use image::codecs::gif::GifDecoder;
+use image::AnimationDecoder;
 use image_webp::WebPDecoder;
 
 #[test]
@@ -166,18 +168,19 @@ fn channel(pixel: &[u8]) -> usize {
 }
 
 fn gif_holds(path: &Path) -> Vec<(usize, f64)> {
-    let mut options = gif::DecodeOptions::new();
-    options.set_color_output(gif::ColorOutput::RGBA);
-    let mut decoder = options.read_info(fs::File::open(path).unwrap()).unwrap();
-    let mut holds = Vec::new();
-    while let Some(frame) = decoder.read_next_frame().unwrap() {
-        let offset = (120 * usize::from(frame.width) + 240) * 4;
-        holds.push((
-            channel(&frame.buffer[offset..offset + 3]),
-            f64::from(frame.delay) / 100.0,
-        ));
-    }
-    holds
+    // Composite frames: later GIF frames only store the pixels that changed.
+    let decoder = GifDecoder::new(BufReader::new(fs::File::open(path).unwrap())).unwrap();
+    decoder
+        .into_frames()
+        .collect_frames()
+        .unwrap()
+        .into_iter()
+        .map(|frame| {
+            let (numerator, denominator) = frame.delay().numer_denom_ms();
+            let delay = f64::from(numerator) / f64::from(denominator) / 1000.0;
+            (channel(&frame.buffer().get_pixel(240, 120).0[..3]), delay)
+        })
+        .collect()
 }
 
 fn webp_holds(path: &Path) -> Vec<(usize, f64)> {

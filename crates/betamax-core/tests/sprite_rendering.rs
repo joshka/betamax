@@ -2,6 +2,7 @@
 //! The dependency tests its own geometry against Ghostty golden images; these tests exercise
 //! Betamax's VT → metrics → coverage compositing → PNG/GIF path at every odd/even size pairing.
 
+use std::io::Cursor;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -10,6 +11,8 @@ use betamax_core::ghostty::{
     TextSettings,
 };
 use betamax_core::media::{write_gif, write_png, Frame};
+use image::codecs::gif::GifDecoder;
+use image::AnimationDecoder;
 use libghostty_vt::style::RgbColor;
 
 const PADDING: u32 = 8;
@@ -326,29 +329,24 @@ fn assert_gif_round_trip(name: &str, frames: &[Frame]) {
     if path == temporary {
         std::fs::remove_file(&path).unwrap();
     }
-    let mut options = gif::DecodeOptions::new();
-    options.set_color_output(gif::ColorOutput::RGBA);
-    let mut decoder = options.read_info(encoded.as_slice()).unwrap();
-    assert_eq!(
-        (u32::from(decoder.width()), u32::from(decoder.height())),
-        (frames[0].width, frames[0].height)
-    );
-    for expected in frames {
-        let decoded = decoder.read_next_frame().unwrap().expect("GIF frame");
-        assert_eq!((decoded.left, decoded.top), (0, 0));
-        assert_eq!(
-            (u32::from(decoded.width), u32::from(decoded.height)),
-            (expected.width, expected.height)
-        );
-        assert_eq!(decoded.delay, 50);
+    // Composite frames: later GIF frames only store the pixels that changed.
+    let decoded = GifDecoder::new(Cursor::new(encoded))
+        .unwrap()
+        .into_frames()
+        .collect_frames()
+        .unwrap();
+    assert_eq!(decoded.len(), frames.len());
+    for (expected, decoded) in frames.iter().zip(decoded) {
+        assert_eq!(decoded.delay().numer_denom_ms(), (500, 1));
+        let buffer = decoded.into_buffer();
+        assert_eq!(buffer.dimensions(), (expected.width, expected.height));
         // Monochrome coverage has at most 256 colors, so GIF must retain every pixel exactly.
         assert_eq!(
-            decoded.buffer.as_ref(),
-            expected.pixels,
+            buffer.as_raw(),
+            &expected.pixels,
             "GIF coverage changed for {name}"
         );
     }
-    assert!(decoder.read_next_frame().unwrap().is_none());
     assert_png_round_trip(&path.with_extension("png"), &frames[0]);
 }
 
