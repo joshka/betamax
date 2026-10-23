@@ -213,14 +213,27 @@ fn dither_opaque(
     )
 }
 
-/// Invalid fills retain the legacy fallback to the theme background.
-pub(super) fn parse_margin_fill(value: &str) -> Option<MarginFill> {
+/// Parse a color or `linear(...)` fill; anything else is a tape error naming the expected syntax.
+pub(super) fn parse_margin_fill(value: &str) -> Result<MarginFill> {
     let value = value.trim();
-    if let Some(value) = value.strip_prefix("linear(") {
-        return parse_linear_gradient(value.strip_suffix(')')?);
+    if let Some(arguments) = value.strip_prefix("linear(") {
+        return arguments
+            .strip_suffix(')')
+            .and_then(parse_linear_gradient)
+            .ok_or_else(|| {
+                miette::miette!(
+                    "invalid MarginFill \"{value}\": expected linear([to: <side> | angle: <number>deg,] <color> [<position>%], <color> [<position>%], ...)"
+                )
+                .into()
+            });
     }
 
-    parse_fill_color(value).map(MarginFill::Solid)
+    parse_fill_color(value).map(MarginFill::Solid).ok_or_else(|| {
+        miette::miette!(
+            "invalid MarginFill \"{value}\": expected #rrggbb, #rrggbbaa, transparent, linear(...), or image(...)"
+        )
+        .into()
+    })
 }
 
 /// Parse Betamax's comma-separated `linear(...)` margin-fill syntax.
@@ -290,7 +303,7 @@ fn parse_gradient_position(value: &str) -> Option<f64> {
 /// Prepare the full-output backdrop once, including the area behind captions and corners.
 ///
 /// Image fills resolve relative paths against the working directory, then `tape_dir`. Missing or
-/// undecodable images are errors; invalid colors and gradients fall back to the theme background.
+/// undecodable images, invalid colors, and malformed gradients are errors.
 pub(super) fn margin_backdrop(
     width: u32,
     height: u32,
@@ -301,8 +314,11 @@ pub(super) fn margin_backdrop(
     if let Some(image) = value.map(MarginImage::parse).transpose()?.flatten() {
         return image.backdrop(width, height, tape_dir, fallback);
     }
+    // An empty fill disables the margin, so the backdrop only matters behind rounded corners.
     let fill = value
-        .and_then(parse_margin_fill)
+        .filter(|value| !value.trim().is_empty())
+        .map(parse_margin_fill)
+        .transpose()?
         .unwrap_or(MarginFill::Solid(FillColor::opaque(fallback)));
     let gradient = match fill {
         MarginFill::Solid(FillColor { color, alpha }) => {

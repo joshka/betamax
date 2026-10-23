@@ -19,7 +19,7 @@ fn decorated(settings: &Settings, caption: Option<&str>) -> Frame {
 
 fn parsed_gradient(value: &str) -> LinearGradient {
     match parse_margin_fill(value) {
-        Some(MarginFill::Gradient(gradient)) => gradient,
+        Ok(MarginFill::Gradient(gradient)) => gradient,
         _ => panic!("expected a gradient for {value}"),
     }
 }
@@ -27,7 +27,7 @@ fn parsed_gradient(value: &str) -> LinearGradient {
 #[test]
 fn margin_fill_parses_colors_and_gradient_destinations() {
     assert_eq!(
-        parse_margin_fill(" #123aBc "),
+        parse_margin_fill(" #123aBc ").ok(),
         Some(MarginFill::Solid(FillColor::opaque(rgb(18, 58, 188))))
     );
     assert_eq!(
@@ -121,7 +121,7 @@ fn linear_margin_fill_uses_its_angle_as_the_first_to_last_stop_direction() {
 }
 
 #[test]
-fn invalid_margin_fills_fall_back_to_the_final_theme_background() {
+fn invalid_margin_fills_are_tape_errors() {
     for value in [
         "#12345",
         "#12é34",
@@ -137,17 +137,41 @@ fn invalid_margin_fills_fall_back_to_the_final_theme_background() {
         "linear(angle: 135deg, #000000 60%, #ffffff 40%)",
         "linear(angle: 135deg, #000000 0%, #ffffff 0%)",
     ] {
-        assert!(parse_margin_fill(value).is_none(), "{value}");
+        assert!(parse_margin_fill(value).is_err(), "{value}");
         let tape = Tape::parse(&format!(
-            "Set Preset Default-0.1\nSet Width 12\nSet Height 12\nSet Margin 2\nSet MarginFill '{value}'\nSet Theme '{{\"background\":\"#123456\"}}'"
+            "Set Preset Default-0.1\nSet Width 12\nSet Height 12\nSet Margin 2\nSet MarginFill '{value}'"
         )).unwrap();
-        let settings = Settings::from_tape(&tape).unwrap();
-        assert_eq!(
-            pixel(&decorated(&settings, None), 0, 0),
-            [18, 52, 86, 255],
-            "{value}"
+        let error = Settings::from_tape(&tape).unwrap_err().to_string();
+        assert!(
+            error.contains(&format!("invalid MarginFill \"{value}\"")),
+            "{error}"
         );
     }
+}
+
+#[test]
+fn malformed_margin_fill_errors_name_the_expected_syntax() {
+    let error = parse_margin_fill("linear(135deg, #6d28d9, #db2777)")
+        .unwrap_err()
+        .to_string();
+    assert!(
+        error.contains("invalid MarginFill \"linear(135deg, #6d28d9, #db2777)\""),
+        "{error}"
+    );
+    assert!(error.contains("angle: <number>deg"), "{error}");
+    let error = parse_margin_fill("#12345").unwrap_err().to_string();
+    assert!(
+        error.contains("expected #rrggbb, #rrggbbaa, transparent"),
+        "{error}"
+    );
+}
+
+#[test]
+fn empty_margin_fill_uses_the_theme_background() {
+    let frame = margin_backdrop(1, 1, Some(" "), rgb(1, 2, 3), None)
+        .unwrap()
+        .into_frame();
+    assert_eq!(pixel(&frame, 0, 0), [1, 2, 3, 255]);
 }
 
 #[test]
@@ -335,7 +359,7 @@ fn pixel(frame: &Frame, x: u32, y: u32) -> [u8; 4] {
 #[test]
 fn transparent_margin_fill_clears_the_backdrop_around_an_opaque_window() {
     assert_eq!(
-        parse_margin_fill(" Transparent "),
+        parse_margin_fill(" Transparent ").ok(),
         Some(MarginFill::Solid(FillColor::CLEAR))
     );
     let tape =
@@ -387,22 +411,22 @@ fn opaque_margin_fills_keep_every_pixel_opaque() {
 #[test]
 fn margin_fill_accepts_css_ordered_alpha() {
     assert_eq!(
-        parse_margin_fill("#0f101a80"),
+        parse_margin_fill("#0f101a80").ok(),
         Some(MarginFill::Solid(FillColor {
             color: rgb(15, 16, 26),
             alpha: 128
         }))
     );
     assert_eq!(
-        parse_margin_fill("#12345600"),
+        parse_margin_fill("#12345600").ok(),
         Some(MarginFill::Solid(FillColor::CLEAR))
     );
     assert_eq!(
-        parse_margin_fill("#0f101aff"),
+        parse_margin_fill("#0f101aff").ok(),
         Some(MarginFill::Solid(FillColor::opaque(rgb(15, 16, 26))))
     );
     for invalid in ["#0f101a8", "#0f101agg", "#0f101a800"] {
-        assert_eq!(parse_margin_fill(invalid), None, "{invalid}");
+        assert!(parse_margin_fill(invalid).is_err(), "{invalid}");
     }
 }
 

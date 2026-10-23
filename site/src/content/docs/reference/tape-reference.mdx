@@ -312,7 +312,7 @@ corners and the caption row. It does not change the terminal's background or gri
 
 With no explicit `MarginFill`, the backdrop follows the selected preset and final theme. An explicit
 color or gradient is preserved regardless of `Set Theme` ordering. `Set MarginFill ""` disables the
-margin. Invalid colors and malformed gradients fall back to the active theme background. `betamax
+margin. Invalid colors and malformed gradients are errors that name the expected syntax. `betamax
 validate` checks tape syntax, so it does not reject malformed fill strings. Radial
 gradients are not supported. See `examples/margin-gradient.tape` for a complete
 example.
