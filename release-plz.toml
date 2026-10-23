@@ -21,3 +21,8 @@ Core library for Betamax {{ version }}.
 
 See the [Betamax {{ version }} release notes](https://github.com/joshka/betamax/releases/tag/betamax-v{{ version }}) for the combined CLI and library changes.
 """
+
+[[package]]
+name = "betamax-fonts"
+# Font data only; the betamax release notes cover it.
+git_release_enable = false

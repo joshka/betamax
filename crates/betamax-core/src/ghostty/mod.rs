@@ -28,6 +28,7 @@
 
 mod color;
 mod engine;
+pub(crate) mod fonts;
 mod graphics;
 mod inline_image;
 mod mouse;

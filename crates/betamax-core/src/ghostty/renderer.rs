@@ -1,8 +1,7 @@
 //! Software renderer for libghostty-vt render state.
 
 use cosmic_text::{
-    Attrs, Buffer, Color, Family, FontSystem, Metrics, Shaping, Style as TextStyle, SwashCache,
-    Weight,
+    Attrs, Buffer, Color, FontSystem, Metrics, Shaping, Style as TextStyle, SwashCache, Weight,
 };
 use libghostty_vt::render::{CellIterator, RowIterator};
 use libghostty_vt::screen::CellWide;
@@ -12,6 +11,7 @@ use libghostty_vt::{RenderState, Terminal};
 use miette::miette;
 
 use super::engine::CaptureRequest;
+use super::fonts;
 use super::graphics::placeholder::{PlaceholderCell, PlaceholderRow};
 use super::graphics::{GridGeometry, ImageCompositor};
 use super::render_theme::{style_colors, RenderTheme};
@@ -577,11 +577,13 @@ struct CellRenderer {
 impl CellRenderer {
     /// Create a foreground renderer for one capture session.
     fn new(settings: TextSettings, cell_width: u32, cell_height: u32) -> Self {
+        let mut font_system = fonts::font_system();
+        fonts::warn_if_unresolved(&mut font_system, settings.font_family.as_deref());
         Self {
             settings,
             cell_width,
             cell_height,
-            font_system: FontSystem::new(),
+            font_system,
             swash_cache: SwashCache::new(),
             sprites: SpriteRenderer::new(cell_width, cell_height),
         }
@@ -646,13 +648,9 @@ impl CellRenderer {
         }
         let text_settings = &self.settings;
         let metrics = Metrics::new(text_settings.font_size, self.cell_height as f32);
+        let family = fonts::resolve_family(&self.font_system, text_settings.font_family.as_deref());
         let mut buffer = Buffer::new(&mut self.font_system, metrics);
         let mut buffer = buffer.borrow_with(&mut self.font_system);
-        let family = text_settings
-            .font_family
-            .as_deref()
-            .map(Family::Name)
-            .unwrap_or(Family::Monospace);
         let attrs = Attrs::new()
             .family(family)
             .letter_spacing(

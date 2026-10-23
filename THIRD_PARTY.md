@@ -133,3 +133,19 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## JetBrains Mono
+
+The `betamax-fonts` crate embeds the JetBrains Mono 2.304 variable fonts under
+`crates/betamax-fonts/fonts`, unmodified, as Betamax's default font. `betamax-core` depends on it
+through the default `bundled-font` feature.
+
+Upstream project:
+
+- <https://github.com/JetBrains/JetBrainsMono>
+
+License:
+
+- SIL Open Font License 1.1, Copyright 2020 The JetBrains Mono Project Authors. The full text is in
+  `crates/betamax-fonts/OFL.txt`. The OFL covers the font files only, not Betamax's code or the
+  images it renders.

@@ -34,3 +34,8 @@ unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 allow-git = []
+
+# Betamax's bundled default font is JetBrains Mono, embedded unmodified under the OFL.
+[[licenses.exceptions]]
+name = "betamax-fonts"
+allow = ["OFL-1.1"]
