@@ -480,21 +480,17 @@ impl PtySession {
                 due = last_capture_at.elapsed() >= MAX_TRANSMISSION_DEFER;
             }
             collect_title_changes(terminal, settings, capture)?;
-            let captured_at = Instant::now();
-            let elapsed = captured_at.saturating_duration_since(last_capture_at);
             if due {
-                let frame_delay = settings.playback_delay(elapsed);
-                if changed || !extend_unchanged_frame(capture, frame_delay) {
-                    append_visible_frame(
-                        capture,
-                        capture_frame(terminal, settings, capture.frames.len())?,
-                        frame_delay,
-                    );
-                }
+                last_capture_at = record_capture(terminal, settings, capture, changed)?;
                 changed = false;
-                last_capture_at = captured_at;
-                capture.recorded_until = Some(captured_at);
             }
+        }
+        // A capture deferred for streaming output, or a drain that starts after its deadline,
+        // would leave time before the deadline unrecorded. Nothing records it if the tape ends
+        // here, so capture now even if output is mid-update.
+        if capture.visible && last_capture_at < deadline {
+            collect_title_changes(terminal, settings, capture)?;
+            record_capture(terminal, settings, capture, changed)?;
         }
         Ok(())
     }
@@ -582,6 +578,30 @@ fn log_pty_drain(message: &'static str, bytes: &[u8]) {
         sample = %ByteSample(bytes),
         message,
     );
+}
+
+/// Record the time since the last capture as a frame hold, rendering only if output arrived.
+///
+/// Returns the capture instant, which becomes the start of the next hold.
+fn record_capture(
+    terminal: &mut impl TerminalSession,
+    settings: &Settings,
+    capture: &mut CaptureState,
+    changed: bool,
+) -> Result<Instant> {
+    let captured_at = Instant::now();
+    let last_capture_at = capture.recorded_until.unwrap_or(captured_at);
+    let frame_delay =
+        settings.playback_delay(captured_at.saturating_duration_since(last_capture_at));
+    if changed || !extend_unchanged_frame(capture, frame_delay) {
+        append_visible_frame(
+            capture,
+            capture_frame(terminal, settings, capture.frames.len())?,
+            frame_delay,
+        );
+    }
+    capture.recorded_until = Some(captured_at);
+    Ok(captured_at)
 }
 
 #[cfg(test)]

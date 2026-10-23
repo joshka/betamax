@@ -796,10 +796,17 @@ where
                 // Pace keystrokes against absolute deadlines so per-key overhead (rendering, the
                 // post-drain read) does not accumulate and slow typing below `TypingSpeed`.
                 let mut deadline = Instant::now();
-                for ch in text.chars() {
+                let mut chars = text.chars().peekable();
+                while let Some(ch) = chars.next() {
                     let mut buf = [0u8; 4];
                     session.write_all(ch.encode_utf8(&mut buf).as_bytes())?;
                     deadline += delay;
+                    if chars.peek().is_none() {
+                        // When pacing has fallen behind, the last deadline has already passed.
+                        // Give the final key its full delay to echo so the next command (and text
+                        // output snapshots) see the whole typed line.
+                        deadline = deadline.max(Instant::now() + delay);
+                    }
                     session.drain_until(terminal, deadline, settings, capture)?;
                 }
                 session.drain_for(terminal, Duration::ZERO, settings, capture)?;

@@ -4,7 +4,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use betamax_core::{RunOptions, Runner, Tape};
+use betamax_core::{Runner, Tape};
 use image::AnimationDecoder;
 use indoc::formatdoc;
 
@@ -43,12 +43,7 @@ fn typing_records_its_nominal_duration_in_gif_and_webp() {
         webp = webp.display(),
     })
     .unwrap();
-    Runner::new(RunOptions {
-        quiet: true,
-        publish: false,
-    })
-    .run_artifacts(&tape)
-    .unwrap();
+    Runner::new().run_artifacts(&tape).unwrap();
 
     let webp_ms = total_ms(webp_frames(&webp));
     let gif_ms = total_ms(gif_frames(&gif));
@@ -103,12 +98,7 @@ fn typing_duration_scales_with_typing_speed() {
             webp = webp.display(),
         })
         .unwrap();
-        Runner::new(RunOptions {
-            quiet: true,
-            publish: false,
-        })
-        .run_artifacts(&tape)
-        .unwrap();
+        Runner::new().run_artifacts(&tape).unwrap();
         let recorded = total_ms(webp_frames(&webp));
         let nominal = chars * speed_ms;
         assert!(
