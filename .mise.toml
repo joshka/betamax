@@ -91,7 +91,8 @@ run = "pnpm docs:build"
 run = "pnpm audit --audit-level low"
 
 [tasks.package-core]
-run = "cargo package -p betamax-core --allow-dirty"
+# Package the font crate alongside core so an unpublished version bump resolves locally.
+run = "cargo package -p betamax-fonts -p betamax-core --allow-dirty"
 
 [tasks.package-cli]
 run = "cargo package --workspace --allow-dirty --no-verify"
@@ -100,7 +101,7 @@ run = "cargo package --workspace --allow-dirty --no-verify"
 run = "cargo package -p betamax --allow-dirty"
 
 [tasks.publish-dry-run-core]
-run = "cargo publish -p betamax-core --dry-run --allow-dirty"
+run = "cargo publish -p betamax-fonts -p betamax-core --dry-run --allow-dirty"
 
 [tasks.publish-dry-run-cli]
 run = "cargo publish -p betamax --dry-run --allow-dirty"
