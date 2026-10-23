@@ -147,10 +147,24 @@ impl GifPalette {
     ///
     /// Expects straight-alpha RGBA whose alpha is already binary.
     fn count_colors(counts: &mut HashMap<[u8; 3], usize>, rgba: &[u8]) {
+        // Terminal frames are mostly long runs of one color; hash once per run, not per pixel.
+        let mut run: Option<([u8; 3], usize)> = None;
         for pixel in rgba.as_chunks::<BYTES_PER_PIXEL>().0 {
-            if pixel[3] == u8::MAX {
-                *counts.entry([pixel[0], pixel[1], pixel[2]]).or_default() += 1;
+            if pixel[3] < u8::MAX {
+                continue;
             }
+            let color = [pixel[0], pixel[1], pixel[2]];
+            match &mut run {
+                Some((run_color, length)) if *run_color == color => *length += 1,
+                _ => {
+                    if let Some((run_color, length)) = run.replace((color, 1)) {
+                        *counts.entry(run_color).or_default() += length;
+                    }
+                }
+            }
+        }
+        if let Some((color, length)) = run {
+            *counts.entry(color).or_default() += length;
         }
     }
 
@@ -218,6 +232,8 @@ impl GifPalette {
 
     /// Map one frame's pixels to palette indices.
     fn indices(&mut self, rgba: &[u8]) -> Vec<u8> {
+        // Reuse the previous pixel's entry across runs of one color, as in `count_colors`.
+        let mut last: Option<([u8; 3], u8)> = None;
         rgba.as_chunks::<BYTES_PER_PIXEL>()
             .0
             .iter()
@@ -226,10 +242,17 @@ impl GifPalette {
                     return GIF_TRANSPARENT_INDEX;
                 }
                 let color = [pixel[0], pixel[1], pixel[2]];
-                *self
+                if let Some((last_color, index)) = last {
+                    if last_color == color {
+                        return index;
+                    }
+                }
+                let index = *self
                     .lookup
                     .entry(color)
-                    .or_insert_with(|| nearest(&self.rgb[..self.opaque_colors * 3], color))
+                    .or_insert_with(|| nearest(&self.rgb[..self.opaque_colors * 3], color));
+                last = Some((color, index));
+                index
             })
             .collect()
     }
