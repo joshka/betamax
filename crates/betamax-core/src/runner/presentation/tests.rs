@@ -222,7 +222,8 @@ fn caption_row_keeps_the_gradient_behind_its_text() {
         .presentation
         .decorate_frame_with_overlays(&terminal, Some("Gradient"), &[])
         .unwrap();
-    let y = settings.presentation.height - settings.presentation.style.effective_margin() - 1;
+    let y =
+        settings.presentation.height - settings.presentation.style.effective_margin().bottom - 1;
     assert_eq!(pixel(&frame, 0, y), [0, 0, 0, 255]);
     assert_eq!(pixel(&frame, 160, y), [128, 128, 128, 255]);
     assert_eq!(pixel(&frame, 319, y), [255, 255, 255, 255]);
@@ -428,4 +429,55 @@ fn decoration_rejects_insufficient_margin_instead_of_cropping_cells() {
             .unwrap();
     let error = Settings::from_tape(&tape).unwrap_err().to_string();
     assert!(error.contains("increase Margin"), "{error}");
+}
+
+#[test]
+fn asymmetric_margin_places_the_window_by_side() {
+    let tape = Tape::parse(
+        r##"
+        Set Preset Bare
+        Set Width 320
+        Set Height 200
+        Set Padding 0
+        Set Margin "10 20 30 40"
+        Set MarginFill "#000000"
+        Set WindowBar Colorful
+        Set WindowBarSize 20
+        Set WindowBarColor "#0000ff"
+    "##,
+    )
+    .unwrap();
+    let settings = Settings::from_tape(&tape).unwrap();
+    assert_eq!(settings.presentation.terminal_canvas_width(), 320 - 20 - 40);
+    assert_eq!(
+        settings.presentation.terminal_canvas_height(),
+        200 - 10 - 30 - 20
+    );
+    let terminal = Canvas::new(
+        settings.presentation.terminal_canvas_width(),
+        settings.presentation.terminal_canvas_height(),
+        super::super::canvas::rgb(255, 0, 0),
+    )
+    .unwrap()
+    .into_frame();
+    let frame = settings
+        .presentation
+        .decorate_frame_with_overlays(&terminal, None, &[])
+        .unwrap();
+
+    const BLACK: [u8; 4] = [0, 0, 0, 255];
+    const RED: [u8; 4] = [255, 0, 0, 255];
+    const BLUE: [u8; 4] = [0, 0, 255, 255];
+    // Bar spans x 40..300 at y 10..30; the terminal fills y 30..170.
+    assert_eq!(pixel(&frame, 39, 15), BLACK);
+    assert_eq!(pixel(&frame, 299, 15), BLUE);
+    assert_eq!(pixel(&frame, 300, 15), BLACK);
+    assert_eq!(pixel(&frame, 200, 9), BLACK);
+    assert_eq!(pixel(&frame, 200, 10), BLUE);
+    assert_eq!(pixel(&frame, 40, 30), RED);
+    assert_eq!(pixel(&frame, 299, 169), RED);
+    assert_eq!(pixel(&frame, 299, 170), BLACK);
+    assert_eq!(pixel(&frame, 39, 100), BLACK);
+    // Buttons sit half a bar in from the window's top-left corner.
+    assert_ne!(pixel(&frame, 50, 20), BLUE);
 }

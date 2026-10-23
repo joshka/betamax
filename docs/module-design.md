@@ -115,6 +115,8 @@ requirement to preserve these exact files when a better boundary becomes clear.
 - [`margin.rs`](../crates/betamax-core/src/runner/margin.rs): fill parsing, gradient projection and
   sampling, dithering, and backdrop rendering. Its `image_fill` child owns image syntax, path
   resolution, decoding, and fitting.
+- [`insets.rs`](../crates/betamax-core/src/runner/insets.rs): per-side `Margin` values and their
+  CSS shorthand parsing. Geometry users pick the side they need from the window's effective margin.
 - [`caption.rs`](../crates/betamax-core/src/runner/caption.rs): caption text semantics, typography,
   height requirements, and the single-line shaping, truncation, and drawing mechanism reused by
   window titles.

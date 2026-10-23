@@ -85,6 +85,17 @@ they run top to bottom; `to: <side-or-corner>` and `angle: <n>deg` change that. 
 percentages, and if one does, they all must. This is Betamax syntax, not CSS: no radial
 gradients. See [Margin fill](../../reference/tape-reference/#margin-fill) for the grammar.
 
+### Per-side margins
+
+A string sets each side separately, in CSS order: `"top right bottom left"`, or fewer values that
+repeat as in CSS. Use it to move the window off-centre or reserve room for a caption or a logo:
+
+```tape
+Set Margin "40 200 120 40"
+```
+
+See [`margin-sides.tape`][margin-sides-src].
+
 ### Images
 
 A bare path such as `Set MarginFill "backdrop.jpg"` stretches the picture over the output, as VHS
@@ -236,6 +247,7 @@ Each tape renders one feature on its own:
 
 [presets-src]: https://github.com/joshka/betamax/blob/main/examples/presets-framed.tape
 [margin-gradient-src]: https://github.com/joshka/betamax/blob/main/examples/margin-gradient.tape
+[margin-sides-src]: https://github.com/joshka/betamax/blob/main/examples/margin-sides.tape
 [margin-transparent-src]: https://github.com/joshka/betamax/blob/main/examples/margin-transparent.tape
 [window-bar-color-src]: https://github.com/joshka/betamax/blob/main/examples/window-bar-color.tape
 [window-title-src]: https://github.com/joshka/betamax/blob/main/examples/window-title.tape
