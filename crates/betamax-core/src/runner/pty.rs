@@ -464,7 +464,13 @@ impl PtySession {
         let mut changed = true;
         while Instant::now() < deadline {
             let now = Instant::now();
-            let next_due = (last_capture_at + capture_interval).max(now);
+            // Hidden periods never capture, so waiting for a capture slot would busy-spin until
+            // the deadline and starve the child process of CPU.
+            let next_due = if capture.visible {
+                (last_capture_at + capture_interval).max(now)
+            } else {
+                deadline
+            };
             let wait = deadline.min(next_due).saturating_duration_since(now);
             let read = self.read_burst_into(terminal, wait, capture_interval)?;
             changed |= read;
