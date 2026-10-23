@@ -1,0 +1,40 @@
+---
+source: crates/betamax-core/tests/insta_snapshot.rs
+expression: state.styled_viewport()
+---
+[
+  [
+    [
+      "Tasks",
+      {
+        "fg": "#dfe5ee",
+        "bg": "#487fd4",
+        "bold": true
+      }
+    ]
+  ],
+  [
+    "  write tape"
+  ],
+  [
+    [
+      "> run test",
+      {
+        "fg": "#52aa60",
+        "bold": true
+      }
+    ]
+  ],
+  [
+    "  review snapshot"
+  ],
+  [],
+  [
+    [
+      "j move · q quit",
+      {
+        "faint": true
+      }
+    ]
+  ]
+]

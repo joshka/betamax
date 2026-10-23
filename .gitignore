@@ -11,3 +11,8 @@ examples/output
 
 # Local Python script imports.
 __pycache__/
+
+# Pending insta snapshots, and screenshots the insta example writes beside its snapshots.
+*.pending-snap
+*.snap.new
+/crates/betamax-core/tests/snapshots/*.png
