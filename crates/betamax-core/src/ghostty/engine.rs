@@ -3,9 +3,15 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use libghostty_vt::terminal::ScrollViewport;
+use libghostty_vt::terminal::{
+    ConformanceLevel, DeviceAttributeFeature, DeviceAttributes, DeviceType,
+    PrimaryDeviceAttributes, ScrollViewport, SecondaryDeviceAttributes, SizeReportSize,
+    TertiaryDeviceAttributes,
+};
 use libghostty_vt::{Terminal, TerminalOptions};
 
+use super::graphics;
+use super::inline_image::{Extent, InlineImages};
 use super::mouse::MouseInput;
 use super::renderer::RasterRenderer;
 use super::state::TerminalState;
@@ -132,6 +138,8 @@ pub struct GhosttySession {
     title_capture: Rc<TitleCapture>,
     mouse: MouseInput,
     cell_size: (u32, u32),
+    /// Sixel and iTerm2 image translation in front of the terminal.
+    inline_images: InlineImages,
 }
 
 impl std::fmt::Debug for GhosttySession {
@@ -200,6 +208,7 @@ impl GhosttySession {
                 "failed to install libghostty-vt write_pty callback",
             ))?;
         tracing::trace!("installed libghostty-vt write_pty callback");
+        install_capability_replies(&mut terminal, cell_width, cell_height)?;
 
         Ok(Self {
             terminal,
@@ -216,6 +225,10 @@ impl GhosttySession {
             ))),
             title_capture: Rc::default(),
             cell_size: (cell_width, cell_height),
+            inline_images: InlineImages::new(Extent {
+                width: cell_width,
+                height: cell_height,
+            }),
         })
     }
 }
@@ -224,7 +237,7 @@ impl TerminalSession for GhosttySession {
     /// Feed raw PTY bytes into libghostty-vt.
     fn write_vt(&mut self, bytes: &[u8]) {
         log_pty_write_start(bytes);
-        self.terminal.vt_write(bytes);
+        self.inline_images.write(&mut self.terminal, bytes);
         log_pty_write_finish(bytes);
     }
 
@@ -380,6 +393,61 @@ impl GhosttySession {
     pub fn terminal_state(&mut self) -> Result<TerminalState> {
         <Self as TerminalSession>::terminal_state(self)
     }
+}
+
+/// Primary device attributes: Ghostty's own reply plus sixel graphics.
+///
+/// libghostty-vt answers `CSI c` with `?62;22c` by default. Betamax renders sixel images (see
+/// [`super::inline_image`]), so it adds attribute 4; programs such as ratatui-image use it to
+/// decide that sixel output will be visible.
+const PRIMARY_DEVICE_ATTRIBUTES: PrimaryDeviceAttributes = PrimaryDeviceAttributes::new(
+    ConformanceLevel::VT220,
+    &[
+        DeviceAttributeFeature::SIXEL,
+        DeviceAttributeFeature::ANSI_COLOR,
+    ],
+);
+
+/// Answer the capability queries image-capable programs send before choosing a protocol.
+///
+/// Kitty graphics queries (`a=q`) are answered by libghostty-vt once image storage is enabled.
+/// This adds the XTWINOPS size reports (`CSI 14 t`, `CSI 16 t`, `CSI 18 t`), which need the cell
+/// pixel size only Betamax knows, and the device attributes above.
+fn install_capability_replies(
+    terminal: &mut Terminal<'static, 'static>,
+    cell_width: u32,
+    cell_height: u32,
+) -> Result<()> {
+    graphics::install_png_decoder()?;
+    terminal
+        .set_kitty_image_storage_limit(graphics::STORAGE_LIMIT_BYTES)
+        .map_err(vt_error("failed to enable kitty graphics"))?;
+    terminal
+        .on_size(move |terminal| {
+            Some(SizeReportSize {
+                rows: terminal.rows().ok()?,
+                columns: terminal.cols().ok()?,
+                cell_width,
+                cell_height,
+            })
+        })
+        .map_err(vt_error("failed to install libghostty-vt size callback"))?;
+    terminal
+        .on_device_attributes(|_terminal| {
+            Some(DeviceAttributes {
+                primary: PRIMARY_DEVICE_ATTRIBUTES,
+                secondary: SecondaryDeviceAttributes {
+                    device_type: DeviceType::VT220,
+                    firmware_version: 0,
+                    rom_cartridge: 0,
+                },
+                tertiary: TertiaryDeviceAttributes { unit_id: 0 },
+            })
+        })
+        .map_err(vt_error(
+            "failed to install libghostty-vt device attributes callback",
+        ))?;
+    Ok(())
 }
 
 fn vt_error(context: &'static str) -> impl Fn(libghostty_vt::Error) -> miette::Report {

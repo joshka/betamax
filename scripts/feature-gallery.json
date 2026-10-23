@@ -68,5 +68,14 @@
       "archive-alternate",
       "scrollback-and-screens"
     ]
+  },
+  {
+    "slug": "inline-images",
+    "title": "Pictures in the terminal",
+    "description": "The scene program draws the same picture four ways: a kitty graphics placement sized in cells, a kitty virtual placement drawn through unicode placeholder cells (the path ratatui-image uses), a sixel image, and an iTerm2 inline image.",
+    "expected": "Four gray-gradient pictures with an orange, cyan, lime and violet disc above their labels; no placeholder glyphs or tofu.",
+    "checkpoints": [
+      "inline-images"
+    ]
   }
 ]

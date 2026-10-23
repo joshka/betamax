@@ -12,6 +12,8 @@ use libghostty_vt::{RenderState, Terminal};
 use miette::miette;
 
 use super::engine::CaptureRequest;
+use super::graphics::placeholder::{PlaceholderCell, PlaceholderRow};
+use super::graphics::{GridGeometry, ImageCompositor};
 use super::render_theme::{style_colors, RenderTheme};
 use super::sprites::SpriteRenderer;
 use super::state::{
@@ -48,6 +50,8 @@ pub(super) struct RasterRenderer {
     cells: CellIterator<'static>,
     /// Font/sprite rasterizers and glyph caches.
     cell_renderer: CellRenderer,
+    /// Scaled inline-image cache.
+    images: ImageCompositor,
 }
 
 impl RasterRenderer {
@@ -63,6 +67,7 @@ impl RasterRenderer {
             rows: RowIterator::new().expect("libghostty-vt row iterator"),
             cells: CellIterator::new().expect("libghostty-vt cell iterator"),
             cell_renderer,
+            images: ImageCompositor::default(),
         }
     }
 
@@ -117,6 +122,8 @@ impl RasterRenderer {
             let mut y = 0u16;
             let mut frame_text = Vec::new();
             let mut decorations = Vec::new();
+            let mut placeholders: Vec<PlaceholderCell> = Vec::new();
+            let mut placeholder_row = PlaceholderRow::default();
             while let Some(row) = row_iter.next() {
                 let mut cell_iter = self
                     .cells
@@ -151,15 +158,37 @@ impl RasterRenderer {
                     {
                         decorations.push((x_px, y_px, foreground, style));
                     }
-                    if !style.invisible && !graphemes.is_empty() {
+                    // Kitty unicode placeholders are image cells, never glyphs.
+                    let is_placeholder = placeholder_row.push(
+                        x,
+                        y,
+                        &graphemes,
+                        style.fg_color,
+                        style.underline_color,
+                    );
+                    if !is_placeholder && !style.invisible && !graphemes.is_empty() {
                         let text: String = graphemes.into_iter().collect();
                         frame_text.push((text, x_px, y_px, foreground, style));
                     }
 
                     x = x.saturating_add(1);
                 }
+                placeholder_row.finish(&mut placeholders);
                 y = y.saturating_add(1);
             }
+            let geometry = GridGeometry {
+                padding: self.request.text.padding,
+                cell_width: self.cell_width,
+                cell_height: self.cell_height,
+                columns: u32::from(
+                    terminal
+                        .cols()
+                        .map_err(vt_error("failed to read terminal columns"))?,
+                ),
+                rows: u32::from(y),
+            };
+            let images = self.images.prepare(terminal, geometry, &placeholders)?;
+            images.draw_below_text(&mut target, geometry);
             // Wide text and sprite diagonals can extend into neighboring cells, including
             // other rows. Paint all backgrounds first so none can erase that overhang.
             for (text, x_px, y_px, foreground, style) in frame_text {
@@ -172,6 +201,7 @@ impl RasterRenderer {
                 self.cell_renderer
                     .draw_decorations(&mut target, x_px, y_px, foreground, style);
             }
+            images.draw_above_text(&mut target, geometry, &placeholders);
             tracing::trace!(rows = y, "iterated libghostty-vt render rows");
         }
 

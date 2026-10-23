@@ -171,6 +171,17 @@ such as `Ctrl+Tab`.
 `Set KeyboardOverlay` shows key chips as keys are pressed, so viewers can follow along without
 reading every keystroke.
 
+### Show terminal images
+
+VHS records through xterm.js, which draws no inline images. Betamax renders images that programs
+draw with the kitty graphics protocol, kitty unicode placeholders, sixel, and iTerm2
+`OSC 1337 File=inline=1`, so plots and previews from tools such as ratatui-image appear in
+screenshots, GIFs, and videos. Images scroll and clip with the terminal grid.
+
+Betamax also answers the capability queries those programs send first: kitty graphics queries,
+sixel in the primary device attributes, and the `CSI 14 t` and `CSI 16 t` pixel-size reports.
+Kitty animation frames and iTerm2 multipart transfers are not rendered.
+
 ### Style the window
 
 Presets, gradient, image, and transparent `MarginFill` values, `WindowBarColor`, `WindowTitle`,

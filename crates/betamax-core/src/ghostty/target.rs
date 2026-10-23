@@ -116,6 +116,25 @@ impl PixelTarget {
         }
     }
 
+    /// Target width in pixels.
+    pub(super) fn width(&self) -> u32 {
+        self.width
+    }
+
+    /// Target height in pixels.
+    pub(super) fn height(&self) -> u32 {
+        self.height
+    }
+
+    /// Alpha-blend one straight-alpha RGBA pixel; the caller guarantees it is in bounds.
+    pub(super) fn blend_rgba(&mut self, x: u32, y: u32, [r, g, b, a]: [u8; 4]) {
+        match a {
+            0 => {}
+            OPAQUE_ALPHA => self.set_pixel(x, y, r, g, b, OPAQUE_ALPHA),
+            _ => self.blend_pixel(x, y, r, g, b, a),
+        }
+    }
+
     /// Draw a cursor using libghostty-vt's visual style.
     ///
     /// Unknown cursor styles fall back to a filled block because that is the most visible failure

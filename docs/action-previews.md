@@ -7,8 +7,9 @@ This bypasses the action's release installer. The build log records the executab
 SHA-256 for diagnosis; it is not an attestation from a trusted runner.
 
 The every-PR selection combines the [feature field guide](feature-gallery.md) with one small
-format/timing smoke tape. Seven named GIF/PNG scenes demonstrate input, keys, styled Unicode,
-light/dark framing, captions, overlays, capture visibility and scrollback/alternate screens. The
+format/timing smoke tape. Eight named GIF/PNG scenes demonstrate input, keys, styled Unicode,
+light/dark framing, captions, overlays, capture visibility, scrollback/alternate screens and inline
+images. The
 field guide records their assertions, coverage map, known gaps and reproduction instructions.
 
 `examples/ci-playback.tape` independently checks Hide/Show, frame changes and unequal one/two-second

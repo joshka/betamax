@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Small deterministic terminal subject for the feature tapes; no third-party packages."""
 
+import base64
 import os
+import struct
 import sys
 import termios
 import tty
+import zlib
 
 ESC = "\033["
 
@@ -115,12 +118,106 @@ def input_scene():
         termios.tcsetattr(sys.stdin, termios.TCSADRAIN, original)
 
 
+# Swatch colors sit on the 6-level sixel palette so every protocol can draw them exactly; the
+# gradient around them is gray, so a checker can count each protocol's pixels by color.
+IMAGE_SWATCHES = {"kitty": (255, 102, 0), "placeholder": (0, 204, 255),
+                  "sixel": (153, 255, 0), "iterm2": (204, 0, 255)}
+IMAGE_SIZE = (168, 110)
+# First kitty row/column diacritics (https://sw.kovidgoyal.net/kitty/graphics-protocol/).
+DIACRITICS = "̅̍̎̐̒̽̾̿͆͊͋͌͐͑͒͗"
+
+
+def image_pixels(swatch):
+    width, height = IMAGE_SIZE
+    rows = []
+    for y in range(height):
+        row = []
+        for x in range(width):
+            dx, dy = x - width // 2, y - height // 2
+            if dx * dx + dy * dy < 34 * 34:
+                row.append(swatch)
+            else:
+                level = 51 * ((x * 3 // width) + (y * 2 // height))
+                row.append((level, level, level))
+        rows.append(row)
+    return rows
+
+
+def png(rows):
+    def chunk(kind, data):
+        body = kind + data
+        return struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body))
+    raw = b"".join(b"\0" + bytes(c for px in row for c in px) for row in rows)
+    header = struct.pack(">IIBBBBB", len(rows[0]), len(rows), 8, 2, 0, 0, 0)
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header) + chunk(b"IDAT", zlib.compress(raw))
+            + chunk(b"IEND", b""))
+
+
+def sixel(rows):
+    width, height = len(rows[0]), len(rows)
+    out = [f'\033P0;1;0q"1;1;{width};{height}']
+    palette = {}
+    for row in rows:
+        for px in row:
+            if px not in palette:
+                palette[px] = len(palette)
+                out.append("#%d;2;%d;%d;%d" % ((palette[px],) + tuple(c * 100 // 255 for c in px)))
+    for band in range(0, height, 6):
+        bits = {}
+        for x in range(width):
+            for bit in range(min(6, height - band)):
+                color = palette[rows[band + bit][x]]
+                bits.setdefault(color, [0] * width)[x] |= 1 << bit
+        for color, values in bits.items():
+            out.append(f"#{color}" + "".join(chr(63 + v) for v in values) + "$")
+        out.append("-")
+    return "".join(out) + "\033\\"
+
+
+def kitty_chunks(control, payload):
+    data = base64.b64encode(payload).decode()
+    parts = [data[i:i + 4096] for i in range(0, len(data), 4096)]
+    out = ""
+    for index, part in enumerate(parts):
+        more = int(index + 1 < len(parts))
+        head = f"{control},m={more}" if index == 0 else f"m={more}"
+        out += f"\033_G{head};{part}\033\\"
+    return out
+
+
+def images():
+    write(ESC + "2J" + ESC + "H" + ESC + "?25l")
+    write("\033[1;38;2;94;234;212mBETAMAX  /  FIELD GUIDE\033[0m\r\n\r\n")
+    write("\033[1mPictures in the terminal\033[0m\r\nOne image per protocol, drawn by the program.")
+    columns, rows = 14, 5
+    panels = [("kitty", "kitty"), ("placeholder", "placeholders"), ("sixel", "sixel"),
+              ("iterm2", "iTerm2")]
+    for index, (name, label) in enumerate(panels):
+        x = 3 + index * 17
+        write(f"{ESC}13;{x}H{ESC}0m{label}{ESC}7;{x}H")
+        pixels = image_pixels(IMAGE_SWATCHES[name])
+        if name == "kitty":
+            write(kitty_chunks(f"a=T,f=100,q=2,c={columns},r={rows}", png(pixels)))
+        elif name == "placeholder":
+            write(kitty_chunks(f"a=T,U=1,i=42,f=100,q=2,c={columns},r={rows}", png(pixels)))
+            for row in range(rows):
+                write(f"{ESC}{7 + row};{x}H{ESC}38;5;42m")
+                write("".join("\U0010EEEE" + DIACRITICS[row] + DIACRITICS[col]
+                              for col in range(columns)) + ESC + "39m")
+        elif name == "sixel":
+            write(sixel(pixels))
+        else:
+            encoded = base64.b64encode(png(pixels)).decode()
+            write(f"\033]1337;File=inline=1;width={columns};height={rows}:{encoded}\a")
+    write(f"{ESC}15;1H\r\nIMAGES READY")
+
+
 if __name__ == "__main__":
     mode = termios.tcgetattr(sys.stdin)
     mode[3] &= ~termios.ECHO
     termios.tcsetattr(sys.stdin, termios.TCSANOW, mode)
     {"styles": styles, "layout": layout, "visibility": visibility,
-     "scrollback": scrollback, "input": input_scene, "cell-edges": cell_edges}[sys.argv[1]]()
+     "scrollback": scrollback, "input": input_scene, "cell-edges": cell_edges, "images": images}[sys.argv[1]]()
     # Keep static scenes alive so shell prompts cannot alter checkpoints.
-    if sys.argv[1] in {"styles", "layout", "cell-edges"}:
+    if sys.argv[1] in {"styles", "layout", "cell-edges", "images"}:
         input()

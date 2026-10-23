@@ -1,6 +1,6 @@
 # Feature field guide
 
-The field guide shows seven example scenes that CI renders and checks on every pull request. Open
+The field guide shows eight example scenes that CI renders and checks on every pull request. Open
 **Betamax field guide** in the Linux package job summary for a self-contained gallery with
 animations, named checkpoints, expected results and the exact tapes. Raw PNG, GIF and state JSON are
 in `feature-checkpoints`.
@@ -14,15 +14,16 @@ stable across runs. The light theme is an intentional comparison, not a differen
 fixture application is a tiny, local Python program: no network, packages, clock, randomness or
 host filesystem contents enter a scene.
 
-| Scene                   | Purpose                                            | Automated evidence                      |
-| ----------------------- | -------------------------------------------------- | --------------------------------------- |
-| From intent to input    | Type, paste, edit, inject environment, send keys   | Exact text/key bytes, cursor state      |
-| Text with character     | Emphasis, colors, Unicode and cell graphics        | Style spans, Unicode cells, mint ink    |
-| Room to breathe · dark  | Padding, margins, chrome and rounded corners       | Region colors and frame geometry        |
-| Room to breathe · light | Same content in another theme and decoration       | Matched text/grid, light regions        |
-| Present the action      | Captions and keyboard chips annotate a stable page | Equal state; bottom-row image diff      |
-| Reveal the result       | Hidden setup executes but stays out of animation   | Hidden checkpoint; every GIF frame      |
-| Keep the history        | Scrollback, alternate screen and restoration       | Complete history; restored state/pixels |
+| Scene                    | Purpose                                            | Automated evidence                      |
+| ------------------------ | -------------------------------------------------- | --------------------------------------- |
+| From intent to input     | Type, paste, edit, inject environment, send keys   | Exact text/key bytes, cursor state      |
+| Text with character      | Emphasis, colors, Unicode and cell graphics        | Style spans, Unicode cells, mint ink    |
+| Room to breathe · dark   | Padding, margins, chrome and rounded corners       | Region colors and frame geometry        |
+| Room to breathe · light  | Same content in another theme and decoration       | Matched text/grid, light regions        |
+| Present the action       | Captions and keyboard chips annotate a stable page | Equal state; bottom-row image diff      |
+| Reveal the result        | Hidden setup executes but stays out of animation   | Hidden checkpoint; every GIF frame      |
+| Keep the history         | Scrollback, alternate screen and restoration       | Complete history; restored state/pixels |
+| Pictures in the terminal | Kitty, kitty placeholders, sixel and iTerm2 images | Per-protocol swatch pixel counts        |
 
 Tapes live in `examples/features/`. Their first two comments give the title and purpose.
 `scripts/feature-gallery.json` supplies gallery descriptions and expectations. The supporting
@@ -162,7 +163,7 @@ directory. To recheck existing output and rebuild the HTML without rerendering:
 python3 scripts/check-feature-gallery.py
 ```
 
-Inspect all seven animations, expand the clean/caption/chip and primary/alternate/restored pairs,
+Inspect all eight animations, expand the clean/caption/chip and primary/alternate/restored pairs,
 compare light and dark framing, and read the known-gap notice. A passed export count is
 insufficient.
 On failure the checker still writes a partial gallery with diagnostics. CI uploads the evidence with

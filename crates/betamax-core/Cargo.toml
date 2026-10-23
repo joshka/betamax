@@ -26,6 +26,7 @@ include = [
 ]
 
 [dependencies]
+base64.workspace = true
 color_quant.workspace = true
 cosmic-text.workspace = true
 gif.workspace = true
