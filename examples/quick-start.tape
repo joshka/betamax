@@ -17,12 +17,13 @@ Set CursorBlink false
 # Match the prompt to the Brownout ANSI palette instead of Betamax's default purple prompt.
 Env PS1 '\[\e[33m\]> \[\e[0m\]'
 
-# Prepare a temporary work directory without showing setup commands in the recording.
+# Prepare a temporary work directory without showing setup commands in the recording. Install into
+# it, so the recording always shows a fresh install and leaves ~/.cargo/bin alone.
 Hide
-Type "export PATH=\"$HOME/.cargo/bin:$PATH\""
+Type "workdir=$(mktemp -d /tmp/betamax-demo.XXXX)"
 Enter
 Wait
-Type "workdir=$(mktemp -d)"
+Type "export CARGO_INSTALL_ROOT=\"$workdir\" PATH=\"$workdir/bin:$HOME/.cargo/bin:$PATH\""
 Enter
 Wait
 Type "cd \"$workdir\""
@@ -81,5 +82,5 @@ Hide
 Type "rm -f new.gif new.tape"
 Enter
 Wait
-Type "cd / && rmdir \"$workdir\""
+Type "cd / && rm -rf \"$workdir\""
 Enter
