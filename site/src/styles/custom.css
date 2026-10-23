@@ -503,6 +503,24 @@ main:has(.betamax-hero) > .content-panel:first-child {
   pointer-events: none;
 }
 
+.betamax-showcase {
+  margin: 2.5rem 0 0;
+}
+
+.betamax-showcase img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 0.75rem;
+}
+
+.betamax-showcase figcaption {
+  margin-top: 0.75rem;
+  color: var(--sl-color-gray-3);
+  font-size: var(--sl-text-sm);
+  text-align: center;
+}
+
 .feature-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

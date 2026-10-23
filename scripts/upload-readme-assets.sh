@@ -23,6 +23,7 @@ fi
 gh release upload "$tag" \
   target/betamax-examples/quick-start.gif \
   target/betamax-examples/basic.gif \
+  target/betamax-examples/btop.gif \
   target/betamax-examples/hide-show.gif \
   target/betamax-examples/themes.gif \
   target/betamax-examples/video.gif \

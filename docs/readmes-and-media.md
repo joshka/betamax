@@ -80,8 +80,10 @@ Output goes to `examples/output` and is copied to `target/betamax-examples`. Gen
 tracked in the repository.
 
 The `readme-assets` GitHub Release hosts the rendered GIFs. Both READMEs load `quick-start.gif`
-from it, and the site's [Examples](https://www.joshka.net/betamax/examples/) page loads several
-more. Earlier published crate READMEs also link there, so keep the release and its asset names.
+from it. The crates.io README and the homepage also load `btop.gif`, rendered from
+`examples/btop.tape`, which needs `btop` installed. The site's
+[Examples](https://www.joshka.net/betamax/examples/) page loads several more.
+Earlier published crate READMEs also link there, so keep the release and its asset names.
 
 Refresh the assets with:
 
