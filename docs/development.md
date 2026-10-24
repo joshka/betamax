@@ -152,6 +152,12 @@ model. Those archive names must stay aligned with
 `libghostty-vt-sys` links the native VT library statically by default. The cargo-binstall archive
 therefore only needs the `betamax` executable and does not need a companion shared library payload.
 
+Linux archives need glibc 2.34 or newer: Ubuntu 22.04+, Debian 12+, RHEL 9+ and Amazon Linux 2023.
+The release jobs run on current Ubuntu runners but link with [cargo-zigbuild][cargo-zigbuild]
+against glibc 2.34 stubs, so the floor does not follow the runner image.
+[`scripts/check-glibc-floor.sh`](../scripts/check-glibc-floor.sh) fails the release job if the
+binary references a newer glibc symbol version.
+
 ## Scripts and tasks
 
 Use mise tasks as the primary developer entrypoints. They load the repository toolchain before
@@ -257,6 +263,7 @@ limits, refreshing the hero recording, and uploading example media.
 [astro]: https://astro.build/
 [binstall-support]: https://github.com/cargo-bins/cargo-binstall/blob/main/SUPPORT.md
 [cargo-binstall]: https://github.com/cargo-bins/cargo-binstall
+[cargo-zigbuild]: https://github.com/rust-cross/cargo-zigbuild
 [cargo-deny]: https://github.com/EmbarkStudios/cargo-deny
 [ffmpeg]: https://ffmpeg.org/
 [homebrew-tap]: https://github.com/joshka/homebrew-tap
