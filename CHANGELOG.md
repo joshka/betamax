@@ -5,6 +5,20 @@ versions and identify the core version shipped in the release lockfile.
 
 ## [Unreleased]
 
+## [0.3.1](https://github.com/joshka/betamax/compare/betamax-v0.3.0...betamax-v0.3.1) - 2026-10-24
+
+### Added
+
+- set per-side margins with CSS shorthand ([#264](https://github.com/joshka/betamax/pull/264))
+
+### Fixed
+
+- reject malformed MarginFill values ([#266](https://github.com/joshka/betamax/pull/266))
+
+### Other
+
+- Fix the README asset refresh and the starter tape ([#262](https://github.com/joshka/betamax/pull/262))
+
 ## [0.3.0](https://github.com/joshka/betamax/compare/betamax-v0.2.2...betamax-v0.3.0) - 2026-10-23
 
 ### Other
