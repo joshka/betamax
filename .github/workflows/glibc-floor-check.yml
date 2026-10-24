@@ -1,0 +1,58 @@
+name: glibc floor check (temporary)
+
+# Temporary: exercises the release workflow's Linux zigbuild path on native runners before the next
+# release depends on it. Drop this commit before merging.
+permissions: {}
+
+env:
+  LIBGHOSTTY_VT_SYS_CPU: baseline
+
+on:
+  pull_request:
+
+jobs:
+  build:
+    name: zigbuild ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-26.04
+            target: x86_64-unknown-linux-gnu
+            glibc: "2.34"
+          - runner: ubuntu-26.04-arm
+            target: aarch64-unknown-linux-gnu
+            glibc: "2.34"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: stable
+          targets: ${{ matrix.target }}
+      - uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
+        with:
+          install: true
+      - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
+        with:
+          tool: cargo-zigbuild@0.23.4
+          fallback: none
+      - name: Build CLI for glibc ${{ matrix.glibc }}
+        env:
+          TARGET: ${{ matrix.target }}
+          GLIBC: ${{ matrix.glibc }}
+        run: cargo zigbuild --locked --release -p betamax --target "$TARGET.$GLIBC"
+      - name: Check glibc floor
+        env:
+          TARGET: ${{ matrix.target }}
+          GLIBC: ${{ matrix.glibc }}
+        run: |
+          set -euo pipefail
+          scripts/check-glibc-floor.sh "target/$TARGET/release/betamax" "$GLIBC"
+          "target/$TARGET/release/betamax" --version
+          objdump -p "target/$TARGET/release/betamax" | grep NEEDED
+          ls -l "target/$TARGET/release/betamax"
