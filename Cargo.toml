@@ -18,12 +18,12 @@ documentation = "https://www.joshka.net/betamax/"
 
 [workspace.dependencies]
 anyhow = "1.0.102"
-base64 = "0.22"
+base64 = "0.23"
 betamax-core = { path = "crates/betamax-core", version = "0.3.0" }
 betamax-fonts = { path = "crates/betamax-fonts", version = "0.3.0" }
 clap = { version = "4.5.20", features = ["derive", "wrap_help"] }
 clap-stdin = "0.8"
-color_quant = "1.1"
+color_quant = "2.0"
 cosmic-text = "0.19"
 gif = "0.14"
 image = { version = "0.25.10", default-features = false, features = ["jpeg", "png", "webp"] }
