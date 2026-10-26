@@ -60,12 +60,12 @@ jobs:
           toolchain: stable
       - &install-mise
         name: Install mise tools
-        uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
+        uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
         with:
           install: true
       - name: Run release-plz
         id: release-plz
-        uses: release-plz/action@f393a7b38aca9d9b4c58447b291dbac963901df6 # v0.5.141
+        uses: release-plz/action@6caa8d34f74d82b0dc76a18edd1cc3d6801c9baf # v0.5.143
         with:
           command: release
         env:
@@ -138,7 +138,7 @@ jobs:
           toolchain: stable
           targets: ${{ matrix.target }}
       - name: Install mise tools
-        uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
+        uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
         with:
           install: true
       - name: Cache release dependencies
@@ -239,7 +239,7 @@ jobs:
       - *install-rust
       - *install-mise
       - name: Run release-plz
-        uses: release-plz/action@f393a7b38aca9d9b4c58447b291dbac963901df6 # v0.5.141
+        uses: release-plz/action@6caa8d34f74d82b0dc76a18edd1cc3d6801c9baf # v0.5.143
         with:
           command: release-pr
         env:
