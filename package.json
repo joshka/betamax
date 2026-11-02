@@ -10,9 +10,9 @@
     "docs:preview": "astro preview --root site"
   },
   "dependencies": {
-    "@astrojs/check": "0.9.10",
-    "@astrojs/starlight": "0.42.6",
-    "astro": "7.3.8",
+    "@astrojs/check": "0.9.12",
+    "@astrojs/starlight": "0.42.7",
+    "astro": "7.4.2",
     "typescript": "6.0.3"
   },
   "pnpm": {
@@ -26,6 +26,6 @@
     ]
   },
   "devDependencies": {
-    "@astrojs/mdx": "8.0.3"
+    "@astrojs/mdx": "8.1.1"
   }
 }
