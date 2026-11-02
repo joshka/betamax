@@ -49,7 +49,7 @@ jobs:
         run: rustup toolchain install beta --component clippy
 
       - name: Install mise tools
-        uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
+        uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         with:
           install: true
 
@@ -57,7 +57,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Cache Rust builds
-        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           prefix-key: v2-rust-baseline
           key: ${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.mise.toml') }}
@@ -113,12 +113,12 @@ jobs:
           toolchain: stable
 
       - name: Install mise tools
-        uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
+        uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         with:
           install: true
 
       - name: Cache Rust builds
-        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           prefix-key: v2-rust-baseline
           key: ${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.mise.toml') }}
@@ -294,12 +294,12 @@ jobs:
         run: rustup toolchain install nightly --component rustfmt
 
       - name: Install mise tools
-        uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
+        uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         with:
           install: true
 
       - name: Cache Rust builds
-        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           prefix-key: v2-rust-baseline
           key: ${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.mise.toml') }}
@@ -459,12 +459,12 @@ jobs:
         run: rustup toolchain install nightly
 
       - name: Install mise tools
-        uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
+        uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         with:
           install: true
 
       - name: Cache Rust builds
-        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           prefix-key: v2-rust-baseline
           key: ${{ matrix.name }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.mise.toml') }}
@@ -472,7 +472,7 @@ jobs:
           cache-targets: true
 
       - name: Install cargo maintenance tools
-        uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
+        uses: taiki-e/install-action@5488ac5a951645ce95062214902ac4b6bc1a1037 # v2.87.32
         with:
           tool: ${{ matrix.tools }}
           fallback: none
@@ -533,4 +533,4 @@ jobs:
           persist-credentials: false
 
       - name: Run zizmor
-        uses: zizmorcore/zizmor-action@cc914d7f3750a2d13d75c7f184a1060aa0e9d482 # v0.6.4
+        uses: zizmorcore/zizmor-action@53290badfa369cb0bf7ad16342cb62c2fa47ac7b # v0.8.0
