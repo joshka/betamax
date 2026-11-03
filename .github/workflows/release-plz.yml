@@ -121,10 +121,14 @@ jobs:
             target: x86_64-apple-darwin
           - runner: macos-14
             target: aarch64-apple-darwin
+          # Linux archives link against an explicit glibc so they run on older distributions than
+          # the runner. 2.34 covers Ubuntu 22.04+, Debian 12+, RHEL 9+ and Amazon Linux 2023.
           - runner: ubuntu-26.04
             target: x86_64-unknown-linux-gnu
+            glibc: "2.34"
           - runner: ubuntu-26.04-arm
             target: aarch64-unknown-linux-gnu
+            glibc: "2.34"
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -148,10 +152,34 @@ jobs:
           key: release-${{ matrix.target }}-${{ hashFiles('.mise.toml') }}
           env-vars: CARGO CC CFLAGS CXX CMAKE RUST LIBGHOSTTY
           cache-targets: true
+      - name: Install cargo-zigbuild
+        if: ${{ matrix.glibc }}
+        uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
+        with:
+          tool: cargo-zigbuild@0.23.4
+          fallback: none
       - name: Build CLI
+        if: ${{ !matrix.glibc }}
         env:
           TARGET: ${{ matrix.target }}
         run: mise run build-release -- "$TARGET"
+      # cargo-zigbuild links with the mise-pinned Zig against glibc stubs for the `.<version>` suffix
+      # and writes the binary to the usual target/<triple> directory.
+      - name: Build CLI for glibc ${{ matrix.glibc }}
+        if: ${{ matrix.glibc }}
+        env:
+          TARGET: ${{ matrix.target }}
+          GLIBC: ${{ matrix.glibc }}
+        run: cargo zigbuild --locked --release -p betamax --target "$TARGET.$GLIBC"
+      - name: Check glibc floor
+        if: ${{ matrix.glibc }}
+        env:
+          TARGET: ${{ matrix.target }}
+          GLIBC: ${{ matrix.glibc }}
+        run: |
+          set -euo pipefail
+          scripts/check-glibc-floor.sh "target/$TARGET/release/betamax" "$GLIBC"
+          "target/$TARGET/release/betamax" --version
       - name: Package archive
         id: package
         shell: bash
