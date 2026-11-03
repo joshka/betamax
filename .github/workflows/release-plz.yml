@@ -111,8 +111,10 @@ jobs:
     runs-on: ${{ matrix.runner }}
     needs: prepare-release-assets
     if: ${{ needs.prepare-release-assets.outputs.betamax_released == 'true' }}
+    # Build jobs run third-party build scripts and native toolchains, so they get a read-only token.
+    # publish-release-assets holds the release write and attestation permissions instead.
     permissions:
-      contents: write
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -162,13 +164,64 @@ jobs:
           set -euo pipefail
           archive="$(scripts/package-binstall-archive.sh "$TARGET" "$VERSION" target/dist)"
           echo "archive=$archive" >> "$GITHUB_OUTPUT"
-      - name: Upload archive
+      - name: Upload archive artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-archive-${{ matrix.target }}
+          path: ${{ steps.package.outputs.archive }}
+          if-no-files-found: error
+          retention-days: 7
+          # The archive is already gzip-compressed.
+          compression-level: 0
+
+  publish-release-assets:
+    name: Publish release assets
+    runs-on: ubuntu-26.04
+    needs:
+      - prepare-release-assets
+      - release-assets
+    # Publish whichever targets built, as the per-target uploads did before attestation. A failed
+    # target still blocks the Homebrew bump, and re-running it re-runs this job, which then
+    # rewrites SHA256SUMS with every archive in the run.
+    if: >-
+      ${{
+        !cancelled() &&
+        needs.prepare-release-assets.outputs.betamax_released == 'true'
+      }}
+    permissions:
+      # Upload assets to the release created earlier in the same workflow run.
+      contents: write
+      # Sign build provenance with a Sigstore certificate issued for this workflow's OIDC identity.
+      id-token: write
+      # Store the attestations so `gh attestation verify` can find them by digest.
+      attestations: write
+    steps:
+      - name: Download archive artifacts
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: release-archive-*
+          merge-multiple: true
+          path: dist
+      - name: Write SHA256SUMS
+        working-directory: dist
+        run: |
+          set -euo pipefail
+          sha256sum -- *.tgz > SHA256SUMS
+          cat SHA256SUMS
+      # One attestation covers every archive and the checksum list, so a packager can verify
+      # either an archive directly or SHA256SUMS once and then check digests offline.
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            dist/*.tgz
+            dist/SHA256SUMS
+      - name: Upload release assets
         env:
           # This token only mutates the release created earlier in the same workflow run.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ needs.prepare-release-assets.outputs.tag }}
-          ARCHIVE: ${{ steps.package.outputs.archive }}
-        run: gh release upload "$RELEASE_TAG" "$ARCHIVE" --clobber
+        run: gh release upload "$RELEASE_TAG" dist/*.tgz dist/SHA256SUMS --clobber --repo "$GITHUB_REPOSITORY"
 
   bump-homebrew-tap:
     name: Bump Homebrew tap
@@ -176,6 +229,7 @@ jobs:
     needs:
       - prepare-release-assets
       - release-assets
+      - publish-release-assets
     if: ${{ needs.prepare-release-assets.outputs.betamax_released == 'true' }}
     permissions: {}
     steps:
