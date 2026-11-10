@@ -113,7 +113,6 @@ Smaller differences:
 - **Waits.** A bare `Wait` pattern is a substring match; `/…/` is a regular expression.
 - **Clipboard.** `Copy` and `Paste` use a clipboard private to the tape. Betamax never reads or
   writes your system clipboard.
-- **Screenshots.** `Screenshot` captures after output settles, not on the next frame.
 - **Source.** `Source` paths resolve against the sourcing tape's directory first, then the current
   directory; VHS uses only the current directory. Sourced tapes may nest, which VHS rejects.
 - **CLI.** Run tapes with `betamax run demo.tape`. `-o` adds an output to the ones in the tape;

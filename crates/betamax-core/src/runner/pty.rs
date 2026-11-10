@@ -43,6 +43,12 @@ const CAPTURE_QUIET: Duration = Duration::from_millis(3);
 /// finishes a transmission from freezing the recording.
 const MAX_TRANSMISSION_DEFER: Duration = Duration::from_secs(1);
 
+/// Most PTY reads an input command applies before acting.
+///
+/// Reads are at most [`PTY_READ_BUFFER_SIZE`] bytes, so this covers several megabytes of backlog
+/// while still returning under output that never stops.
+const MAX_QUEUED_CHUNKS: usize = 1024;
+
 /// PTY process plus non-blocking output reader.
 ///
 /// `portable-pty` exposes blocking readers. Betamax moves reads onto a background thread and uses a
@@ -408,6 +414,45 @@ impl PtySession {
             self.write_all(&reply)?;
         }
         Ok(())
+    }
+
+    /// Apply output that has already arrived, without waiting for more.
+    ///
+    /// Input commands (`Mouse`, `Resize`, scrolling) act on the terminal as it is now. Waiting for
+    /// the PTY to go quiet would never return while an app redraws continuously; tapes that need
+    /// settled output use `Wait`.
+    /// At most [`MAX_QUEUED_CHUNKS`] are applied, so output arriving faster than it parses cannot
+    /// keep the queue from emptying; the rest is left for the next command.
+    pub(super) fn apply_queued(&mut self, terminal: &mut impl TerminalSession) -> Result<()> {
+        for _ in 0..MAX_QUEUED_CHUNKS {
+            let Ok(bytes) = self.reader.try_recv() else {
+                break;
+            };
+            log_pty_drain("applying queued PTY bytes", &bytes);
+            self.feed(terminal, &bytes)?;
+        }
+        Ok(())
+    }
+
+    /// Apply output for one frame interval, then return whatever the terminal shows.
+    ///
+    /// This is the hold a renderer at the capture rate gives: output that lands within the frame
+    /// is shown, and output still arriving is not waited for. A frame caught mid-update (a torn
+    /// write or a half-sent image from an app without synchronized output) is captured as it is,
+    /// because a real terminal would show it too.
+    pub(super) fn read_for_frame(
+        &mut self,
+        terminal: &mut impl TerminalSession,
+        interval: Duration,
+    ) -> Result<()> {
+        let deadline = Instant::now() + interval;
+        loop {
+            let remaining = deadline.saturating_duration_since(Instant::now());
+            if remaining.is_zero() || self.output_closed {
+                return Ok(());
+            }
+            self.read_burst_into(terminal, remaining, remaining)?;
+        }
     }
 
     /// Drain PTY output without terminal capture.

@@ -856,10 +856,28 @@ primary visual outputs. Accepts `.png` and `.webp`, in any case. WebP screenshot
 preserve transparency. To write a static final WebP, put `Screenshot final.webp` at the end of the
 tape; `Output final.webp` always writes an animation.
 
+#### Checkpoint timing
+
+`Screenshot` and `State` hold for one frame at the `Framerate` (20 ms at the default 50), then
+capture the terminal as it is. Output that arrives within that frame is included; output still
+arriving is not waited for, so a program that animates continuously does not block the tape. The
+end of the tape works the same way: the final frame and `Output` state are captured one frame after
+the last command.
+
+A frame caught mid-update is captured as it is: a partial redraw, or a half-sent image from a
+program that does not use synchronized output. A terminal shows those frames too, and a checkpoint
+that hid them would hide tearing bugs. To capture a particular screen, put `Wait+Screen` before the
+checkpoint.
+
+`MouseMove`, `MouseDown`, `MouseUp`, `MouseScroll`, `Resize`, `ScrollUp`, and `ScrollDown` apply
+output that has already arrived (for example, a program that just enabled mouse reporting), then
+act without waiting.
+
 ### `State <path>.json`
 
-Writes an immediate terminal-state snapshot. The state includes viewport text, scrollback text,
-cursor metadata, a default style, compact style deltas, and styled text spans. See
+Writes a terminal-state snapshot, with the same [timing](#checkpoint-timing) as `Screenshot`. The
+state includes viewport text, scrollback text, cursor metadata, a default style, compact style
+deltas, and styled text spans. See
 [State JSON](../../testing/state-json/) for the schema and snapshot-testing tradeoffs.
 
 ### `Copy <text>` and `Paste`

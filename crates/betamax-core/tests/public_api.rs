@@ -93,6 +93,42 @@ fn runner_accepts_custom_capture_backend() {
 }
 
 #[test]
+fn screenshot_and_state_finish_while_app_redraws_continuously() {
+    let screenshot = temp_output("betamax-public-api-busy-screenshot.png");
+    let state = temp_output("betamax-public-api-busy-state.json");
+    // The loop redraws every 10ms, so the PTY never goes quiet until Ctrl+C stops it. It prints
+    // "busy" from two halves so the echoed command line cannot satisfy the wait or the state check.
+    let tape = Tape::parse(&format!(
+        r#"
+        Set Shell "bash"
+        Type "while :; do printf '\\r%s%s %s' bu sy $RANDOM; sleep 0.01; done"
+        Enter
+        Wait+Screen "busy"
+        Screenshot {screenshot}
+        State {state}
+        Ctrl+C
+        "#,
+        screenshot = screenshot.display(),
+        state = state.display(),
+    ))
+    .unwrap();
+
+    let (sender, receiver) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let _ = sender.send(Runner::with_capture(FakeCapture).run_artifacts(&tape));
+    });
+    receiver
+        .recv_timeout(std::time::Duration::from_secs(30))
+        .expect("checkpoints should not wait for a continuously redrawing app to go idle")
+        .unwrap();
+
+    assert!(screenshot.is_file());
+    assert!(fs::read_to_string(&state).unwrap().contains("busy"));
+    let _ = fs::remove_file(screenshot);
+    let _ = fs::remove_file(state);
+}
+
+#[test]
 fn captions_affect_screenshots_not_state_json() {
     let final_state = temp_output("betamax-public-api-caption-final.json");
     let checkpoint_state = temp_output("betamax-public-api-caption-checkpoint.json");

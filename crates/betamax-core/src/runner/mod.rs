@@ -258,16 +258,6 @@ pub trait FrameCapture {
 /// consumed as it arrives, and command execution begins once the shell has been quiet for this
 /// long.
 const SHELL_STARTUP_IDLE: Duration = Duration::from_millis(250);
-/// Final idle drain after all tape commands have run.
-///
-/// This catches command output that arrives just after the last scripted input without adding a
-/// noticeable tail to generated GIFs or videos.
-const FINAL_COMMAND_IDLE: Duration = Duration::from_millis(100);
-/// Idle drain before point-in-time state or screenshot commands.
-///
-/// Inline checkpoints should reflect output produced by the preceding command, but they should not
-/// wait as long as shell startup because they often appear in the middle of visible recordings.
-const CHECKPOINT_IDLE: Duration = Duration::from_millis(50);
 
 const ANSI_RESET: &str = "\x1b[0m";
 const ANSI_BOLD: &str = "\x1b[1m";
@@ -645,7 +635,7 @@ where
         }
 
         tracing::debug!("draining final PTY output");
-        session.drain_into(&mut terminal, FINAL_COMMAND_IDLE)?;
+        session.read_for_frame(&mut terminal, settings.capture_interval())?;
         collect_title_changes(&mut terminal, &settings, &mut capture)?;
         tracing::trace!("drained final PTY output");
         let final_raw_frame = capture_frame(&mut terminal, &settings, capture.frames.len())?;
@@ -840,7 +830,7 @@ where
                 if *columns == 0 || *rows == 0 {
                     return Err(miette!("Resize requires positive columns and rows").into());
                 }
-                session.drain_into(terminal, CHECKPOINT_IDLE)?;
+                session.apply_queued(terminal)?;
                 terminal.resize(TerminalGrid::new(*columns, *rows))?;
                 session.resize(*columns, *rows, settings)?;
                 session.drain_for(terminal, settings.capture_interval(), settings, capture)?;
@@ -850,7 +840,7 @@ where
                 delay,
                 count,
             } => {
-                session.drain_into(terminal, CHECKPOINT_IDLE)?;
+                session.apply_queued(terminal)?;
                 let rows = match direction {
                     ViewportDirection::Up => -1,
                     ViewportDirection::Down => 1,
@@ -866,7 +856,7 @@ where
                 }
             }
             Command::Mouse { event, modifiers } => {
-                session.drain_into(terminal, CHECKPOINT_IDLE)?;
+                session.apply_queued(terminal)?;
                 let bytes = terminal.mouse_input(*event, *modifiers)?;
                 session.write_all(&bytes)?;
                 session.drain_for(terminal, settings.capture_interval(), settings, capture)?;
@@ -909,7 +899,7 @@ where
                 capture.caption = active_caption(text);
             }
             Command::Screenshot(path) => {
-                session.drain_into(terminal, CHECKPOINT_IDLE)?;
+                session.read_for_frame(terminal, settings.capture_interval())?;
                 collect_title_changes(terminal, settings, capture)?;
                 let frame = settings.presentation.decorate_frame_with_title(
                     &capture_frame(terminal, settings, capture.frames.len())?,
@@ -927,7 +917,7 @@ where
                 }
             }
             Command::State(path) => {
-                session.drain_into(terminal, CHECKPOINT_IDLE)?;
+                session.read_for_frame(terminal, settings.capture_interval())?;
                 write_json(path, &terminal.terminal_state()?)?;
             }
             Command::Hide => {
