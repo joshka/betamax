@@ -3,9 +3,10 @@ title: GitHub Action
 description: Record terminal previews in GitHub Actions and share them in pull request comments.
 ---
 
-Use [Betamax Terminal Previews][marketplace] to run tapes in CI and upload recordings, an HTML gallery,
-and diagnostic logs. The render job links the gallery in its summary. Add the separate
-`joshka/betamax-action/report` action to create or update one pull request comment with gallery links.
+Use [Betamax Terminal Previews][marketplace] to run tapes in CI and upload recordings, an HTML
+gallery, and diagnostic logs. The render job links the gallery in its summary. Add the separate
+`joshka/betamax-action/report` action to create or update one pull request comment with gallery
+links.
 
 The actions support GitHub.com and Ubuntu 24.04 GitHub-hosted runners on x64 and ARM64.
 The examples use `@v1`, which tracks compatible action releases. Full-version tags such as
@@ -51,8 +52,8 @@ jobs:
           formats: gif,png
 ```
 
-The action downloads checksum-verified Betamax CLI **0.1.22** and installs fonts and ffmpeg by default.
-It adds output directives for the requested formats without changing your checked-in tapes.
+The action downloads checksum-verified Betamax CLI **0.1.22** and installs fonts and ffmpeg by
+default. It adds output directives for the requested formats without changing your checked-in tapes.
 Build your application in an earlier step to keep build time outside each tape's timeout.
 
 Tapes execute shell commands with the render job's privileges. Use a fresh runner with read-only
@@ -117,7 +118,8 @@ The default artifact-link mode uses `GITHUB_TOKEN` and requires no additional se
 New commits update the same comment. The reporter skips closed PRs, superseded heads, and older run
 attempts. Fork PRs can receive comments subject to the repository's contributor-workflow approval
 policy. Gallery downloads require GitHub sign-in and repository access. Artifacts expire, so use
-[release assets or a web host](/betamax/authoring/generated-media/) for permanent documentation media.
+[release assets or a web host](/betamax/authoring/generated-media/) for permanent documentation
+media.
 
 ## Configure captures
 
@@ -147,8 +149,8 @@ file and 40 MiB of media total.
 To select another CLI release, set `version`. If it has no bundled checksum, also supply its release
 archive SHA-256 through `sha256`.
 
-If you build Betamax itself before the action, set `binary: target/debug/betamax`. The path must name
-an executable inside `working-directory` with no symlink components. It overrides `version` and
+If you build Betamax itself before the action, set `binary: target/debug/betamax`. The path must
+name an executable inside `working-directory` with no symlink components. It overrides `version` and
 `sha256`; dependency installation remains enabled unless `install-dependencies: false` is set.
 
 ### Inline images and videos

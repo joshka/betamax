@@ -1,8 +1,8 @@
 # Renderer fidelity fixtures
 
 The `betamax-core` integration tests `renderer_fidelity` and `sprite_rendering` form an acceptance
-suite for the published libghostty backend and its software renderer. It drives the public capture API
-with controlled VT bytes, then checks terminal state and raster pixels. No shell, PTY, network,
+suite for the published libghostty backend and its software renderer. It drives the public capture
+API with controlled VT bytes, then checks terminal state and raster pixels. No shell, PTY, network,
 external TUI, clock, or sleep participates in the fixtures.
 
 ## Run and inspect
@@ -70,13 +70,12 @@ The `cell-graphics-demo` checkpoint reproduces the terminal content from
 `examples/cell-graphics.tape`, using the tracked VT input in
 `crates/betamax-core/tests/fixtures/cell-graphics.vt`. CI regenerates its PNG and state JSON on both
 platforms and includes them in the gallery. It checks the entire green fill and connected border
-spans at exact pixel coordinates. It also encodes full and half fills into
-`cell-graphics-demo.gif`, decodes both frames, and checks dimensions, frame delays, and every pixel
-around the fill and border (allowing three channel levels for GIF palette quantization). The gallery
-embeds this animation next to the PNG. Window decoration is omitted because this fixture exercises the
-terminal renderer directly. The smaller `cell-graphics` checkpoint checks individual filled cells
-and a complete rectangular border. Both use geometric assertions rather than font-dependent image
-baselines.
+spans at exact pixel coordinates. It also encodes full and half fills into `cell-graphics-demo.gif`,
+decodes both frames, and checks dimensions, frame delays, and every pixel around the fill and border
+(allowing three channel levels for GIF palette quantization). The gallery embeds this animation next
+to the PNG. Window decoration is omitted because this fixture exercises the terminal renderer
+directly. The smaller `cell-graphics` checkpoint checks individual filled cells and a complete
+rectangular border. Both use geometric assertions rather than font-dependent image baselines.
 
 ## Procedural sprite integration
 
@@ -89,8 +88,8 @@ and state remain with libghostty-vt.
 
 The adapter supplies the same integer cell width and height used for terminal backgrounds and
 positions, including letter and line spacing. `Metrics::simple` supplies the crate's default stroke
-thickness (`max(cell_height / 12, 1)`). Geometry, fractional rounding, antialiasing and junction rules
-belong to the dependency. This does not change how Betamax measures ordinary text or draw its
+thickness (`max(cell_height / 12, 1)`). Geometry, fractional rounding, antialiasing and junction
+rules belong to the dependency. This does not change how Betamax measures ordinary text or draw its
 cursors/decorations through the sprite crate.
 
 Glyphs are cached by character for the lifetime of a capture session, whose metrics are fixed.
@@ -141,10 +140,10 @@ rather than copying those baselines or adopting the rest of qwertty-term.
 | Alternate screen        | Primary viewport and scrollback, isolated alternate screen, restored cursor and complete state | Primary frame restored byte-for-byte; state inspection leaves the viewport unchanged                                                          |
 | Inverse and cursor      | Hidden/visible cursor and exact location                                                       | Inverse agrees with swapped truecolor; block cursor occupies only its cell; blink suppression restores hidden frame                           |
 
-The file picker is a hand-authored **Ratatui-style** border, tabs, selected row, details, and footer.
-It is not captured output from Ratatui and does not claim compatibility with a specific release.
-Keeping the stream controlled makes each expected cell and transition reviewable without app,
-terminal-size detection, prompt, locale, or dependency-version noise.
+The file picker is a hand-authored **Ratatui-style** border, tabs, selected row, details, and
+footer. It is not captured output from Ratatui and does not claim compatibility with a specific
+release. Keeping the stream controlled makes each expected cell and transition reviewable without
+app, terminal-size detection, prompt, locale, or dependency-version noise.
 
 The original text/layout fixtures use a 392×248 canvas with 32×10 cells, four pixels of padding,
 20-pixel text and 12×24-pixel cells. The demo uses a 780×350 canvas; the sprite specimens use

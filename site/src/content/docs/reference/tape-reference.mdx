@@ -70,7 +70,8 @@ Checkpoint `Screenshot` and `State` commands are side effects at their position 
 
 ## Settings
 
-Defaults below describe `Default`, which currently selects `Framed`. See [Presets](#presets) for alternatives.
+Defaults below describe `Default`, which currently selects `Framed`. See [Presets](#presets) for
+alternatives.
 
 | Setting                   | Value                                                  | Default          | Notes                                       |
 | ------------------------- | ------------------------------------------------------ | ---------------- | ------------------------------------------- |
@@ -305,10 +306,10 @@ or `top-left`. `angle: <number>deg` is measured clockwise from upward: `90deg` i
 When positions are omitted, they are distributed evenly; when one stop has a position, every stop
 must have one, in strictly ascending order.
 
-This is Betamax syntax, not a CSS parser: it accepts hex colors, `transparent`, `to:` directions, angles,
-and linear stops only. Colors interpolate in sRGB, rounding each channel with a small, fixed ordered
-dither to soften banding in GIFs. The gradient spans the entire output, including rounded window
-corners and the caption row. It does not change the terminal's background or grid.
+This is Betamax syntax, not a CSS parser: it accepts hex colors, `transparent`, `to:` directions,
+angles, and linear stops only. Colors interpolate in sRGB, rounding each channel with a small, fixed
+ordered dither to soften banding in GIFs. The gradient spans the entire output, including rounded
+window corners and the caption row. It does not change the terminal's background or grid.
 
 With no explicit `MarginFill`, the backdrop follows the selected preset and final theme. An explicit
 color or gradient is preserved regardless of `Set Theme` ordering. `Set MarginFill ""` disables the
@@ -331,9 +332,9 @@ Set MarginFill "linear(to: bottom, #4d5b9e, transparent)"
 
 Stops with alpha blend premultiplied, so a fade to `transparent` keeps its hue as it clears rather
 than darkening. With `transparent`, the margin, caption row, and the area outside rounded corners
-are fully transparent. The shadow
-becomes translucent black, so it darkens any page. The window, bar, border, and terminal stay opaque.
-Captions and keyboard labels keep their theme colors, so check them against the page they sit on.
+are fully transparent. The shadow becomes translucent black, so it darkens any page. The window,
+bar, border, and terminal stay opaque. Captions and keyboard labels keep their theme colors, so
+check them against the page they sit on.
 
 | Output             | Transparency                                                          |
 | ------------------ | --------------------------------------------------------------------- |
@@ -454,10 +455,10 @@ change terminal state.
 #### Following app titles
 
 `Set WindowTitleFromTerminal true` lets the recorded program change the bar with OSC 0 or OSC 2. The
-default is `true` (`false` with `Preset Default-0.1`). Set it to `false` to keep a static title. Custom
-capture backends follow app titles by default only when they report title-event support; an explicit
-`true` still requires that capability. For example, the app can write `printf '\033]2;title set by
-app\007'`. BEL and ST terminators are supported by Ghostty.
+default is `true` (`false` with `Preset Default-0.1`). Set it to `false` to keep a static title.
+Custom capture backends follow app titles by default only when they report title-event support; an
+explicit `true` still requires that capability. For example, the app can write
+`printf '\033]2;title set by app\007'`. BEL and ST terminators are supported by Ghostty.
 
 ```tape
 Set WindowBar Colorful
@@ -498,7 +499,8 @@ shell; unsupported extensions fail before shell startup.
   unchanged frames extend the previous frame's hold.
 - `.webp`: animated WebP with millisecond frame holds. Lossless by default; after the first frame,
   each frame stores only the region that changed. `Set WebpQuality 85` makes it lossy and several
-  times smaller for recordings with images; see [WebP encoding](../../authoring/outputs/#webp-encoding).
+  times smaller for recordings with images; see
+  [WebP encoding](../../authoring/outputs/#webp-encoding).
 - `.png`: final-frame PNG.
 - `.mp4` and `.webm`: video written through `ffmpeg`.
 - `.json`: final terminal-state JSON.

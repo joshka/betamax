@@ -1,0 +1,26 @@
+[global]
+exclude = ["target", "node_modules"]
+
+[line-length]
+line-length = 100
+tables = false
+
+[no-duplicate-heading]
+siblings-only = true
+
+[no-inline-html]
+allowed-elements = ["a", "aside", "Card", "CardGrid", "code", "div", "details", "figcaption", "figure", "footer", "h1", "h2", "img", "kbd", "li", "nav", "p", "polygon", "rect", "section", "small", "span", "strong", "summary", "svg", "table", "tbody", "td", "th", "thead", "tr", "ul", "video"]
+
+[table-pipe-style]
+style = "leading_and_trailing"
+
+[table-format]
+enabled = true
+style = "aligned"
+aligned-delimiter = true
+
+# Starlight resolves docs links as site routes, not source file paths.
+[per-file-ignores]
+"site/src/content/docs/**" = ["existing-relative-links"]
+# release-plz generates the changelog.
+"CHANGELOG.md" = ["line-length", "list-item-spacing"]

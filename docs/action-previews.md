@@ -22,8 +22,8 @@ and encoder rounding around three seconds. Sleeps hold each frame after its read
 Open **Terminal previews → Open gallery** in the job summary for the action's media gallery, or
 **Betamax field guide** for descriptions, expected results and checkpoint comparisons. Individual
 media, state JSON and action diagnostics are also run artifacts. GitHub sign-in is required, and
-preview artifacts expire after 14 days. Linux/macOS tests, macOS CLI smoke testing and the specialized
-[renderer fidelity PNG/JSON galleries](renderer-fidelity.md) remain in place.
+preview artifacts expire after 14 days. Linux/macOS tests, macOS CLI smoke testing and the
+specialized [renderer fidelity PNG/JSON galleries](renderer-fidelity.md) remain in place.
 
 ## Playback-speed regression coverage
 
@@ -70,7 +70,7 @@ Run the workflow and Markdown checks locally:
 ```sh
 actionlint .github/workflows/ci.yml .github/workflows/renderer-comment.yml
 zizmor .github/workflows/ci.yml .github/workflows/renderer-comment.yml
-mise exec -- markdownlint-cli2 docs/action-previews.md
+mise exec -- rumdl check docs/action-previews.md
 ```
 
 On the PR, inspect the Linux build log for the local binary path and hash, the action log for local
