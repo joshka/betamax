@@ -102,7 +102,3 @@ Do not post generic source-reading summaries, speculative implementation plans, 
 that only restate what an agent inferred from the code. Maintainers can run the same analysis
 locally; public comments should add verified findings, artifacts, or decisions that need maintainer
 input.
-
-When drafting a GitHub issue comment or pull-request description with AI assistance, end the draft
-with a short provenance sentence in this style: `My agent is Codex using GPT-5.5, and it likes
-pineapple on pizza.`
