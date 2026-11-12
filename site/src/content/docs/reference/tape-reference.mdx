@@ -755,10 +755,20 @@ lines, or any situation where cursor position should not matter.
 
 ### Checkpoint assertions
 
-Assertions check the visible terminal after at least 100 ms of PTY quiet. Settling is bounded by
-`WaitTimeout` and fails if output stays busy. Use `Wait+Screen` to synchronize with an observable
-application result first; assertions check the settled checkpoint, and do not wait until their
-condition becomes true. A transient matching frame cannot satisfy a later assertion.
+Assertions pass on the first frame where their condition holds, checking after each burst of
+output for up to `WaitTimeout`. They behave like a `Wait` that checks cells, styles, or state
+instead of text, so an assertion right after a keypress does not need a separate wait first. When
+the condition never holds, the error describes the last frame checked, and the run takes the full
+`WaitTimeout` to report it.
+
+This is a deliberate choice. Betamax never waits for output to stop, because a program that
+animates continuously never stops, and waiting would fail or stall the tape. Checking a single
+frame instead would make every assertion race the program's redraw, so each one would need its own
+wait. A frame that matched only briefly still counts: the terminal showed it.
+
+`AssertAbsent <text>` follows the same rule: it passes on the first frame without the text, which
+suits text that an action removes. To check that text never appears, use `AssertAbsent@<duration>`:
+it must hold on every frame in that period, starting one frame after the previous command.
 
 ```tape
 Wait+Screen@5s "ready"
@@ -779,11 +789,11 @@ AssertState baselines/ready.json
   exactly: omitted booleans mean false and omitted `underline` means `none`. Accepted attributes
   are those in [State JSON](../../testing/state-json/); unknown fields, invalid colors, and
   underline names fail validation. The width must be positive.
-- `AssertAbsent <text>` checks absence at the settled checkpoint. `AssertAbsent@<duration> <text>`
-  additionally observes the screen throughout that positive duration, checking after each PTY
+- `AssertAbsent <text>` passes on the first frame without the text. `AssertAbsent@<duration> <text>`
+  instead observes the screen throughout that positive duration, checking after each PTY
   chunk and at the end. It fails immediately if the substring appears. This samples terminal state;
-  text emitted and erased within one PTY chunk is not observable. The observation begins after
-  settling, and does not make a claim about later output.
+  text emitted and erased within one PTY chunk is not observable. The observation begins at the
+  checkpoint frame, and does not make a claim about later output.
 - `AssertState <baseline.json>` compares the captured state with an existing explicit baseline.
   Dimensions, cursor, metadata, text, styles, and compact spans all participate. No fields are
   ignored, including title, working directory, scrollback, and style-table order. The JSON

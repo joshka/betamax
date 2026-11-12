@@ -815,17 +815,24 @@ where
                     )?;
                 }
             }
-            Command::Assert(assertion) => {
-                session.settle_into(terminal, settings.wait_timeout)?;
-                crate::assertion::check(terminal, assertion)?;
-                if let Assertion::Absent {
+            Command::Assert(assertion) => match assertion {
+                // A timed absence must hold on every frame in its period, starting now.
+                Assertion::Absent {
                     text,
                     duration: Some(duration),
-                } = assertion
-                {
+                } => {
+                    session.read_for_frame(terminal, settings.capture_interval())?;
+                    crate::assertion::check(terminal, assertion)?;
                     session.observe_absence(terminal, text, *duration)?;
                 }
-            }
+                _ => session.assert_within(
+                    terminal,
+                    assertion,
+                    settings.wait_timeout,
+                    settings,
+                    capture,
+                )?,
+            },
             Command::Resize { columns, rows } => {
                 if *columns == 0 || *rows == 0 {
                     return Err(miette!("Resize requires positive columns and rows").into());

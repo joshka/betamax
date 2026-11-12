@@ -86,8 +86,7 @@ try:
                     sys.stdout.flush()
                 elif key == b"o":
                     emit("armed")
-                    # Keep the PTY readable even when a busy CI runner delays this process.
-                    # Scheduled sleeps can accidentally exceed the assertion's quiet window.
+                    # Write without pausing so the PTY never goes quiet, even on a busy CI runner.
                     deadline = time.monotonic() + 6
                     while time.monotonic() < deadline:
                         sys.stdout.write("\rbusy")

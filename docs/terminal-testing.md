@@ -13,8 +13,9 @@ For test-oriented tapes, prefer:
 
 - `Require` for external programs the test depends on.
 - `Wait+Screen@<duration> "<text>"` to synchronize with application output.
-- `AssertText`, `AssertCells`, `AssertStyle`, `AssertAbsent`, and `AssertState` for settled
-  checkpoint assertions.
+- `AssertText`, `AssertCells`, `AssertStyle`, `AssertAbsent`, and `AssertState` for checkpoint
+  assertions; they pass on the first matching frame within `WaitTimeout`. Use
+  `AssertAbsent@<duration>` to check that text never appears during a period.
 - `MouseMove`, `MouseDown`, `MouseUp`, and `MouseScroll` for application mouse input in terminal
   cells. Use `Wait+Screen` after the action to synchronize with redraw.
 - `Screenshot <path>.png` for debugging failed or changed terminal states.

@@ -31,6 +31,14 @@ would let tests exercise timing and failures without real shells or media files.
 Add benchmarks once renderer behavior and the state format settle. Candidate measurements include
 raster rendering, terminal-state compaction, frame decoration, and GIF encoding.
 
+## Assertion timing
+
+Assertions pass on the first matching frame within `WaitTimeout`; `AssertAbsent@<duration>` holds
+for a whole period. That keeps animation from failing a tape and lets an assertion follow an action
+without its own wait. Consider making this configurable, for example a per-tape setting or an
+`@duration` on each assertion, so tapes can choose single-frame checks or shorter timeouts without
+adding commands.
+
 ## Video encoding
 
 Keep MP4 and WebM encoding in optional `ffmpeg` unless users need native encoding. Native support

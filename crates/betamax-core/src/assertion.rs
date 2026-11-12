@@ -1,4 +1,4 @@
-//! Point-in-time conditions on settled screen cells and state.
+//! Conditions on the screen cells and state of a frame.
 
 use std::ops::Range;
 
@@ -11,6 +11,49 @@ use crate::tape::Assertion;
 use crate::Result;
 
 pub(crate) fn check(terminal: &mut impl TerminalSession, assertion: &Assertion) -> Result<()> {
+    Prepared::new(assertion)?.check(terminal)
+}
+
+/// An assertion with its baseline loaded and validated, so checking it on each frame repeats only
+/// the comparison. A missing or invalid baseline fails here, once, instead of on every frame.
+pub(crate) struct Prepared<'a> {
+    assertion: &'a Assertion,
+    baseline: Option<TerminalState>,
+}
+
+impl<'a> Prepared<'a> {
+    pub(crate) fn new(assertion: &'a Assertion) -> Result<Self> {
+        let baseline = match assertion {
+            Assertion::State(path) => Some(load_baseline(path)?),
+            _ => None,
+        };
+        Ok(Self {
+            assertion,
+            baseline,
+        })
+    }
+
+    pub(crate) fn check(&self, terminal: &mut impl TerminalSession) -> Result<()> {
+        check_prepared(terminal, self.assertion, self.baseline.as_ref())
+    }
+}
+
+fn load_baseline(path: &std::path::Path) -> Result<TerminalState> {
+    let source = std::fs::read(path)
+        .into_diagnostic()
+        .wrap_err_with(|| format!("failed to read baseline {}", path.display()))?;
+    let expected: TerminalState = serde_json::from_slice(&source)
+        .into_diagnostic()
+        .wrap_err_with(|| format!("invalid baseline {}", path.display()))?;
+    validate_style_indexes(&expected)?;
+    Ok(expected)
+}
+
+fn check_prepared(
+    terminal: &mut impl TerminalSession,
+    assertion: &Assertion,
+    baseline: Option<&TerminalState>,
+) -> Result<()> {
     match assertion {
         Assertion::Text(text) => {
             if text.is_empty() {
@@ -59,15 +102,10 @@ pub(crate) fn check(terminal: &mut impl TerminalSession, assertion: &Assertion) 
             }
         }
         Assertion::State(path) => {
-            let source = std::fs::read(path)
-                .into_diagnostic()
-                .wrap_err_with(|| format!("failed to read baseline {}", path.display()))?;
-            let expected: TerminalState = serde_json::from_slice(&source)
-                .into_diagnostic()
-                .wrap_err_with(|| format!("invalid baseline {}", path.display()))?;
-            validate_style_indexes(&expected)?;
+            let expected =
+                baseline.ok_or_else(|| miette!("baseline {} not loaded", path.display()))?;
             let actual = terminal.terminal_state()?;
-            let diff = StateDiff::between(&expected, &actual);
+            let diff = StateDiff::between(expected, &actual);
             if !diff.is_empty() {
                 return Err(miette!("baseline {} failed:\n{diff}", path.display()).into());
             }

@@ -66,19 +66,19 @@ MouseMove 3 8
 MouseDown Left
 MouseUp Left
 Type "c"
-AssertAbsent "Text preview:"
+AssertAbsent@300ms "Text preview:"
 # File headers and blank split counterparts must not select source either.
 MouseMove 12 3
 MouseDown Left
 MouseUp Left
 Type "c"
-AssertAbsent "Text preview:"
+AssertAbsent@300ms "Text preview:"
 Type "s"
 MouseMove 20 10
 MouseDown Left
 MouseUp Left
 Type "c"
-AssertAbsent "Text preview:"
+AssertAbsent@300ms "Text preview:"
 Type "s"
 # Return to the new source, select with keyboard from the pointer anchor.
 MouseMove 29 10
