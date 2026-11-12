@@ -191,10 +191,12 @@ If bash isn't installed, the run fails before the shell starts; set an installed
 "zsh"`) rather than writing `"$SHELL"`. On macOS without Homebrew bash, this is the system bash
 3.2.
 
-Before the first command, Betamax reads the shell's startup output until none arrives for 250 ms,
-so typing does not start before the prompt appears. A shell or program that keeps writing ends
-this wait after `WaitTimeout`, and the tape continues. To start from a particular screen, begin
-the tape with `Wait+Screen`.
+Before the first command, Betamax waits for the shell to be ready for typing: for its line editor
+to take over the terminal (leave canonical mode), so typed text does not echo ahead of the prompt.
+Built-in shells are ready within tens of milliseconds. A program that never takes over, such as
+`dash` or a custom program reading whole lines, starts the tape after 250 ms. Betamax does not
+wait for startup output to stop; output after the shell is ready is recorded as it arrives. To
+start from a particular screen, begin the tape with `Wait+Screen`.
 
 ### Presets
 
