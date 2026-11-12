@@ -903,22 +903,23 @@ mod tests {
     #[test]
     fn synchronized_updates_record_the_previous_frame_until_they_finish() {
         // Built first: loading settings can outlast the paced output's first delay.
-        let settings = Settings::from_tape(&Tape::parse("Set Framerate 2").unwrap()).unwrap();
-        let finished: [&'static [u8]; 4] = [
+        let settings = Settings::from_tape(&Tape::parse("Set Framerate 1").unwrap()).unwrap();
+        let finished: [&'static [u8]; 3] = [
             b"\x1b[H\x1b[43m  \x1b[0m\x1b[?2026l",
             b"\x1b[H\x1b[44m  \x1b[0m\x1b[?2026l",
             b"\x1b[H\x1b[45m  \x1b[0m\x1b[?2026l",
-            b"\x1b[H\x1b[46m  \x1b[0m\x1b[?2026l",
         ];
-        // Captures fall due every 500 ms; update k runs from 500k + 300 ms to 500k + 700 ms, so
-        // each spans a capture slot with 200 ms to spare on either side.
+        // Captures fall due every second; update k runs from 1000k + 700 ms to 1000k + 1300 ms,
+        // so each spans a capture slot with 300 ms to spare on either side, and its result shows
+        // for 400 ms before the next update starts. Timers on CI runners can overshoot by over
+        // 100 ms; an end and the next start arriving in one read would lose that update.
         let outputs = finished
             .into_iter()
             .zip(0u64..)
             .flat_map(|(end, k)| {
                 [
-                    (Duration::from_millis(500 * k + 300), SYNC_RED_CELLS),
-                    (Duration::from_millis(500 * k + 700), end),
+                    (Duration::from_millis(1000 * k + 700), SYNC_RED_CELLS),
+                    (Duration::from_millis(1000 * k + 1300), end),
                 ]
             })
             .collect();
@@ -930,7 +931,7 @@ mod tests {
         start.send(()).unwrap();
         pty.drain_for(
             &mut terminal,
-            Duration::from_millis(2500),
+            Duration::from_millis(3800),
             &settings,
             &mut capture,
         )
@@ -943,8 +944,8 @@ mod tests {
         colors.dedup();
         assert_eq!(
             colors.len(),
-            5,
-            "expected the first frame and each of 4 updates once, got {colors:?}"
+            4,
+            "expected the first frame and each of 3 updates once, got {colors:?}"
         );
     }
 
