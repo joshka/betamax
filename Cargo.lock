@@ -164,6 +164,7 @@ dependencies = [
  "insta",
  "libghostty-vt",
  "miette",
+ "nix",
  "png 0.18.1",
  "portable-pty",
  "qwertty-term-sprite",

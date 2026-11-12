@@ -6,6 +6,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use miette::{miette, Context, IntoDiagnostic};
+use nix::sys::termios::LocalFlags;
 use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 
 use super::capture::{
@@ -30,6 +31,9 @@ const PTY_READ_BUFFER_SIZE: usize = 8 * 1024;
 /// Ghostty ends a synchronized update after one second even when the program never sends the
 /// end sequence, so a program that exits or stalls mid-update cannot freeze the screen.
 const MAX_SYNC_HOLD: Duration = Duration::from_secs(1);
+
+/// How often startup checks whether the shell has left canonical mode, which produces no output.
+const STARTUP_POLL: Duration = Duration::from_millis(1);
 
 /// Most PTY reads an input command applies before acting.
 ///
@@ -232,23 +236,36 @@ impl PtySession {
         Ok(self.writer.write_all(bytes).into_diagnostic()?)
     }
 
-    /// Apply shell startup output until none arrives for `idle`, for at most `limit`.
+    /// Apply shell startup output until the shell is ready for typing, for at most `limit`.
     ///
-    /// Typing before the prompt appears would echo ahead of it. A shell or program that never
-    /// stops writing ends the drain at `limit` instead of holding up the tape.
+    /// A new PTY starts in canonical mode, where the kernel echoes input and handles keys such as
+    /// `Ctrl+C` itself. Typing then would echo ahead of the prompt, or signal a shell that has not
+    /// set up its handlers yet. Line editors leave canonical mode once they are ready, after
+    /// drawing the prompt; zsh draws it several milliseconds before, so output alone is not a
+    /// signal. Startup output is not recorded, so nothing waits for it to stop: output after the
+    /// shell is ready is recorded as it arrives.
     pub(super) fn drain_startup(
         &mut self,
         terminal: &mut impl TerminalSession,
-        idle: Duration,
         limit: Duration,
     ) -> Result<()> {
         let deadline = Instant::now() + limit;
-        loop {
+        while !self.line_editor_ready() {
             let remaining = deadline.saturating_duration_since(Instant::now());
-            if remaining.is_zero() || !self.read_burst_into(terminal, idle.min(remaining), idle)? {
-                return Ok(());
+            if remaining.is_zero() {
+                break;
             }
+            self.read_once_into(terminal, remaining.min(STARTUP_POLL))?;
         }
+        self.apply_queued(terminal)
+    }
+
+    /// Whether the program on the PTY has left canonical mode, as a line editor does when it is
+    /// ready to draw what is typed.
+    fn line_editor_ready(&self) -> bool {
+        self.master
+            .get_termios()
+            .is_some_and(|termios| !termios.local_flags.contains(LocalFlags::ICANON))
     }
 
     /// Check absence after each received chunk and at the end of a bounded observation period.
@@ -395,19 +412,26 @@ impl PtySession {
         Ok(())
     }
 
-    /// Discard shell startup output until none arrives for `idle`, for at most `limit`.
+    /// Discard shell startup output until the shell is ready for typing, for at most `limit`.
     ///
     /// This is used only for tapes that do not need screenshots, waits, or state output, so no
-    /// terminal model is available to interpret the bytes.
-    pub(super) fn drain_startup_output(&mut self, idle: Duration, limit: Duration) {
+    /// terminal model is available to interpret the bytes. See [`Self::drain_startup`].
+    pub(super) fn drain_startup_output(&mut self, limit: Duration) {
         let deadline = Instant::now() + limit;
-        loop {
+        while !self.line_editor_ready() {
             let remaining = deadline.saturating_duration_since(Instant::now());
-            if remaining.is_zero() || self.reader.recv_timeout(idle.min(remaining)).is_err() {
-                return;
+            if remaining.is_zero() {
+                break;
             }
-            for _ in self.reader.try_iter().take(MAX_QUEUED_CHUNKS) {}
+            if self
+                .reader
+                .recv_timeout(remaining.min(STARTUP_POLL))
+                .is_ok()
+            {
+                for _ in self.reader.try_iter().take(MAX_QUEUED_CHUNKS) {}
+            }
         }
+        for _ in self.reader.try_iter().take(MAX_QUEUED_CHUNKS) {}
     }
 
     /// Drain PTY output for a fixed duration and append frames at the capture cadence.
@@ -824,27 +848,51 @@ mod tests {
         assert_eq!(pty.reader.try_iter().count(), 10);
     }
 
-    #[test]
-    fn startup_output_that_never_stops_ends_at_the_limit() {
-        let (mut pty, mut terminal) = queued_output(b"", b"");
-        let (sender, reader) = mpsc::channel();
-        pty.reader = reader;
-        thread::spawn(move || {
-            while sender.send(b"\rspinning".to_vec()).is_ok() {
-                thread::sleep(Duration::from_millis(5));
-            }
-        });
-
+    /// Spawn `shell` after the terminal is created, which takes long enough in debug builds to
+    /// skew a test's timing.
+    ///
+    /// Returns when the spawn began, so elapsed times include anything the child did before the
+    /// test thread resumed.
+    fn spawn_shell(shell: &str) -> (PtySession, GhosttySession, Instant) {
+        let (_, terminal) = queued_output(b"", b"");
+        let settings =
+            Settings::from_tape(&Tape::parse(&format!("Set Shell {shell:?}")).unwrap()).unwrap();
         let started = Instant::now();
-        pty.drain_startup(
-            &mut terminal,
-            Duration::from_millis(250),
-            Duration::from_millis(300),
-        )
-        .unwrap();
+        let pty = PtySession::spawn(&settings).unwrap();
+        (pty, terminal, started)
+    }
+
+    #[test]
+    fn startup_ends_when_the_shell_leaves_canonical_mode() {
+        let (mut pty, mut terminal, started) =
+            spawn_shell("sh -c 'sleep 0.3; printf ready; stty -icanon; sleep 5'");
+
+        pty.drain_startup(&mut terminal, Duration::from_secs(3))
+            .unwrap();
 
         let elapsed = started.elapsed();
-        assert!(elapsed < Duration::from_secs(5), "startup took {elapsed:?}");
+        assert!(
+            elapsed >= Duration::from_millis(300),
+            "startup took {elapsed:?}"
+        );
+        assert!(elapsed < Duration::from_secs(2), "startup took {elapsed:?}");
+        assert!(terminal.screen_text().unwrap().contains("ready"));
+    }
+
+    #[test]
+    fn startup_that_stays_in_canonical_mode_ends_at_the_limit() {
+        let (mut pty, mut terminal, started) =
+            spawn_shell("sh -c 'while :; do printf spinning; sleep 0.005; done'");
+
+        pty.drain_startup(&mut terminal, Duration::from_millis(300))
+            .unwrap();
+
+        let elapsed = started.elapsed();
+        assert!(
+            elapsed >= Duration::from_millis(300),
+            "startup took {elapsed:?}"
+        );
+        assert!(elapsed < Duration::from_secs(2), "startup took {elapsed:?}");
         assert!(terminal.screen_text().unwrap().contains("spinning"));
     }
 

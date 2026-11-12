@@ -42,6 +42,7 @@ image.workspace = true
 image-webp.workspace = true
 libghostty-vt.workspace = true
 miette.workspace = true
+nix.workspace = true
 png.workspace = true
 portable-pty.workspace = true
 qwertty-term-sprite.workspace = true

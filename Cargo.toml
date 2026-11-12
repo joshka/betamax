@@ -35,6 +35,7 @@ indoc = "2"
 insta = { version = "1.49.0", features = ["json"] }
 libghostty-vt = { version = "0.2.1", features = ["tracing"] }
 miette = "7"
+nix = { version = "0.28", default-features = false, features = ["term"] }
 png = "0.18"
 portable-pty = "0.9"
 qwertty-term-sprite = "0.4.0"

@@ -262,13 +262,12 @@ pub trait FrameCapture {
     fn open(&mut self, request: CaptureRequest) -> Result<Self::Session>;
 }
 
-/// Pause in shell startup output after which tape commands begin.
+/// Longest wait for the shell to become ready for typing before tape commands begin.
 ///
-/// Without this initial drain, examples can start typing before the configured prompt has rendered.
-/// The value is intentionally a short idle timeout rather than a fixed sleep: startup output is
-/// consumed as it arrives, and command execution begins once the shell has been quiet for this
-/// long, or after `WaitTimeout` if it never is.
-const SHELL_STARTUP_IDLE: Duration = Duration::from_millis(250);
+/// Shells with a line editor are ready as soon as they leave canonical mode, usually within tens
+/// of milliseconds. A program that never leaves it, such as `dash` or a custom `Set Shell`
+/// program reading whole lines, starts the tape after this long.
+const SHELL_STARTUP_LIMIT: Duration = Duration::from_millis(250);
 
 const ANSI_RESET: &str = "\x1b[0m";
 const ANSI_BOLD: &str = "\x1b[1m";
@@ -598,7 +597,7 @@ where
         let mut text_output = TextOutput::new(outputs.texts.clone());
         let mut clipboard = String::new();
         tracing::debug!("draining PTY shell startup output");
-        session.drain_startup(&mut terminal, SHELL_STARTUP_IDLE, settings.wait_timeout)?;
+        session.drain_startup(&mut terminal, SHELL_STARTUP_LIMIT)?;
         collect_title_changes(&mut terminal, &settings, &mut capture)?;
         tracing::trace!("drained PTY shell startup output");
 
@@ -990,7 +989,7 @@ where
         );
         let mut session = PtySession::spawn(&settings)?;
         let mut clipboard = String::new();
-        session.drain_startup_output(SHELL_STARTUP_IDLE, settings.wait_timeout);
+        session.drain_startup_output(SHELL_STARTUP_LIMIT);
         let command_count = tape.commands.len();
         for (index, command) in tape.commands.iter().enumerate() {
             self.progress_command(index + 1, command_count, command);
