@@ -151,6 +151,10 @@ The [`Screenshot`](../../reference/tape-reference/#screenshot-pathpng) preserves
 visual frame. The [`State`](../../reference/tape-reference/#state-pathjson) JSON preserves terminal
 text and styles in a compact comparison format.
 
+Checkpoints capture one frame after the command, whether or not the program has finished drawing,
+so put a wait before them when the screen must show something specific. See
+[checkpoint timing](../../reference/tape-reference/#checkpoint-timing).
+
 ## Captions
 
 Captions annotate rendered media without changing the terminal session. They are useful when a GIF
