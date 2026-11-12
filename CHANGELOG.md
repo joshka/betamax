@@ -5,6 +5,24 @@ versions and identify the core version shipped in the release lockfile.
 
 ## [Unreleased]
 
+## [0.3.1](https://github.com/joshka/betamax/compare/betamax-v0.3.0...betamax-v0.3.1) - 2026-11-12
+
+### Added
+
+- set per-side margins with CSS shorthand ([#264](https://github.com/joshka/betamax/pull/264))
+
+### Fixed
+
+- pass assertions on the first matching frame instead of waiting for quiet ([#281](https://github.com/joshka/betamax/pull/281))
+- capture checkpoints and the final frame without waiting for quiet ([#276](https://github.com/joshka/betamax/pull/276))
+- satisfy beta clippy new_instead_of_clear in keyboard overlay chips ([#278](https://github.com/joshka/betamax/pull/278))
+- reject malformed MarginFill values ([#266](https://github.com/joshka/betamax/pull/266))
+
+### Other
+
+- Fix the README asset refresh and the starter tape ([#262](https://github.com/joshka/betamax/pull/262))
+- switch Markdown linting to rumdl ([#279](https://github.com/joshka/betamax/pull/279))
+
 ## [0.3.0](https://github.com/joshka/betamax/compare/betamax-v0.2.2...betamax-v0.3.0) - 2026-10-23
 
 ### Other
