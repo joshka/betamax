@@ -795,8 +795,8 @@ where
             Command::Type { text, delay } => {
                 let delay = delay.unwrap_or(settings.typing_delay);
                 terminal.scroll_viewport_to_bottom();
-                // Pace keystrokes against absolute deadlines so per-key overhead (rendering, the
-                // post-drain read) does not accumulate and slow typing below `TypingSpeed`.
+                // Pace keystrokes against absolute deadlines so per-key overhead (rendering)
+                // does not accumulate and slow typing below `TypingSpeed`.
                 let mut deadline = Instant::now();
                 let mut chars = text.chars().peekable();
                 while let Some(ch) = chars.next() {

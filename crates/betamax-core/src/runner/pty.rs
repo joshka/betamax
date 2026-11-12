@@ -25,11 +25,6 @@ use crate::Result;
 /// Eight kilobytes is large enough for typical terminal bursts while keeping each channel message
 /// cheap to allocate and copy.
 const PTY_READ_BUFFER_SIZE: usize = 8 * 1024;
-/// Tail idle drain after a fixed-duration wait finishes.
-///
-/// This catches output emitted near the end of a `Sleep` without extending the visible sleep long
-/// enough to be noticeable.
-const POST_DURATION_IDLE: Duration = Duration::from_millis(20);
 /// Longest a synchronized update holds back captures.
 ///
 /// Ghostty ends a synchronized update after one second even when the program never sends the
@@ -417,8 +412,8 @@ impl PtySession {
 
     /// Drain PTY output for a fixed duration and append frames at the capture cadence.
     ///
-    /// A final short drain catches output that arrives just after the loop exits; this reduces
-    /// flicker around command boundaries without extending the visible delay.
+    /// Output still arriving at the end is left for the next command, whose own timing decides
+    /// when it is shown; a command boundary is not a reason to wait.
     pub(super) fn drain_for(
         &mut self,
         terminal: &mut impl TerminalSession,
@@ -427,9 +422,6 @@ impl PtySession {
         capture: &mut CaptureState,
     ) -> Result<()> {
         self.drain_until(terminal, Instant::now() + duration, settings, capture)?;
-        // Input pacing must not wait for the child to stop producing output. Leave buffered
-        // chunks for the next command, whose wait or assertion owns its own deadline.
-        self.read_once_into(terminal, POST_DURATION_IDLE)?;
         collect_title_changes(terminal, settings, capture)?;
         Ok(())
     }
