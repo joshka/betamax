@@ -8,11 +8,12 @@ use indoc::formatdoc;
 #[test]
 fn runtime_typing_speed_applies_to_later_type_commands() {
     let baseline = run_with_late_typing_speed("0ms");
-    let slowed = run_with_late_typing_speed("300ms");
+    let slowed = run_with_late_typing_speed("500ms");
 
-    // Five characters at 300ms each; allow slack for PTY and shell timing noise.
+    // Eight characters at 500ms each add 4s. Shell startup alone varies by about a second
+    // between runs on CI, so require half of that.
     assert!(
-        slowed >= baseline + Duration::from_millis(1000),
+        slowed >= baseline + Duration::from_millis(2000),
         "baseline {baseline:?}, slowed {slowed:?}"
     );
 }
@@ -25,7 +26,7 @@ fn run_with_late_typing_speed(speed: &str) -> Duration {
         Hide
         Type "echo $((40"
         Set TypingSpeed {speed}
-        Type "+2))"
+        Type "+2+0+0))"
         Enter
         Wait+Screen "42"
         "#})
