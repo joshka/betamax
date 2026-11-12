@@ -92,6 +92,25 @@ Route questions, early ideas, and examples of Betamax in real projects to GitHub
 instead of issues. Use the `Show and tell` category for screenshots, rendered tapes, repo links, and
 short notes about how Betamax helps another project.
 
+### Before pushing
+
+A check that fails in CI costs a full CI round trip. Run every check that finishes in seconds
+before each push; leave slow checks to CI rather than delaying the push to repeat them locally.
+After an edit, with a warm `target/`, these each take about 0.2–3 seconds:
+
+```sh
+mise run fmt            # nightly rustfmt; stable `cargo fmt` misses rustfmt.toml's options
+mise run clippy         # stable clippy with -D warnings; covers `cargo check`
+mise run clippy-beta    # beta clippy, as CI runs it
+mise run doc            # rustdoc
+mise run lint-md        # rumdl
+```
+
+Leave the full `mise run test` (about 2 minutes, mostly real-PTY runs) to CI. Run only the tests
+for the code you changed. In a fresh workspace, the first `clippy` and `clippy-beta` runs each
+build the native dependency (about 80 seconds). If you have not built yet, push after `fmt` and
+`lint-md`, and run the build checks while CI starts.
+
 ## AI-Assisted Public Comments
 
 AI-assisted contributions are welcome when they produce contributor-owned work: a tested patch, a
