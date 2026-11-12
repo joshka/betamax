@@ -230,10 +230,21 @@ pub trait TerminalSession {
 
     /// Whether the bytes written so far stop inside an image transmission.
     ///
-    /// The runner keeps reading before capturing while this is true, so a frame never shows an
-    /// image area between a program deleting an image and finishing its replacement. Default is
-    /// `false` for backends without inline images.
+    /// The runner no longer calls this. Default is `false`.
+    #[deprecated(
+        note = "the runner captures frames mid-transmission, as a terminal shows them; implement \
+                `synchronized_update_active` instead"
+    )]
     fn image_transmission_in_progress(&self) -> bool {
+        false
+    }
+
+    /// Whether the program is inside a synchronized update (DEC private mode 2026).
+    ///
+    /// A terminal keeps showing its last frame until the update ends, so the runner repeats
+    /// that frame rather than capture the half-written screen, for at most one second. Default
+    /// is `false` for backends that do not track the mode.
+    fn synchronized_update_active(&self) -> bool {
         false
     }
 }

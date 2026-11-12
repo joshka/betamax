@@ -30,18 +30,11 @@ const PTY_READ_BUFFER_SIZE: usize = 8 * 1024;
 /// This catches output emitted near the end of a `Sleep` without extending the visible sleep long
 /// enough to be noticeable.
 const POST_DURATION_IDLE: Duration = Duration::from_millis(20);
-/// Output pause that lets a due capture proceed while a program is still writing.
+/// Longest a synchronized update holds back captures.
 ///
-/// kitty waits this long for more input before repainting (its default `input_delay`), so an
-/// update written in several reads, such as an image delete followed by its replacement, lands in
-/// one frame.
-const CAPTURE_QUIET: Duration = Duration::from_millis(3);
-/// Longest a capture is skipped because an image transmission is still open.
-///
-/// A slow runner can take longer than a capture interval to parse a large chunked image; skipping
-/// those captures keeps the image area from recording blank. The cap keeps a program that never
-/// finishes a transmission from freezing the recording.
-const MAX_TRANSMISSION_DEFER: Duration = Duration::from_secs(1);
+/// Ghostty ends a synchronized update after one second even when the program never sends the
+/// end sequence, so a program that exits or stalls mid-update cannot freeze the screen.
+const MAX_SYNC_HOLD: Duration = Duration::from_secs(1);
 
 /// Most PTY reads an input command applies before acting.
 ///
@@ -73,6 +66,8 @@ pub(super) struct PtySession {
     child: Box<dyn portable_pty::Child + Send + Sync>,
     /// Whether the reader thread has finished, so no more output can arrive.
     output_closed: bool,
+    /// When captures first found the program inside its current synchronized update.
+    sync_hold_started: Option<Instant>,
 }
 
 /// Whether the shell is still running, reported in failure bundles.
@@ -157,6 +152,7 @@ impl PtySession {
             reader: output_rx,
             child,
             output_closed: false,
+            sync_hold_started: None,
         })
     }
 
@@ -355,32 +351,25 @@ impl PtySession {
         Ok(true)
     }
 
-    /// Hold a due capture until output pauses and no image transmission is open, for up to `limit`.
+    /// Whether a due capture may render the screen now, rather than repeat the last frame.
     ///
-    /// Programs without synchronized output replace an image by deleting it and then sending its
-    /// successor; capturing in between would record a blank image area. Returns whether the
-    /// capture can proceed: `false` when `limit` ran out with a transmission still open.
-    fn settle_for_capture(
-        &mut self,
-        terminal: &mut impl TerminalSession,
-        limit: Duration,
-    ) -> Result<bool> {
-        let started = Instant::now();
-        loop {
-            let remaining = limit.saturating_sub(started.elapsed());
-            if remaining.is_zero() {
-                return Ok(!terminal.image_transmission_in_progress());
-            }
-            let in_progress = terminal.image_transmission_in_progress();
-            let wait = if in_progress {
-                remaining
-            } else {
-                CAPTURE_QUIET.min(remaining)
-            };
-            if !self.read_burst_into(terminal, wait, remaining)? && !in_progress {
-                return Ok(true);
-            }
+    /// While a program holds a synchronized update (mode 2026), a terminal keeps showing the
+    /// frame it drew before the update began, so the capture does the same. Like Ghostty, the
+    /// hold ends after [`MAX_SYNC_HOLD`] even if the update never finishes. Programs without
+    /// synchronized output get no hold: a frame caught mid-write is what a terminal shows too.
+    ///
+    /// The mode is checked between reads, so an update that ends and is followed by the start of
+    /// the next within one read is never captured. libghostty 1.0's `on_render_hold` reports the
+    /// exact byte where the mode changes; see the roadmap.
+    fn may_render(&mut self, terminal: &impl TerminalSession) -> bool {
+        if !terminal.synchronized_update_active() {
+            self.sync_hold_started = None;
+            return true;
         }
+        self.sync_hold_started
+            .get_or_insert_with(Instant::now)
+            .elapsed()
+            >= MAX_SYNC_HOLD
     }
 
     /// Write PTY bytes into the terminal and forward any reply it produces.
@@ -417,19 +406,29 @@ impl PtySession {
     /// is shown, and output still arriving is not waited for. A frame caught mid-update (a torn
     /// write or a half-sent image from an app without synchronized output) is captured as it is,
     /// because a real terminal would show it too.
+    ///
+    /// A frame that ends inside a synchronized update keeps reading until the update finishes,
+    /// for at most [`MAX_SYNC_HOLD`]. A terminal would still show the previous frame, but only
+    /// the half-written screen exists here, and the finished update is what the terminal shows
+    /// next.
     pub(super) fn read_for_frame(
         &mut self,
         terminal: &mut impl TerminalSession,
         interval: Duration,
     ) -> Result<()> {
         let deadline = Instant::now() + interval;
-        loop {
+        while !self.output_closed {
             let remaining = deadline.saturating_duration_since(Instant::now());
-            if remaining.is_zero() || self.output_closed {
-                return Ok(());
+            if remaining.is_zero() {
+                if self.may_render(terminal) {
+                    break;
+                }
+                self.read_burst_into(terminal, interval, interval)?;
+            } else {
+                self.read_burst_into(terminal, remaining, remaining)?;
             }
-            self.read_burst_into(terminal, remaining, remaining)?;
         }
+        Ok(())
     }
 
     /// Drain PTY output without terminal capture.
@@ -484,35 +483,43 @@ impl PtySession {
         // The terminal may have changed since the last capture (input, resize, scrolling), so
         // the first capture in each drain always renders.
         let mut changed = true;
+        // A due capture held by a synchronized update renders after the first read that ends it,
+        // as a terminal draws as soon as an update finishes.
+        let mut held = false;
         while Instant::now() < deadline {
             let now = Instant::now();
             // Hidden periods never capture, so waiting for a capture slot would busy-spin until
-            // the deadline and starve the child process of CPU.
-            let next_due = if capture.visible {
-                (last_capture_at + capture_interval).max(now)
-            } else {
+            // the deadline and starve the child process of CPU. A held capture waits for output
+            // instead of its slot for the same reason.
+            let next_due = if !capture.visible {
                 deadline
+            } else if held {
+                now + capture_interval
+            } else {
+                (last_capture_at + capture_interval).max(now)
             };
             let wait = deadline.min(next_due).saturating_duration_since(now);
             let read = self.read_burst_into(terminal, wait, capture_interval)?;
             changed |= read;
-            let mut due = capture.visible
+            let due = capture.visible
                 && (last_capture_at.elapsed() >= capture_interval || Instant::now() >= deadline);
-            if due && read && !self.settle_for_capture(terminal, capture_interval)? {
-                due = last_capture_at.elapsed() >= MAX_TRANSMISSION_DEFER;
-            }
             collect_title_changes(terminal, settings, capture)?;
             if due {
-                last_capture_at = record_capture(terminal, settings, capture, changed)?;
-                changed = false;
+                held = changed && !self.may_render(terminal);
+                // A held capture extends the frame on screen but stays due.
+                let captured_at = record_capture(terminal, settings, capture, changed && !held)?;
+                if !held {
+                    last_capture_at = captured_at;
+                    changed = false;
+                }
             }
         }
-        // A capture deferred for streaming output, or a drain that starts after its deadline,
-        // would leave time before the deadline unrecorded. Nothing records it if the tape ends
-        // here, so capture now even if output is mid-update.
+        // A drain that starts after its deadline would leave time before the deadline unrecorded.
+        // Nothing records it if the tape ends here, so capture now.
         if capture.visible && last_capture_at < deadline {
             collect_title_changes(terminal, settings, capture)?;
-            record_capture(terminal, settings, capture, changed)?;
+            let render = changed && self.may_render(terminal);
+            record_capture(terminal, settings, capture, render)?;
         }
         Ok(())
     }
@@ -611,24 +618,18 @@ impl PtySession {
         }
         while started.elapsed() < timeout {
             let wait = capture_interval.min(timeout.saturating_sub(started.elapsed()));
-            let read = self.read_burst_into(terminal, wait, capture_interval)?;
-            let mut due = capture.visible && last_capture_at.elapsed() >= capture_interval;
-            if due && read && !self.settle_for_capture(terminal, capture_interval)? {
-                due = last_capture_at.elapsed() >= MAX_TRANSMISSION_DEFER;
-            }
+            self.read_burst_into(terminal, wait, capture_interval)?;
+            let due = capture.visible && last_capture_at.elapsed() >= capture_interval;
             collect_title_changes(terminal, settings, capture)?;
             let matched = matches(terminal)?;
-            let captured_at = Instant::now();
-            let elapsed = captured_at.saturating_duration_since(last_capture_at);
+            // A capture held by a synchronized update extends the frame on screen but stays due,
+            // so it renders after the first read that ends the update.
             if capture.visible && (due || matched) {
-                let frame_delay = settings.playback_delay(elapsed);
-                append_visible_frame(
-                    capture,
-                    capture_frame(terminal, settings, capture.frames.len())?,
-                    frame_delay,
-                );
-                last_capture_at = captured_at;
-                capture.recorded_until = Some(captured_at);
+                let render = self.may_render(terminal);
+                let captured_at = record_capture(terminal, settings, capture, render)?;
+                if render {
+                    last_capture_at = captured_at;
+                }
             }
             if matched {
                 return Ok(PollOutcome::Matched);
@@ -723,9 +724,10 @@ mod tests {
 
     /// A program without synchronized output replaces a placed image many times: it deletes the
     /// old image, sends the new one in kitty chunks across many PTY reads, then redraws the
-    /// placeholder cells. Every recorded frame must show an image, and the recording must keep up.
+    /// placeholder cells. The recording must keep up. Frames caught between the delete and the
+    /// replacement show no image, as a terminal would.
     #[test]
-    fn rapidly_replaced_images_are_never_captured_blank_and_do_not_stall() {
+    fn rapidly_replaced_images_do_not_stall_the_recording() {
         use base64::engine::general_purpose::STANDARD;
         use base64::Engine as _;
 
@@ -841,11 +843,158 @@ mod tests {
             .map(|(captured, _)| centre(&captured.frame))
             .skip_while(|pixel| !colors.contains(pixel))
             .collect();
-        // How many frames land depends on runner speed; a slow runner drains several updates per
-        // burst. Only blank frames are a failure.
+        // How many frames land, and which catch an image mid-replacement, depends on runner
+        // speed.
         assert!(!shown.is_empty(), "no frame showed the image");
-        let blank = shown.iter().filter(|pixel| !colors.contains(pixel)).count();
-        assert_eq!(blank, 0, "{blank} of {} frames lost the image", shown.len());
+    }
+
+    /// The first cell's colour in each recorded frame, with how long the frame shows.
+    fn first_cell_colors(capture: &CaptureState) -> Vec<([u8; 4], Duration)> {
+        let text = TextSettings::default();
+        let x = text.padding + text.cell_width() / 2;
+        let y = text.padding + text.cell_height() / 2;
+        capture
+            .frames
+            .iter()
+            .map(|(captured, delay)| {
+                let frame = &captured.frame;
+                let offset = y as usize * frame.stride + x as usize * 4;
+                let pixel = <[u8; 4]>::try_from(&frame.pixels[offset..offset + 4]).unwrap();
+                (pixel, *delay)
+            })
+            .collect()
+    }
+
+    /// Show `initial`, then send each output at its offset from a signal on the returned sender,
+    /// from another thread. Sending the signal just before reading keeps the offsets lined up
+    /// with the capture schedule on a slow machine.
+    fn paced_output(
+        initial: &[u8],
+        outputs: Vec<(Duration, &'static [u8])>,
+    ) -> (PtySession, GhosttySession, mpsc::Sender<()>) {
+        let (mut pty, terminal) = queued_output(initial, b"");
+        let (sender, reader) = mpsc::channel();
+        pty.reader = reader;
+        let (start, started_rx) = mpsc::channel();
+        thread::spawn(move || {
+            let _ = started_rx.recv();
+            let started = Instant::now();
+            for (at, bytes) in outputs {
+                thread::sleep(at.saturating_sub(started.elapsed()));
+                let _ = sender.send(bytes.to_vec());
+            }
+            // Keep the channel open so the session does not see the shell close.
+            thread::sleep(Duration::from_secs(5));
+        });
+        (pty, terminal, start)
+    }
+
+    const GREEN_CELLS: &[u8] = b"\x1b[42m  \x1b[0m";
+    const SYNC_RED_CELLS: &[u8] = b"\x1b[?2026h\x1b[H\x1b[41m  \x1b[0m";
+
+    fn fast_capture_settings() -> Settings {
+        Settings::from_tape(&Tape::parse("Set Framerate 50").unwrap()).unwrap()
+    }
+
+    /// Each update starts before a capture is due and ends after it, writing red cells before its
+    /// final colour. No frame may show the red, and every update must be recorded: a held capture
+    /// renders when its update ends, not at the next capture slot, which would land inside the
+    /// next update too.
+    #[test]
+    fn synchronized_updates_record_the_previous_frame_until_they_finish() {
+        // Built first: loading settings can outlast the paced output's first delay.
+        let settings = Settings::from_tape(&Tape::parse("Set Framerate 2").unwrap()).unwrap();
+        let finished: [&'static [u8]; 4] = [
+            b"\x1b[H\x1b[43m  \x1b[0m\x1b[?2026l",
+            b"\x1b[H\x1b[44m  \x1b[0m\x1b[?2026l",
+            b"\x1b[H\x1b[45m  \x1b[0m\x1b[?2026l",
+            b"\x1b[H\x1b[46m  \x1b[0m\x1b[?2026l",
+        ];
+        // Captures fall due every 500 ms; update k runs from 500k + 300 ms to 500k + 700 ms, so
+        // each spans a capture slot with 200 ms to spare on either side.
+        let outputs = finished
+            .into_iter()
+            .zip(0u64..)
+            .flat_map(|(end, k)| {
+                [
+                    (Duration::from_millis(500 * k + 300), SYNC_RED_CELLS),
+                    (Duration::from_millis(500 * k + 700), end),
+                ]
+            })
+            .collect();
+        let (mut pty, mut terminal, start) = paced_output(GREEN_CELLS, outputs);
+        let mut capture = CaptureState::default();
+
+        // The screen before the first update, as a recording would have after `Show`.
+        record_capture(&mut terminal, &settings, &mut capture, true).unwrap();
+        start.send(()).unwrap();
+        pty.drain_for(
+            &mut terminal,
+            Duration::from_millis(2500),
+            &settings,
+            &mut capture,
+        )
+        .unwrap();
+
+        let mut colors: Vec<_> = first_cell_colors(&capture)
+            .into_iter()
+            .map(|(color, _)| color)
+            .collect();
+        colors.dedup();
+        assert_eq!(
+            colors.len(),
+            5,
+            "expected the first frame and each of 4 updates once, got {colors:?}"
+        );
+    }
+
+    #[test]
+    fn unfinished_synchronized_updates_stop_holding_after_a_second() {
+        // Built first: loading settings can outlast the paced output's first delay.
+        let settings = fast_capture_settings();
+        let (mut pty, mut terminal, start) = paced_output(
+            GREEN_CELLS,
+            vec![(Duration::from_millis(100), SYNC_RED_CELLS)],
+        );
+        let mut capture = CaptureState::default();
+
+        record_capture(&mut terminal, &settings, &mut capture, true).unwrap();
+        start.send(()).unwrap();
+        pty.drain_for(
+            &mut terminal,
+            Duration::from_millis(1500),
+            &settings,
+            &mut capture,
+        )
+        .unwrap();
+
+        let colors = first_cell_colors(&capture);
+        let green = colors[0].0;
+        assert_ne!(
+            colors.last().unwrap().0,
+            green,
+            "the update was held forever"
+        );
+        let shown: Duration = colors
+            .iter()
+            .take_while(|(color, _)| *color == green)
+            .map(|(_, delay)| *delay)
+            .sum();
+        assert!(shown >= MAX_SYNC_HOLD, "the hold ended after {shown:?}");
+    }
+
+    #[test]
+    fn checkpoints_finish_a_synchronized_update_in_progress() {
+        let (mut pty, mut terminal, start) = paced_output(
+            b"\x1b[?2026hHALF",
+            vec![(Duration::from_millis(100), b"\x1b[HFULL\x1b[?2026l")],
+        );
+
+        start.send(()).unwrap();
+        pty.read_for_frame(&mut terminal, Duration::from_millis(20))
+            .unwrap();
+
+        assert!(terminal.screen_text().unwrap().contains("FULL"));
     }
 
     fn queued_output(initial: &[u8], output: &[u8]) -> (PtySession, GhosttySession) {

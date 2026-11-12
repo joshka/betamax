@@ -62,6 +62,21 @@ To give viewers time to read, try 300-700 ms after simple transitions and 1.5-2.
 screen of short output. Reserve 4-5 second pauses for the final screen. Allow more time for dense
 output.
 
+## What a recording captures
+
+Betamax samples the terminal at the `Framerate` while the tape runs, the way a terminal redraws its
+window, and each frame shows the screen as it is at that moment. A frame can catch a program partway
+through a redraw: half the screen updated, or an empty image area between deleting an image and
+sending its replacement. A terminal shows those frames too, so Betamax keeps them; they are how
+flicker and tearing appear in a recording. Betamax never waits for a program to stop writing before
+it captures a frame, so a program that animates continuously records at the full rate.
+
+Programs avoid partial frames with synchronized output (DEC private mode 2026): they mark where each
+update starts and ends, and the terminal keeps showing the previous frame until the update ends.
+Recordings do the same and capture the new frame as soon as the update ends. As in Ghostty, an
+update that never ends stops being held after one second. To record clean frames from your own
+program, wrap each redraw in `ESC [ ? 2026 h` and `ESC [ ? 2026 l`.
+
 ## GIF encoding
 
 GIF stores each frame's duration in hundredths of a second, and browsers play a frame of 10 ms or

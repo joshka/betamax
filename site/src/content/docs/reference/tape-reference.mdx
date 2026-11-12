@@ -879,6 +879,12 @@ program that does not use synchronized output. A terminal shows those frames too
 that hid them would hide tearing bugs. To capture a particular screen, put `Wait+Screen` before the
 checkpoint.
 
+Programs that use synchronized output (DEC private mode 2026) mark where each update starts and
+ends. A terminal keeps showing the previous frame until the update ends, and recordings do the
+same. A checkpoint that lands inside an update keeps reading until the update ends, because the
+previous screen is no longer available to capture. As in Ghostty, an update that never ends stops
+being held after one second.
+
 `MouseMove`, `MouseDown`, `MouseUp`, `MouseScroll`, `Resize`, `ScrollUp`, and `ScrollDown` apply
 output that has already arrived (for example, a program that just enabled mouse reporting), then
 act without waiting.

@@ -15,6 +15,10 @@ Planned work, in suggested priority order:
    These would let tests exercise timing and failures without real shells or media files.
 1. Add benchmarks for rendering, state compaction, frame decoration, and GIF encoding once their
    behavior settles.
+1. Move to libghostty 1.0 when the Rust bindings release it, and use what it adds: exact
+   synchronized-output boundaries, shell prompt detection for `Wait`, Ghostty's image placement,
+   animated kitty images, replies to light/dark and terminal-version queries, and a list of
+   unsupported escape sequences in failure reports.
 1. Keep MP4/WebM encoding in optional [ffmpeg](../../authoring/outputs/#video-encoding) unless users
    need native encoding. Native support would add codec dependencies and platform tests.
 1. Consider making assertion timing configurable, for example a per-tape setting or an
