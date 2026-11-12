@@ -37,6 +37,35 @@ cargo install betamax --locked
 If the build fails, see [Build troubleshooting](#build-troubleshooting) and, on macOS Tahoe,
 [Building on macOS Tahoe](#building-on-macos-tahoe).
 
+## Verify release archives
+
+Releases after 0.3.0 publish provenance for their prebuilt binaries. Each GitHub Release has a
+`SHA256SUMS` file and a GitHub [artifact attestation][attestations] covering every
+`betamax-<version>-<target>.tgz` archive and `SHA256SUMS` itself. The attestation is signed by
+Betamax's release workflow, so a matching file was built there from the release commit.
+
+With the [GitHub CLI][gh], verify a downloaded archive directly:
+
+```sh
+version=0.3.1 # the release you downloaded
+target=aarch64-apple-darwin
+gh release download "betamax-v$version" --repo joshka/betamax \
+  --pattern "betamax-$version-$target.tgz" --pattern SHA256SUMS
+gh attestation verify "betamax-$version-$target.tgz" --repo joshka/betamax
+```
+
+Without `gh`, check archive digests against `SHA256SUMS`:
+
+```sh
+sha256sum --check --ignore-missing SHA256SUMS         # Linux
+shasum -a 256 --check --ignore-missing SHA256SUMS     # macOS
+```
+
+A digest match shows the download is the file the release lists, not who built it. Packagers that
+pin digests can verify `SHA256SUMS` once with `gh attestation verify`, then check archives offline.
+To require this exact workflow rather than any workflow in the repository, add
+`--signer-workflow joshka/betamax/.github/workflows/release-plz.yml`.
+
 ## Render the examples
 
 The checked-in tapes under `examples/` are smoke tests and documentation examples. The
@@ -192,6 +221,8 @@ mise tools because package verification builds `libghostty-vt-sys`. Its publishe
 requires Zig 0.15.2, although upstream Ghostty supports Zig 0.16. Adoption awaits a `libghostty-rs`
 release containing the updated Ghostty source.
 
+[attestations]: https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations
+[gh]: https://cli.github.com/
 [mise]: https://mise.jdx.dev/
 [nix]: https://nixos.org/
 [pnpm]: https://pnpm.io/
