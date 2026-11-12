@@ -2,8 +2,8 @@
 
 ## Project Structure & Module Organization
 
-Betamax is a Rust workspace with two crates. `crates/betamax` is the installable CLI and owns
-`clap` argument parsing, command dispatch, logging, and CLI packaging behavior. `crates/betamax-core`
+Betamax is a Rust workspace with two crates. `crates/betamax` is the installable CLI and owns `clap`
+argument parsing, command dispatch, logging, and CLI packaging behavior. `crates/betamax-core`
 contains tape parsing, terminal running, Ghostty VT integration, rendering, media writing, themes,
 and state snapshots. Keep CLI-only dependencies out of the core crate.
 
@@ -60,7 +60,7 @@ that the code belongs there. Keep the guide's ownership examples current when a 
 
 Prefer small modules with clear ownership and documented non-obvious behavior. Public API docs
 should explain behavior, return values, edge cases, and examples where useful. Markdown is linted
-with `markdownlint-cli2`; wrap prose at 100 columns and keep tables aligned.
+with `rumdl` (`.config/rumdl.toml`); wrap prose at 100 columns and keep tables aligned.
 
 ## Testing Guidelines
 

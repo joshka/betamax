@@ -25,11 +25,11 @@ Install the repository tools with [mise][mise]:
 mise install
 ```
 
-The checked-in `.mise.toml` installs [markdownlint-cli2][markdownlint-cli2], Node, [pnpm][pnpm],
-and [Zig][zig]. Betamax uses the safe `libghostty-vt` wrapper through `betamax-core`; the wrapper's
+The checked-in `.mise.toml` installs [rumdl][rumdl], Node, [pnpm][pnpm], and
+[Zig][zig]. Betamax uses the safe `libghostty-vt` wrapper through `betamax-core`; the wrapper's
 `libghostty-vt-sys` dependency fetches a pinned Ghostty source commit and runs Zig to build the
-native VT library. Zig 0.15.2 is required by the published dependency. Upstream Ghostty supports
-Zig 0.16, but Betamax is waiting for a `libghostty-rs` release containing that update. Run repository
+native VT library. Zig 0.15.2 is required by the published dependency. Upstream Ghostty supports Zig
+0.16, but Betamax is waiting for a `libghostty-rs` release containing that update. Run repository
 commands through `mise run ...` so Cargo sees the pinned Zig version. See
 [build troubleshooting][site-build-troubleshooting] if the wrong version is used. For SDK setup on
 Tahoe, see [Building on macOS Tahoe][site-tahoe].
@@ -121,7 +121,7 @@ fidelity work belongs in [docs/roadmap.md](docs/roadmap.md), not in the VHS diff
 
 ## Documentation style
 
-Markdown is linted with `markdownlint-cli2` through `mise run lint-md`.
+Markdown is linted with [rumdl][rumdl] through `mise run lint-md`.
 
 - Wrap prose at 100 columns.
 - Use fenced code blocks with a language when the language is known.
@@ -144,8 +144,8 @@ Keep unrelated fixes in separate pull requests. Prefer clear, imperative commit 
 titles such as `Document contributor workflow` or `Fix state JSON style spans`.
 
 Pull requests should explain user-visible behavior, mention relevant docs or examples, and list the
-validation commands run. If `mise run check` was not run, note which narrower check was sufficient and
-why.
+validation commands run. If `mise run check` was not run, note which narrower check was sufficient
+and why.
 
 Questions, early ideas, and examples of Betamax in real projects should go to
 [Discussions](https://github.com/joshka/betamax/discussions) instead of issues. The
@@ -159,7 +159,7 @@ User-visible changes should update [CHANGELOG.md](CHANGELOG.md). Keep entries sh
 behavior: new commands, changed defaults, supported output formats, public API changes, important
 bug fixes, and known limitations.
 
-[markdownlint-cli2]: https://github.com/DavidAnson/markdownlint-cli2
+[rumdl]: https://rumdl.dev/
 [mise]: https://mise.jdx.dev/
 [nix]: https://nixos.org/
 [pnpm]: https://pnpm.io/

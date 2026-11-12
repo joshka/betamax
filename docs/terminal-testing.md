@@ -4,8 +4,8 @@ Test a CLI or TUI with a tape that runs the program, waits for expected text, an
 screenshots or state JSON at checkpoints. The tape fails if the text does not appear before the
 timeout.
 
-After each action, use `Wait`, `Wait+Line`, or `Wait+Screen` to check the result before capturing it.
-Add `Sleep` when viewers need time to read the recording, or when there is no text to wait for.
+After each action, use `Wait`, `Wait+Line`, or `Wait+Screen` to check the result before capturing
+it. Add `Sleep` when viewers need time to read the recording, or when there is no text to wait for.
 For recordings, try 300-700 ms after simple transitions and 1.5-2.5 seconds for a screen of short
 output. Reserve 4-5 second pauses for the final screen.
 
@@ -70,11 +70,12 @@ grid to expose the full preview in state JSON; the media canvas remains fixed. T
 [multi-file tape](../examples/ratatui-diff-multi-file.tape) checks nine search matches across three
 files, mode/resize continuity, and start/end navigation.
 
-Betamax's own [event fixture](../crates/betamax-core/tests/fixtures/terminal_events.py) runs in a real
-PTY and independently decodes input with Python's standard library. It covers named keys, mouse
+Betamax's own [event fixture](../crates/betamax-core/tests/fixtures/terminal_events.py) runs in a
+real PTY and independently decodes input with Python's standard library. It covers named keys, mouse
 press/drag/release, wheel direction, and normal child resize notification. The `terminal_input` and
-`terminal_assertions` integration tests run in macOS and Linux CI, and CI uploads their [failure
-bundles](https://www.joshka.net/betamax/reference/tape-reference/#failure-bundles) when they fail.
+`terminal_assertions` integration tests run in macOS and Linux CI, and CI uploads their
+[failure bundles](https://www.joshka.net/betamax/reference/tape-reference/#failure-bundles) when
+they fail.
 
 Checkpoint text and cell/style assertions provide the first baseline surface. Pixel baselines need
 pinned fonts, theme, and geometry plus meaningful tolerances and an explicit approval workflow;

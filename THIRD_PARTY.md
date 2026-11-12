@@ -45,9 +45,9 @@ SOFTWARE.
 The copied theme files are distributed as data resources so Betamax can render by Ghostty theme name
 without requiring a local Ghostty checkout.
 
-Ghostty generates these files from iTerm2-Color-Schemes (<https://github.com/mbadolato/iTerm2-Color-Schemes>,
-MIT License, Copyright (c) 2011 to Present Mark Badolato). Individual color schemes belong to their
-authors, credited in that project.
+Ghostty generates these files from iTerm2-Color-Schemes
+(<https://github.com/mbadolato/iTerm2-Color-Schemes>, MIT License, Copyright (c) 2011 to Present
+Mark Badolato). Individual color schemes belong to their authors, credited in that project.
 
 ## VHS Themes
 

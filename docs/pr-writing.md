@@ -39,9 +39,9 @@ beside its link so readers need no chat history. Link issues and pull requests b
 
 For visual evidence, preserve the tape and text fixture; do not commit generated PNG or GIF outputs.
 Use durable media URLs and inspect the images before publishing. State matched font, theme, fixture,
-grid, and canvas settings once per comparison. Caption the action, observable result, and intentional
-differences, such as a resized viewport. Label checkpoints from one run as scenarios; reserve
-before/after implementation claims for matched runs on the corresponding revisions.
+grid, and canvas settings once per comparison. Caption the action, observable result, and
+intentional differences, such as a resized viewport. Label checkpoints from one run as scenarios;
+reserve before/after implementation claims for matched runs on the corresponding revisions.
 
 Screenshots show presentation. Exact copied text, cell coordinates, input encoding, and resize
 notification need assertions or independent checks. Identify which evidence establishes each claim.

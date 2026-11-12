@@ -62,8 +62,11 @@ mise run clippy
 mise run clippy-beta
 ```
 
-Markdown linting uses [.markdownlint-cli2.yaml](../.markdownlint-cli2.yaml). It enforces aligned
-table columns via `MD060/table-column-style` and ignores table rows for line-length checks.
+Markdown linting uses [rumdl] with [.config/rumdl.toml](../.config/rumdl.toml). It enforces aligned
+table columns via `table-format` and ignores table rows for `line-length` checks. Run
+`rumdl fmt .` to fix table alignment and other fixable issues.
+
+[rumdl]: https://rumdl.dev/
 
 ## Rust version policy
 
@@ -246,8 +249,8 @@ build does not support Windows.
 Betamax writes GIF, PNG, screenshots, and state JSON in process. MP4 and WebM require
 [ffmpeg][ffmpeg] on `PATH`. Video output fails at runtime if ffmpeg is missing.
 
-See [Video encoding](https://www.joshka.net/betamax/authoring/outputs/#video-encoding) for installing
-ffmpeg.
+See [Video encoding](https://www.joshka.net/betamax/authoring/outputs/#video-encoding) for
+installing ffmpeg.
 
 ## READMEs and media
 
