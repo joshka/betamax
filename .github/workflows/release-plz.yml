@@ -8,6 +8,8 @@ permissions: {}
 
 env:
   LIBGHOSTTY_VT_SYS_CPU: baseline
+  # Oldest macOS the release binaries claim to run on: the releases Apple still patches.
+  MACOSX_DEPLOYMENT_TARGET: "14.0"
 
 on:
   push:
@@ -117,9 +119,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: macos-15-intel
+          # Both macOS targets build on arm64; x86_64 is cross-compiled because Intel runners are
+          # being retired and Intel Macs are not a priority for this tool.
+          - runner: macos-26
             target: x86_64-apple-darwin
-          - runner: macos-14
+          - runner: macos-26
             target: aarch64-apple-darwin
           - runner: ubuntu-26.04
             target: x86_64-unknown-linux-gnu

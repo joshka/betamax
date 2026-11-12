@@ -99,7 +99,7 @@ jobs:
       matrix:
         os:
           - ubuntu-26.04
-          - macos-14
+          - macos-26
 
     steps:
       - name: Checkout
@@ -277,7 +277,7 @@ jobs:
       matrix:
         os:
           - ubuntu-26.04
-          - macos-14
+          - macos-26
 
     steps:
       - name: Checkout
