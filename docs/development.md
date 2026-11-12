@@ -143,7 +143,10 @@ mise run docs-site-dev
 
 Users install Betamax as described in the site's
 [Quick start](https://www.joshka.net/betamax/quick-start/#install): Homebrew from
-[joshka/homebrew-tap][homebrew-tap], or [cargo-binstall][cargo-binstall].
+[joshka/homebrew-tap][homebrew-tap], [cargo-binstall][cargo-binstall], or mise's `packslip` backend.
+The `sign-release-manifest` job signs a [packslip](https://packslip.dev) manifest of the uploaded
+archives. mise and cargo-binstall read the same archives, so renaming them or changing the tag format
+breaks both.
 
 The CLI crate declares `[package.metadata.binstall]` in
 [`crates/betamax/Cargo.toml`](../crates/betamax/Cargo.toml). The metadata points cargo-binstall at

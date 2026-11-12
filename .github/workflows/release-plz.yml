@@ -174,6 +174,43 @@ jobs:
           ARCHIVE: ${{ steps.package.outputs.archive }}
         run: gh release upload "$RELEASE_TAG" "$ARCHIVE" --clobber
 
+  sign-release-manifest:
+    name: Sign packslip manifest
+    runs-on: ubuntu-26.04
+    needs:
+      - prepare-release-assets
+      - release-assets
+    if: ${{ needs.prepare-release-assets.outputs.betamax_released == 'true' }}
+    # packslip signs a manifest of the uploaded archives with this workflow's OIDC identity, so
+    # `mise use packslip:joshka/betamax` can verify the signer and each archive's digest. The project
+    # is the repository itself: packslip strips the `betamax-` repo-name prefix from tags, and mise
+    # only lists releases that carry the bundle, so betamax-core releases are skipped.
+    # https://packslip.dev/docs/publishing/
+    permissions:
+      attestations: write
+      contents: write
+      id-token: write
+    steps:
+      # The manifest records its source commit, which defaults to the workflow SHA. A manual
+      # dispatch can run from a later commit than the tag, so record the tagged commit instead.
+      - name: Resolve tagged commit
+        id: commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.prepare-release-assets.outputs.tag }}
+        run: |
+          set -euo pipefail
+          sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/$TAG" --jq .sha)"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      - name: Sign and upload manifest
+        uses: jdx/packslip@e0340e0c1d10c90a434de2b90f3a1ba345923564 # v1.11.4
+        with:
+          commit: ${{ steps.commit.outputs.sha }}
+          tag: ${{ needs.prepare-release-assets.outputs.tag }}
+          version: ${{ needs.prepare-release-assets.outputs.version }}
+          download: betamax-${{ needs.prepare-release-assets.outputs.version }}-*.tgz
+          bin: betamax
+
   bump-homebrew-tap:
     name: Bump Homebrew tap
     runs-on: ubuntu-26.04
