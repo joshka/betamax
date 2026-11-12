@@ -50,6 +50,10 @@ taps, trust the formula first.
 
 Rust users can install from crates.io with [cargo-binstall][cargo-binstall].
 
+[mise][mise] users can install the same release archives with its `packslip` backend, which checks
+each archive against a manifest signed by the release workflow. Releases after 0.3.0 carry that
+manifest; for 0.3.0, use Homebrew or cargo-binstall.
+
 `cargo install betamax` also works, but it builds Ghostty's terminal library from source and needs
 Zig 0.15.2 on `PATH`. See [Build from source](../reference/development/#build-from-source), or use
 one of the prebuilt binaries.
@@ -68,6 +72,10 @@ brew trust --formula joshka/tap/betamax
 ```sh
 cargo install cargo-binstall
 cargo binstall betamax
+```
+
+```sh
+mise use -g packslip:joshka/betamax
 ```
 
 ```sh
@@ -208,3 +216,4 @@ betamax themes --markdown
 
 [cargo-binstall]: https://github.com/cargo-bins/cargo-binstall
 [homebrew-tap]: https://github.com/joshka/homebrew-tap
+[mise]: https://mise.jdx.dev/
