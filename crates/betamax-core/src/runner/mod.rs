@@ -901,7 +901,7 @@ where
                 session.drain_for(terminal, settings.capture_interval(), settings, capture)?;
             }
             Command::WindowTitle(title) => {
-                session.drain_queued(terminal)?;
+                session.apply_queued(terminal)?;
                 collect_title_changes(terminal, settings, capture)?;
                 let frame = if capture.visible {
                     Some(capture_frame(terminal, settings, capture.frames.len())?)
@@ -944,7 +944,7 @@ where
             }
             Command::Show => {
                 if settings.presentation.style.window_title.follow_terminal {
-                    session.drain_queued(terminal)?;
+                    session.apply_queued(terminal)?;
                     collect_title_changes(terminal, settings, capture)?;
                 }
                 capture.visible = true;

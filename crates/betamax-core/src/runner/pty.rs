@@ -256,24 +256,6 @@ impl PtySession {
         }
     }
 
-    /// Consume only bytes already queued, preserving a bounded tape-command boundary.
-    pub(super) fn drain_queued(&mut self, terminal: &mut impl TerminalSession) -> Result<()> {
-        let queued: Vec<_> = self.reader.try_iter().take(128).collect();
-        if queued.len() == 128 {
-            return Err(
-                miette!("PTY queue too busy at title boundary; synchronize the app first").into(),
-            );
-        }
-        for bytes in queued {
-            terminal.write_vt(&bytes);
-            let reply = terminal.take_pending_pty_reply();
-            if !reply.is_empty() {
-                self.write_all(&reply)?;
-            }
-        }
-        Ok(())
-    }
-
     /// Check absence after each received chunk and at the end of a bounded observation period.
     pub(super) fn observe_absence(
         &mut self,
@@ -370,9 +352,10 @@ impl PtySession {
 
     /// Apply output that has already arrived, without waiting for more.
     ///
-    /// Input commands (`Mouse`, `Resize`, scrolling) act on the terminal as it is now. Waiting for
-    /// the PTY to go quiet would never return while an app redraws continuously; tapes that need
-    /// a particular screen use `Wait`.
+    /// Input commands (`Mouse`, `Resize`, scrolling) and title boundaries (`WindowTitle`, `Show`)
+    /// act on the terminal as it is now. Waiting for the PTY to go quiet would never return while
+    /// an app redraws continuously; tapes that need a particular screen use `Wait`.
+    ///
     /// At most [`MAX_QUEUED_CHUNKS`] are applied, so output arriving faster than it parses cannot
     /// keep the queue from emptying; the rest is left for the next command.
     pub(super) fn apply_queued(&mut self, terminal: &mut impl TerminalSession) -> Result<()> {
@@ -833,6 +816,20 @@ mod tests {
         // How many frames land, and which catch an image mid-replacement, depends on runner
         // speed.
         assert!(!shown.is_empty(), "no frame showed the image");
+    }
+
+    #[test]
+    fn queued_output_beyond_the_limit_is_left_for_later_without_failing() {
+        let (mut pty, mut terminal) = queued_output(b"", b"");
+        let (sender, reader) = mpsc::channel();
+        pty.reader = reader;
+        for chunk in 0..MAX_QUEUED_CHUNKS + 10 {
+            sender.send(format!("\r{chunk}").into_bytes()).unwrap();
+        }
+
+        pty.apply_queued(&mut terminal).unwrap();
+
+        assert_eq!(pty.reader.try_iter().count(), 10);
     }
 
     #[test]

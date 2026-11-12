@@ -892,7 +892,8 @@ being held after one second.
 
 `MouseMove`, `MouseDown`, `MouseUp`, `MouseScroll`, `Resize`, `ScrollUp`, and `ScrollDown` apply
 output that has already arrived (for example, a program that just enabled mouse reporting), then
-act without waiting.
+act without waiting. `WindowTitle` does the same, and so does `Show` when the window title follows
+the terminal, so a title change the program already sent is in place first.
 
 ### `State <path>.json`
 
