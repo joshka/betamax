@@ -121,9 +121,9 @@ jobs:
         include:
           # Both macOS targets build on arm64; x86_64 is cross-compiled because Intel runners are
           # being retired and Intel Macs are not a priority for this tool.
-          - runner: macos-26
+          - runner: macos-15
             target: x86_64-apple-darwin
-          - runner: macos-26
+          - runner: macos-15
             target: aarch64-apple-darwin
           - runner: ubuntu-26.04
             target: x86_64-unknown-linux-gnu
