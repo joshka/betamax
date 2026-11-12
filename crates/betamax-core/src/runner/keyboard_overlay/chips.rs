@@ -247,8 +247,7 @@ fn keyboard_overlay_rows(labels: &[String], width: u32) -> Vec<Vec<KeyboardOverl
         if !current_row.is_empty()
             && current_width.saturating_add(gap).saturating_add(chip.width) > usable_width
         {
-            rows.push(current_row);
-            current_row = Vec::new();
+            rows.push(std::mem::take(&mut current_row));
             current_width = 0;
         }
         current_width = current_width
