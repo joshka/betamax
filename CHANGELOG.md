@@ -5,6 +5,20 @@ versions and identify the core version shipped in the release lockfile.
 
 ## [Unreleased]
 
+## [0.3.2](https://github.com/joshka/betamax/compare/betamax-v0.3.1...betamax-v0.3.2) - 2026-11-12
+
+### Fixed
+
+- start tapes when the shell leaves canonical mode instead of after quiet output ([#291](https://github.com/joshka/betamax/pull/291))
+- stop reading for 20 ms after Sleep and other paced commands ([#289](https://github.com/joshka/betamax/pull/289))
+- apply queued output at title boundaries instead of failing when it is busy ([#288](https://github.com/joshka/betamax/pull/288))
+- stop waiting for quiet shell startup output after WaitTimeout ([#287](https://github.com/joshka/betamax/pull/287))
+- hold recordings during synchronized updates instead of waiting for quiet output ([#285](https://github.com/joshka/betamax/pull/285))
+
+### Other
+
+- widen timing margins in two tests that flake on macOS CI ([#290](https://github.com/joshka/betamax/pull/290))
+
 ## [0.3.1](https://github.com/joshka/betamax/compare/betamax-v0.3.0...betamax-v0.3.1) - 2026-11-12
 
 ### Added
