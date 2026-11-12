@@ -258,7 +258,7 @@ pub enum Command {
         /// Positive terminal row count.
         rows: u16,
     },
-    /// Check settled visible terminal state without waiting for a matching transient.
+    /// Check the visible terminal; passes on the first frame where the condition holds.
     Assert(Assertion),
     /// Stop recording frames while continuing to execute and update terminal state.
     Hide,
@@ -457,7 +457,8 @@ pub enum ViewportDirection {
     Down,
 }
 
-/// A checkpoint condition evaluated after output settles.
+/// A checkpoint condition, met on the first frame where it holds within the wait timeout. A timed
+/// absence must instead hold on every frame in its period.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Assertion {
     /// Require a visible screen substring at the checkpoint.
@@ -466,7 +467,7 @@ pub enum Assertion {
     Absent {
         /// Literal substring that must not appear.
         text: String,
-        /// Optional observation period after the screen settles.
+        /// Optional observation period after the checkpoint frame.
         duration: Option<Duration>,
     },
     /// Match an exact horizontal range of terminal cell graphemes.

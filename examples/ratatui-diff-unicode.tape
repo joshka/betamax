@@ -22,6 +22,7 @@ Home
 End
 Type "c"
 Resize 250 25
+Wait+Screen "Text preview:"
 State target/terminal-input/unicode-title.json
 Resize 50 16
 Down
@@ -31,6 +32,7 @@ Down
 End
 Type "c"
 Resize 250 25
+Wait+Screen "Text preview:"
 State target/terminal-input/unicode-selection.json
 Resize 50 16
 AssertText "Text preview:"

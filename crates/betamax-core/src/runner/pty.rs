@@ -49,6 +49,14 @@ const MAX_TRANSMISSION_DEFER: Duration = Duration::from_secs(1);
 /// while still returning under output that never stops.
 const MAX_QUEUED_CHUNKS: usize = 1024;
 
+/// How [`PtySession::poll_frames`] ended.
+enum PollOutcome {
+    Matched,
+    /// The shell closed the terminal; carries its status for the error message.
+    Closed(String),
+    TimedOut,
+}
+
 /// PTY process plus non-blocking output reader.
 ///
 /// `portable-pty` exposes blocking readers. Betamax moves reads onto a background thread and uses a
@@ -284,37 +292,6 @@ impl PtySession {
         Ok(())
     }
 
-    /// Wait for 100ms of PTY quiet, bounded by the tape's wait timeout.
-    ///
-    /// Unlike a Wait, this does not succeed on an intermediate matching frame.
-    pub(super) fn settle_into(
-        &mut self,
-        terminal: &mut impl TerminalSession,
-        timeout: Duration,
-    ) -> Result<()> {
-        let started = Instant::now();
-        let idle = Duration::from_millis(100);
-        let mut last_output = started;
-        loop {
-            if started.elapsed() >= timeout {
-                return Err(miette!("terminal output did not settle within {timeout:?}").into());
-            }
-            let remaining_idle = idle.saturating_sub(last_output.elapsed());
-            if remaining_idle.is_zero() {
-                // A delayed runner is not evidence of quiet if output is already buffered.
-                if self.read_once_into(terminal, Duration::ZERO)? {
-                    last_output = Instant::now();
-                    continue;
-                }
-                return Ok(());
-            }
-            let wait = remaining_idle.min(timeout.saturating_sub(started.elapsed()));
-            if self.read_once_into(terminal, wait)? {
-                last_output = Instant::now();
-            }
-        }
-    }
-
     /// Check absence after each received chunk and at the end of a bounded observation period.
     pub(super) fn observe_absence(
         &mut self,
@@ -420,7 +397,7 @@ impl PtySession {
     ///
     /// Input commands (`Mouse`, `Resize`, scrolling) act on the terminal as it is now. Waiting for
     /// the PTY to go quiet would never return while an app redraws continuously; tapes that need
-    /// settled output use `Wait`.
+    /// a particular screen use `Wait`.
     /// At most [`MAX_QUEUED_CHUNKS`] are applied, so output arriving faster than it parses cannot
     /// keep the queue from emptying; the rest is left for the next command.
     pub(super) fn apply_queued(&mut self, terminal: &mut impl TerminalSession) -> Result<()> {
@@ -556,9 +533,82 @@ impl PtySession {
         capture: &mut CaptureState,
     ) -> Result<()> {
         let matcher = WaitMatcher::new(pattern)?;
+        let outcome = self.poll_frames(terminal, timeout, settings, capture, |terminal| {
+            Ok(matcher.is_match(&wait_target_text(terminal, target)?))
+        })?;
+        match outcome {
+            PollOutcome::Matched => Ok(()),
+            PollOutcome::Closed(status) => Err(miette!(
+                "shell {status} before {} matched {}",
+                wait_target_name(target),
+                wait_pattern_name(pattern)
+            )
+            .into()),
+            PollOutcome::TimedOut => Err(miette!(
+                "timed out waiting for {} to match {}",
+                wait_target_name(target),
+                wait_pattern_name(pattern)
+            )
+            .into()),
+        }
+    }
+
+    /// Pass as soon as an assertion holds on any frame within `timeout`, capturing frames
+    /// meanwhile.
+    ///
+    /// Positive assertions behave like a wait: animation cannot fail them, and a tape does not need
+    /// a separate wait before each one. On timeout, the error is the assertion's failure on the
+    /// last frame checked.
+    pub(super) fn assert_within(
+        &mut self,
+        terminal: &mut impl TerminalSession,
+        assertion: &crate::tape::Assertion,
+        timeout: Duration,
+        settings: &Settings,
+        capture: &mut CaptureState,
+    ) -> Result<()> {
+        let prepared = crate::assertion::Prepared::new(assertion)?;
+        let mut last_failure = None;
+        let outcome =
+            self.poll_frames(
+                terminal,
+                timeout,
+                settings,
+                capture,
+                |terminal| match prepared.check(terminal) {
+                    Ok(()) => Ok(true),
+                    Err(failure) => {
+                        last_failure = Some(failure);
+                        Ok(false)
+                    }
+                },
+            )?;
+        match (outcome, last_failure) {
+            (PollOutcome::Matched, _) => Ok(()),
+            (_, Some(failure)) => Err(failure),
+            (_, None) => Err(miette!("assertion was not checked within {timeout:?}").into()),
+        }
+    }
+
+    /// Check `matches` against the screen after every burst of output until it holds, the shell
+    /// closes the terminal, or `timeout` passes, recording frames at the capture rate throughout.
+    ///
+    /// The screen is checked once before any read, so a condition that already holds passes at
+    /// once.
+    fn poll_frames<T: TerminalSession>(
+        &mut self,
+        terminal: &mut T,
+        timeout: Duration,
+        settings: &Settings,
+        capture: &mut CaptureState,
+        mut matches: impl FnMut(&mut T) -> Result<bool>,
+    ) -> Result<PollOutcome> {
         let started = Instant::now();
         let capture_interval = settings.capture_interval();
         let mut last_capture_at = *capture.recorded_until.get_or_insert(started);
+        if matches(terminal)? {
+            return Ok(PollOutcome::Matched);
+        }
         while started.elapsed() < timeout {
             let wait = capture_interval.min(timeout.saturating_sub(started.elapsed()));
             let read = self.read_burst_into(terminal, wait, capture_interval)?;
@@ -567,11 +617,10 @@ impl PtySession {
                 due = last_capture_at.elapsed() >= MAX_TRANSMISSION_DEFER;
             }
             collect_title_changes(terminal, settings, capture)?;
-            let text = wait_target_text(terminal, target)?;
-            let matches = matcher.is_match(&text);
+            let matched = matches(terminal)?;
             let captured_at = Instant::now();
             let elapsed = captured_at.saturating_duration_since(last_capture_at);
-            if capture.visible && (due || matches) {
+            if capture.visible && (due || matched) {
                 let frame_delay = settings.playback_delay(elapsed);
                 append_visible_frame(
                     capture,
@@ -581,30 +630,19 @@ impl PtySession {
                 last_capture_at = captured_at;
                 capture.recorded_until = Some(captured_at);
             }
-            if matches {
-                return Ok(());
+            if matched {
+                return Ok(PollOutcome::Matched);
             }
             if self.output_closed {
-                // No more output can arrive, so the pattern can never match.
+                // No more output can arrive, so the condition can never start to hold.
                 let status = match self.closed_shell_status() {
                     ShellStatus::Running => "closed the terminal".to_string(),
                     status => status.to_string(),
                 };
-                return Err(miette!(
-                    "shell {status} before {} matched {}",
-                    wait_target_name(target),
-                    wait_pattern_name(pattern)
-                )
-                .into());
+                return Ok(PollOutcome::Closed(status));
             }
         }
-
-        Err(miette!(
-            "timed out waiting for {} to match {}",
-            wait_target_name(target),
-            wait_pattern_name(pattern)
-        )
-        .into())
+        Ok(PollOutcome::TimedOut)
     }
 }
 
@@ -662,7 +700,7 @@ mod tests {
     fn checkpoint_consumes_queued_output_before_accepting_a_matching_screen() {
         let (mut pty, mut terminal) = queued_output(b"TRANSIENT", b"\x1b[2J\x1b[HFINAL");
 
-        pty.settle_into(&mut terminal, Duration::from_secs(2))
+        pty.read_for_frame(&mut terminal, Duration::from_millis(20))
             .unwrap();
 
         let screen = terminal.screen_text().unwrap();

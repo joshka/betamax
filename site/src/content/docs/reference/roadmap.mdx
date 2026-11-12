@@ -17,6 +17,9 @@ Planned work, in suggested priority order:
    behavior settles.
 1. Keep MP4/WebM encoding in optional [ffmpeg](../../authoring/outputs/#video-encoding) unless users
    need native encoding. Native support would add codec dependencies and platform tests.
+1. Consider making assertion timing configurable, for example a per-tape setting or an
+   `@duration` on each assertion, so tapes can choose single-frame checks or shorter timeouts
+   without extra commands.
 1. Watch for a supported libghostty frame-capture API. The Rust bindings Betamax uses do not
    currently expose one.
 

@@ -1,4 +1,4 @@
-//! Assertions operate on settled cells, not transient matching output.
+//! Assertions pass on the first matching frame; animation never fails or stalls them.
 
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -40,6 +40,7 @@ fn asserts_unicode_cells_full_attributes_and_explicit_state_baseline() {
     run(&format!(
         r##"
         Type "h"
+        Wait+Screen "A界"
         AssertText "A界"
         AssertCells 0 0 '["A", "界", " ", "é"]'
         AssertStyle 0 0 4 '{{"fg":"#ff0000","bold":true}}'
@@ -56,8 +57,30 @@ fn asserts_unicode_cells_full_attributes_and_explicit_state_baseline() {
 }
 
 #[test]
+fn assertions_wait_for_their_condition_without_a_separate_wait() {
+    run(r#"Type "h" AssertCells 0 0 '["A", "界"]' AssertText "A界" Type "q""#).unwrap();
+}
+
+#[test]
+fn missing_state_baseline_fails_without_waiting_out_the_timeout() {
+    let tape = Tape::parse(
+        r#"
+        Set Shell "bash"
+        Set WaitTimeout 30s
+        AssertState target/terminal-input/assertions/missing.json
+    "#,
+    )
+    .unwrap();
+    let started = std::time::Instant::now();
+    let error = Runner::new().run_artifacts(&tape).unwrap_err();
+    assert!(format!("{error:?}").contains("failed to read baseline"));
+    // A baseline mistake must fail at once rather than retrying until the 30 s WaitTimeout.
+    assert!(started.elapsed() < std::time::Duration::from_secs(10));
+}
+
+#[test]
 fn assertion_rejects_text_erased_in_the_same_output_burst() {
-    let error = run(r#"Type "d" AssertText "TRANSIENT""#).unwrap_err();
+    let error = run(r#"Type "d" Wait+Screen "FINAL" AssertText "TRANSIENT""#).unwrap_err();
     let detail = format!("{error:?}");
     assert!(detail.contains("expected visible text"), "{detail}");
     assert!(detail.contains("FINAL"), "{detail}");
@@ -74,7 +97,7 @@ fn bounded_absence_rejects_forbidden_output() {
 
 #[test]
 fn cell_mismatch_reports_coordinates_expected_actual_and_artifacts() {
-    let error = run(r#"Type "h" AssertCells 1 0 '["X"]'"#).unwrap_err();
+    let error = run(r#"Type "h" Wait+Screen "A界" AssertCells 1 0 '["X"]'"#).unwrap_err();
     let detail = format!("{error:?}");
     assert!(detail.contains("cell (1, 0)"), "{detail}");
     assert!(detail.contains("expected text"), "{detail}");
@@ -83,12 +106,15 @@ fn cell_mismatch_reports_coordinates_expected_actual_and_artifacts() {
 }
 
 #[test]
-fn continuous_output_cannot_extend_assertion_settling_forever() {
+fn continuous_output_does_not_fail_or_stall_assertions() {
     for input in [r#"Type "o""#, r#"Type@50ms "o""#, r#"Type "o" Sleep 50ms"#] {
         let started = std::time::Instant::now();
-        let error = run(&format!(r#"{input} AssertText "armed""#)).unwrap_err();
-        assert!(format!("{error:?}").contains("did not settle"));
-        assert!(started.elapsed() < std::time::Duration::from_secs(10));
+        run(&format!(
+            r#"{input} Wait+Screen "busy" AssertText "armed" AssertAbsent "FORBIDDEN""#
+        ))
+        .unwrap();
+        // The fixture writes for 6 s without pausing; finishing sooner proves nothing waited.
+        assert!(started.elapsed() < std::time::Duration::from_secs(5));
     }
 }
 
