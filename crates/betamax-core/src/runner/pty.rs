@@ -237,37 +237,23 @@ impl PtySession {
         Ok(self.writer.write_all(bytes).into_diagnostic()?)
     }
 
-    /// Drain PTY output into the terminal until no bytes arrive for `idle`.
+    /// Apply shell startup output until none arrives for `idle`, for at most `limit`.
     ///
-    /// Returns whether any bytes were observed. After the first blocking receive succeeds, all
-    /// immediately available chunks are drained without additional waits so bursty output stays
-    /// grouped into the same terminal update. Replies from the emulator (e.g. CPR responses)
-    /// are forwarded to the master writer so the child unblocks on its host queries.
-    pub(super) fn drain_into(
+    /// Typing before the prompt appears would echo ahead of it. A shell or program that never
+    /// stops writing ends the drain at `limit` instead of holding up the tape.
+    pub(super) fn drain_startup(
         &mut self,
         terminal: &mut impl TerminalSession,
         idle: Duration,
-    ) -> Result<bool> {
-        let mut saw_output = false;
-        while let Ok(bytes) = self.reader.recv_timeout(idle) {
-            log_pty_drain("draining PTY bytes into terminal", &bytes);
-            terminal.write_vt(&bytes);
-            saw_output = true;
-            while let Ok(bytes) = self.reader.try_recv() {
-                log_pty_drain("draining buffered PTY bytes into terminal", &bytes);
-                terminal.write_vt(&bytes);
-            }
-            let reply = terminal.take_pending_pty_reply();
-            if !reply.is_empty() {
-                tracing::trace!(
-                    bytes = reply.len(),
-                    sample = %ByteSample(&reply),
-                    "forwarding terminal reply to PTY",
-                );
-                self.writer.write_all(&reply).into_diagnostic()?;
+        limit: Duration,
+    ) -> Result<()> {
+        let deadline = Instant::now() + limit;
+        loop {
+            let remaining = deadline.saturating_duration_since(Instant::now());
+            if remaining.is_zero() || !self.read_burst_into(terminal, idle.min(remaining), idle)? {
+                return Ok(());
             }
         }
-        Ok(saw_output)
     }
 
     /// Consume only bytes already queued, preserving a bounded tape-command boundary.
@@ -431,18 +417,19 @@ impl PtySession {
         Ok(())
     }
 
-    /// Drain PTY output without terminal capture.
+    /// Discard shell startup output until none arrives for `idle`, for at most `limit`.
     ///
-    /// This is used only for tapes that do not need screenshots, waits, or state output. Bytes are
-    /// intentionally discarded after they prove the process is alive because no terminal model is
-    /// available to interpret them.
-    pub(super) fn drain_output(&mut self, idle: Duration) -> Result<bool> {
-        let mut saw_output = false;
-        while self.reader.recv_timeout(idle).is_ok() {
-            saw_output = true;
-            while self.reader.try_recv().is_ok() {}
+    /// This is used only for tapes that do not need screenshots, waits, or state output, so no
+    /// terminal model is available to interpret the bytes.
+    pub(super) fn drain_startup_output(&mut self, idle: Duration, limit: Duration) {
+        let deadline = Instant::now() + limit;
+        loop {
+            let remaining = deadline.saturating_duration_since(Instant::now());
+            if remaining.is_zero() || self.reader.recv_timeout(idle.min(remaining)).is_err() {
+                return;
+            }
+            for _ in self.reader.try_iter().take(MAX_QUEUED_CHUNKS) {}
         }
-        Ok(saw_output)
     }
 
     /// Drain PTY output for a fixed duration and append frames at the capture cadence.
@@ -846,6 +833,30 @@ mod tests {
         // How many frames land, and which catch an image mid-replacement, depends on runner
         // speed.
         assert!(!shown.is_empty(), "no frame showed the image");
+    }
+
+    #[test]
+    fn startup_output_that_never_stops_ends_at_the_limit() {
+        let (mut pty, mut terminal) = queued_output(b"", b"");
+        let (sender, reader) = mpsc::channel();
+        pty.reader = reader;
+        thread::spawn(move || {
+            while sender.send(b"\rspinning".to_vec()).is_ok() {
+                thread::sleep(Duration::from_millis(5));
+            }
+        });
+
+        let started = Instant::now();
+        pty.drain_startup(
+            &mut terminal,
+            Duration::from_millis(250),
+            Duration::from_millis(300),
+        )
+        .unwrap();
+
+        let elapsed = started.elapsed();
+        assert!(elapsed < Duration::from_secs(5), "startup took {elapsed:?}");
+        assert!(terminal.screen_text().unwrap().contains("spinning"));
     }
 
     /// The first cell's colour in each recorded frame, with how long the frame shows.
