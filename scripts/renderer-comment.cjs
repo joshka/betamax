@@ -2,7 +2,7 @@
 const COMMENT_MARKER = '<!-- betamax-renderer-galleries -->';
 const GALLERIES = [
   { label: 'Linux', name: 'renderer-fidelity-ubuntu-26.04.html' },
-  { label: 'macOS', name: 'renderer-fidelity-macos-15.html' },
+  { label: 'macOS', name: 'renderer-fidelity-macos-26.html' },
 ];
 
 function galleryLink(runUrl, artifacts, { label, name }) {
