@@ -52,7 +52,9 @@ Rust users can install from crates.io with [cargo-binstall][cargo-binstall].
 
 [mise][mise] users can install the same release archives with its `packslip` backend, which checks
 each archive against a manifest signed by the release workflow. Releases after 0.3.0 carry that
-manifest; for 0.3.0, use Homebrew or cargo-binstall.
+manifest; for 0.3.0, use Homebrew or cargo-binstall. The release signer's fingerprint is
+`ps1_bhdbr6k4ktbuamxnsuhnrmnl6q`; pass it to `packslip install --pin` to check the signer on first
+install.
 
 `cargo install betamax` also works, but it builds Ghostty's terminal library from source and needs
 Zig 0.15.2 on `PATH`. See [Build from source](../reference/development/#build-from-source), or use
@@ -76,6 +78,10 @@ cargo binstall betamax
 
 ```sh
 mise use -g packslip:joshka/betamax
+```
+
+```sh
+packslip install github.com/joshka/betamax --pin ps1_bhdbr6k4ktbuamxnsuhnrmnl6q
 ```
 
 ```sh

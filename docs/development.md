@@ -145,8 +145,14 @@ Users install Betamax as described in the site's
 [Quick start](https://www.joshka.net/betamax/quick-start/#install): Homebrew from
 [joshka/homebrew-tap][homebrew-tap], [cargo-binstall][cargo-binstall], or mise's `packslip` backend.
 The `sign-release-manifest` job signs a [packslip](https://packslip.dev) manifest of the uploaded
-archives. mise and cargo-binstall read the same archives, so renaming them or changing the tag format
-breaks both.
+archives with read-only access to the release, and `upload-release-manifest` attaches it. mise and
+cargo-binstall read the same archives, so renaming them or changing the tag format breaks both.
+
+Consumers pin the signer: the repository and the workflow file. Keep signing in
+`.github/workflows/release-plz.yml`; moving it to another workflow file makes consumers ask for
+approval of the next release. The published signer fingerprint is `ps1_bhdbr6k4ktbuamxnsuhnrmnl6q`
+(`packslip pin packslip.sigstore.json` on a release bundle prints it); update the quick start if it
+ever changes.
 
 The CLI crate declares `[package.metadata.binstall]` in
 [`crates/betamax/Cargo.toml`](../crates/betamax/Cargo.toml). The metadata points cargo-binstall at
