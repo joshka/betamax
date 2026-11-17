@@ -32,12 +32,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
           components: clippy
@@ -49,7 +49,7 @@ jobs:
         run: rustup toolchain install beta --component clippy
 
       - name: Install mise tools
-        uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        uses: jdx/mise-action@v5.2.3
         with:
           install: true
 
@@ -57,7 +57,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Cache Rust builds
-        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        uses: Swatinem/rust-cache@v2.9.3
         with:
           prefix-key: v2-rust-baseline
           key: ${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.mise.toml') }}
@@ -103,22 +103,22 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
 
       - name: Install mise tools
-        uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        uses: jdx/mise-action@v5.2.3
         with:
           install: true
 
       - name: Cache Rust builds
-        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        uses: Swatinem/rust-cache@v2.9.3
         with:
           prefix-key: v2-rust-baseline
           key: ${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.mise.toml') }}
@@ -136,7 +136,7 @@ jobs:
       # install independent of mirror speed.
       - name: Cache test dependency archives
         if: runner.os == 'Linux'
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        uses: actions/cache@v6.1.0
         with:
           path: ~/apt-archives
           key: test-apt-v1-${{ runner.os }}-${{ runner.arch }}-${{ env.ImageOS }}
@@ -168,14 +168,14 @@ jobs:
       - name: Upload renderer checkpoints
         id: raw-checkpoints
         if: ${{ always() }}
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: renderer-fidelity-${{ matrix.os }}
           path: target/renderer-fidelity
           if-no-files-found: warn
 
       - name: Checkout pinned terminal UX consumer
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@v7.0.1
         with:
           repository: joshka/ratatui-diff
           ref: e05b74b4236e4306e93feb242b6e005e467c1077
@@ -203,7 +203,7 @@ jobs:
 
       - name: Upload terminal input diagnostics
         if: ${{ always() }}
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: terminal-input-${{ matrix.os }}
           path: |
@@ -225,7 +225,7 @@ jobs:
       - name: Upload renderer gallery
         id: gallery-upload
         if: ${{ always() && steps.gallery.outputs.available == 'true' }}
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        uses: actions/upload-artifact@v7.0.2
         with:
           path: target/renderer-gallery/renderer-fidelity-${{ matrix.os }}.html
           archive: false
@@ -281,12 +281,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
 
@@ -294,12 +294,12 @@ jobs:
         run: rustup toolchain install nightly --component rustfmt
 
       - name: Install mise tools
-        uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        uses: jdx/mise-action@v5.2.3
         with:
           install: true
 
       - name: Cache Rust builds
-        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        uses: Swatinem/rust-cache@v2.9.3
         with:
           prefix-key: v2-rust-baseline
           key: ${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.mise.toml') }}
@@ -329,7 +329,7 @@ jobs:
       # 1 MB/s. Reusing the downloaded archives keeps the install independent of mirror speed.
       - name: Cache preview dependency archives
         if: runner.os == 'Linux'
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        uses: actions/cache@v6.1.0
         with:
           path: ~/apt-archives
           key: preview-apt-v1-${{ runner.os }}-${{ runner.arch }}-${{ env.ImageOS }}
@@ -391,7 +391,7 @@ jobs:
 
       - name: Upload feature guide and checkpoints
         if: ${{ always() && runner.os == 'Linux' }}
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: feature-checkpoints
           path: target/features
@@ -400,7 +400,7 @@ jobs:
       - name: Publish standalone feature guide
         id: feature-guide
         if: ${{ always() && runner.os == 'Linux' }}
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        uses: actions/upload-artifact@v7.0.2
         with:
           path: target/features/feature-gallery.html
           archive: false
@@ -446,12 +446,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
 
@@ -459,12 +459,12 @@ jobs:
         run: rustup toolchain install nightly
 
       - name: Install mise tools
-        uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        uses: jdx/mise-action@v5.2.3
         with:
           install: true
 
       - name: Cache Rust builds
-        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        uses: Swatinem/rust-cache@v2.9.3
         with:
           prefix-key: v2-rust-baseline
           key: ${{ matrix.name }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.mise.toml') }}
@@ -472,7 +472,7 @@ jobs:
           cache-targets: true
 
       - name: Install cargo maintenance tools
-        uses: taiki-e/install-action@5488ac5a951645ce95062214902ac4b6bc1a1037 # v2.87.32
+        uses: taiki-e/install-action@v2.87.32
         with:
           tool: ${{ matrix.tools }}
           fallback: none
@@ -491,6 +491,7 @@ jobs:
       - package
       - dependencies
       - zizmor
+      - lockfile
     if: >-
       ${{ always() && (github.event_name != 'push' || !(startsWith(github.event.head_commit.message, 'chore: release') || contains(github.event.head_commit.message, '): release'))) }}
     steps:
@@ -528,9 +529,31 @@ jobs:
       security-events: write
     steps:
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
 
       - name: Run zizmor
-        uses: zizmorcore/zizmor-action@53290badfa369cb0bf7ad16342cb62c2fa47ac7b # v0.8.0
+        uses: zizmorcore/zizmor-action@v0.8.1
+
+  # Checks that .github/workflows/actions.lock matches the workflows. To add or bump an action, or
+  # fix a failure here, see docs/github-actions.md.
+  lockfile:
+    name: Actions lockfile
+    if: *check-source
+    runs-on: ubuntu-slim
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install gh-actions-lock
+        run: gh extension install github/gh-actions-lock --pin v0.4.1
+
+      - name: Verify actions.lock
+        run: gh actions-lock --verify
