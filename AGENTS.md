@@ -92,6 +92,10 @@ Route questions, early ideas, and examples of Betamax in real projects to GitHub
 instead of issues. Use the `Show and tell` category for screenshots, rendered tapes, repo links, and
 short notes about how Betamax helps another project.
 
+GitHub Actions are locked in `.github/workflows/actions.lock`. After changing any `uses:`, run
+`gh actions-lock` and commit both files. See [GitHub Actions maintenance](docs/github-actions.md).
+Never edit or delete the lockfile by hand.
+
 ### Before pushing
 
 A check that fails in CI costs a full CI round trip. Run every check that finishes in seconds

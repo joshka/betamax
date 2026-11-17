@@ -13,6 +13,8 @@
   remaining fidelity gaps.
 - [Roadmap](roadmap.md): suggested follow-up work that is not part of the VHS differences list.
 - [Development](development.md): local checks, formatting, packaging checks, and releases.
+- [GitHub Actions maintenance](github-actions.md): the actions lockfile, Dependabot bumps, and
+  fixing a failed lockfile check.
 - [READMEs and media](readmes-and-media.md): which README serves which reader, crates.io limits,
   and refreshing the hero recording and example media.
 - [Module design](module-design.md): feature ownership, extending modules, choosing siblings or
