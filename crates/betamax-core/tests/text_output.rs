@@ -2,7 +2,9 @@
 //!
 //! `fixtures/vhs-text-output.txt` was produced by VHS 0.12.1 from this tape, with the snapshots
 //! VHS writes for the tape header removed (Betamax skips them). The `Hide`/`Show` pairs keep every
-//! snapshot after the PTY has settled, so neither tool races shell output.
+//! snapshot after the PTY has settled, so neither tool races shell output. Each visible `Type`
+//! snapshots one typing delay after its last key, so `TypingSpeed` is long enough for a slow CI
+//! runner to echo that key; hidden typing stays fast.
 
 use betamax_core::{Runner, Tape};
 use indoc::formatdoc;
@@ -15,9 +17,9 @@ fn text_output_matches_vhs_golden() {
         Set Shell bash
         Set Columns 40
         Set Rows 6
-        Set TypingSpeed 10ms
+        Set TypingSpeed 100ms
         Hide
-        Type "export PS1='> '; clear"
+        Type@10ms "export PS1='> '; clear"
         Enter
         Sleep 500ms
         Show
@@ -32,7 +34,7 @@ fn text_output_matches_vhs_golden() {
         Sleep 500ms
         Show
         Hide
-        Type "printf '\e[?1049l'; clear"
+        Type@10ms "printf '\e[?1049l'; clear"
         Enter
         Sleep 500ms
         Show
