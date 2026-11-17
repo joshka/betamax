@@ -145,7 +145,9 @@ Users install Betamax as described in the site's
 [Quick start](https://www.joshka.net/betamax/quick-start/#install): Homebrew from
 [joshka/homebrew-tap][homebrew-tap], [cargo-binstall][cargo-binstall], or mise's `packslip` backend.
 The `sign-release-manifest` job signs a [packslip](https://packslip.dev) manifest of the uploaded
-archives with read-only access to the release, and `upload-release-manifest` attaches it. mise and
+archives with read-only access to the release, and `upload-release-manifest` attaches it. Each
+build job attests its archive before uploading it; the signing job checks those attestations and
+links them from the manifest instead of making its own. mise and
 cargo-binstall read the same archives, so renaming them or changing the tag format breaks both.
 
 Consumers pin the signer: the repository and the workflow file. Keep signing in

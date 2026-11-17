@@ -114,7 +114,11 @@ jobs:
     needs: prepare-release-assets
     if: ${{ needs.prepare-release-assets.outputs.betamax_released == 'true' }}
     permissions:
+      # Attest each archive where it is built, before it reaches the release, so provenance names
+      # the run that built it. The packslip job only links these attestations.
+      attestations: write
       contents: write
+      id-token: write
     strategy:
       fail-fast: false
       matrix:
@@ -166,6 +170,10 @@ jobs:
           set -euo pipefail
           archive="$(scripts/package-binstall-archive.sh "$TARGET" "$VERSION" target/dist)"
           echo "archive=$archive" >> "$GITHUB_OUTPUT"
+      - name: Attest archive
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: ${{ steps.package.outputs.archive }}
       - name: Upload archive
         env:
           # This token only mutates the release created earlier in the same workflow run.
@@ -188,7 +196,6 @@ jobs:
     # uploads the bundle. Consumers pin the signing workflow file, so keep signing in this file.
     # https://packslip.dev/docs/publishing/
     permissions:
-      attestations: write
       contents: read
       id-token: write
     steps:
@@ -203,6 +210,22 @@ jobs:
           set -euo pipefail
           sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/$TAG" --jq .sha)"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      # `attest: link` only writes lookup URLs, so check that every archive on the release has a
+      # build attestation from this repository before signing.
+      - name: Check build attestations
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.prepare-release-assets.outputs.tag }}
+          VERSION: ${{ needs.prepare-release-assets.outputs.version }}
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/attested"
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --pattern "betamax-$VERSION-*.tgz" --dir "$dir"
+          for archive in "$dir"/*.tgz; do
+            gh attestation verify "$archive" --repo "$GITHUB_REPOSITORY" \
+              --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release-plz.yml"
+          done
       - name: Sign manifest
         id: packslip
         uses: jdx/packslip@e0340e0c1d10c90a434de2b90f3a1ba345923564 # v1.11.4
@@ -210,8 +233,10 @@ jobs:
           commit: ${{ steps.commit.outputs.sha }}
           tag: ${{ needs.prepare-release-assets.outputs.tag }}
           version: ${{ needs.prepare-release-assets.outputs.version }}
-          download: betamax-${{ needs.prepare-release-assets.outputs.version }}-*.tgz
+          # Sign the copies the previous step verified, not a second download.
+          artifacts: ${{ runner.temp }}/attested/betamax-${{ needs.prepare-release-assets.outputs.version }}-*.tgz
           bin: betamax
+          attest: link
           upload: false
       - name: Stage signed bundle
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
