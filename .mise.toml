@@ -16,6 +16,10 @@ run = "cargo +nightly fmt --all --check"
 [tasks.test]
 run = "cargo test --workspace --all-targets"
 
+[tasks.bench]
+description = "Measure frame render cost (compare runs with `-- --save-baseline NAME` / `-- --baseline NAME`)"
+run = "cargo bench -p betamax-core --bench render"
+
 [tasks.timing-test]
 description = "Check recorded durations against tape time in a release build, where render cost is realistic"
 run = "cargo test --release -p betamax-core --test typing_timing --test mouse_timing -- --ignored"

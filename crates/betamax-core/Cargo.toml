@@ -55,10 +55,15 @@ tracing.workspace = true
 webp-animation = { version = "0.10", default-features = false, features = ["static"] }
 
 [dev-dependencies]
+criterion.workspace = true
 # Decodes and composites GIF frames in tests, independently of the writer.
 image = { workspace = true, features = ["gif"] }
 indoc.workspace = true
 insta.workspace = true
+
+[[bench]]
+name = "render"
+harness = false
 
 [lints]
 workspace = true
