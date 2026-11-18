@@ -116,6 +116,37 @@ impl PixelTarget {
         }
     }
 
+    /// Composite a tightly packed straight-alpha RGBA image, scaling its alpha by `opacity`.
+    pub(super) fn blend_rgba_image(
+        &mut self,
+        origin: (i32, i32),
+        size: (u32, u32),
+        rgba: &[u8],
+        opacity: u8,
+    ) {
+        let (x, y) = origin;
+        let (width, height) = size;
+        let Some((x0, y0, x1, y1)) = self.clipped_rect(x, y, width, height) else {
+            return;
+        };
+        for yy in y0..y1 {
+            for xx in x0..x1 {
+                let offset =
+                    4 * ((yy as i32 - y) as usize * width as usize + (xx as i32 - x) as usize);
+                let [r, g, b, a] = [
+                    rgba[offset],
+                    rgba[offset + 1],
+                    rgba[offset + 2],
+                    rgba[offset + 3],
+                ];
+                let coverage = (u16::from(a) * u16::from(opacity) / 255) as u8;
+                if coverage != 0 {
+                    self.blend_pixel(xx, yy, r, g, b, coverage);
+                }
+            }
+        }
+    }
+
     /// Target width in pixels.
     pub(super) fn width(&self) -> u32 {
         self.width
