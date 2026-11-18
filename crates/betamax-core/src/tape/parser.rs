@@ -435,11 +435,12 @@ fn parse_tokens(
                 });
             }
             _ if name.split('+').any(|part| part.starts_with("Mouse")) => {
-                if delay.is_some() {
-                    return Err(miette!("line {line_number}: mouse commands do not accept @duration; use Wait for synchronization").into());
-                }
                 let (event, modifiers, consumed) = parse_mouse(line_number, name, tokens, cursor)?;
-                commands.push(Command::Mouse { event, modifiers });
+                commands.push(Command::Mouse {
+                    event,
+                    modifiers,
+                    delay,
+                });
                 cursor += consumed;
             }
             "AssertText" | "AssertAbsent" | "AssertCells" | "AssertStyle" | "AssertState" => {
@@ -1186,6 +1187,22 @@ Wait+Screen ready WindowTitle final"#,
     }
 
     #[test]
+    fn mouse_duration_overrides_the_delay_after_the_action() {
+        let tape = Tape::parse("MouseMove@40ms 60 8 MouseDown Left").unwrap();
+        assert!(matches!(
+            tape.commands[..],
+            [
+                Command::Mouse {
+                    event: MouseEvent::Move { column: 60, row: 8 },
+                    delay: Some(delay),
+                    ..
+                },
+                Command::Mouse { delay: None, .. },
+            ] if delay == Duration::from_millis(40)
+        ));
+    }
+
+    #[test]
     fn rejects_invalid_mouse_arguments_with_line_context() {
         for source in [
             "MouseMove -1 0",
@@ -1196,7 +1213,6 @@ Wait+Screen ready WindowTitle final"#,
             "MouseScroll Down",
             "MouseScroll Nope 1",
             "Meta+MouseDown Left",
-            "MouseMove@1s 0 0",
         ] {
             let error = Tape::parse(&format!("# heading\n{source}")).unwrap_err();
             assert!(error.to_string().contains("line 2"), "{source}: {error}");

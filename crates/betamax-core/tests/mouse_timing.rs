@@ -18,8 +18,30 @@ const SLEEP_MS: u64 = 15;
 #[test]
 #[ignore = "timing-sensitive; run in release with `mise run timing-test`"]
 fn many_short_mouse_moves_keep_tape_time() {
+    let mut drag = String::new();
+    for column in 0..MOVES {
+        writeln!(drag, "MouseMove {} 10", column + 2).unwrap();
+        writeln!(drag, "Sleep {SLEEP_MS}ms").unwrap();
+    }
+    assert_drag_time("moves", &drag, MOVES * (FRAME_MS + SLEEP_MS));
+}
+
+/// `MouseMove@` replaces the capture-interval wait, so each move holds exactly its delay.
+#[test]
+#[ignore = "timing-sensitive; run in release with `mise run timing-test`"]
+fn mouse_move_delay_replaces_the_frame_wait() {
+    let step_ms = FRAME_MS + SLEEP_MS;
+    let drag: String = (0..MOVES)
+        .map(|column| format!("MouseMove@{step_ms}ms {} 10\n", column + 2))
+        .collect();
+    assert_drag_time("delayed", &drag, MOVES * step_ms);
+}
+
+/// Record `drag` from cell (1, 10) with the left button held and check that it reaches cell
+/// `MOVES + 1` one report per cell, in `nominal` ms of recorded time.
+fn assert_drag_time(name: &str, drag: &str, nominal: u64) {
     let root = std::env::temp_dir().join(format!(
-        "betamax-mouse-timing-{}-{}",
+        "betamax-mouse-timing-{name}-{}-{}",
         std::process::id(),
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -28,11 +50,6 @@ fn many_short_mouse_moves_keep_tape_time() {
     ));
     let webp = root.join("drag.webp");
     let fixture = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/mouse_trail.py");
-    let mut drag = String::new();
-    for column in 0..MOVES {
-        writeln!(drag, "MouseMove {} 10", column + 2).unwrap();
-        writeln!(drag, "Sleep {SLEEP_MS}ms").unwrap();
-    }
     let tape = Tape::parse(&formatdoc! {r#"
         Require python3
         Output "{webp}"
@@ -66,12 +83,11 @@ fn many_short_mouse_moves_keep_tape_time() {
             u64::from(numer) / u64::from(denom)
         })
         .sum();
-    let nominal = MOVES * (FRAME_MS + SLEEP_MS);
     // The upper bound leaves room for the opening frame and a busy CI runner. Without pacing the
     // same drag records about five times its tape time, so half again still catches it.
     assert!(
         (nominal - FRAME_MS..nominal * 3 / 2).contains(&recorded),
-        "recorded {recorded} ms for a {nominal} ms drag"
+        "{name}: recorded {recorded} ms for a {nominal} ms drag"
     );
     fs::remove_dir_all(root).unwrap();
 }

@@ -250,6 +250,8 @@ pub enum Command {
         event: MouseEvent,
         /// Modifiers active for this action only.
         modifiers: KeyModifiers,
+        /// Optional delay after the action; the capture interval applies when absent.
+        delay: Option<Duration>,
     },
     /// Resize the live PTY and terminal grid while preserving the media canvas.
     Resize {

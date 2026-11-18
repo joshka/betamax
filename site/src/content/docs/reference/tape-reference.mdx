@@ -622,6 +622,20 @@ Shift+MouseScroll Down 3
 `Up`, `Down`, `Left`, or `Right` describing wheel direction. These commands accept `Ctrl+`,
 `Alt+`, and `Shift+` prefixes in any order. Modifiers apply to that action only.
 
+Each mouse command waits one capture interval (20 ms at the default 50 FPS) after its action, so
+the recording shows a frame of it. `@<duration>` replaces that wait, as it does for keys: a drag
+that moves every 40 ms is a run of `MouseMove@40ms` commands, and `MouseMove@0ms` moves without
+waiting. A move still jumps straight to its target cell; write one move per cell for a smooth
+drag.
+
+```tape
+MouseDown Left
+MouseMove@40ms 11 8
+MouseMove@40ms 12 8
+MouseMove@40ms 13 8
+MouseUp Left
+```
+
 The application controls mouse reporting. Betamax uses Ghostty's encoder to respect disabled,
 press/release, button-motion, and all-motion reporting and the negotiated X10, UTF-8, SGR, urxvt,
 or SGR-pixel format. Legacy protocols can suppress coordinates they cannot represent. SGR-pixel
