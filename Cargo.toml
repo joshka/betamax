@@ -17,6 +17,7 @@ homepage = "https://www.joshka.net/betamax/"
 documentation = "https://www.joshka.net/betamax/"
 
 [workspace.dependencies]
+criterion = { version = "0.7", default-features = false }
 anyhow = "1.0.102"
 base64 = "0.23"
 betamax-core = { path = "crates/betamax-core", version = "0.3.1" }
