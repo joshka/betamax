@@ -953,6 +953,8 @@ where
                     settings.frame_delay(),
                 );
                 capture.recorded_until = Some(Instant::now());
+                // Time before Show is not recorded, so paced commands after it start from now.
+                session.reset_pacing();
             }
             Command::Env { .. }
             | Command::Output(_)

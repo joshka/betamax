@@ -14,6 +14,7 @@ const SPEED_MS: u64 = 35;
 const NOMINAL_MS: u64 = 40 * SPEED_MS;
 
 #[test]
+#[ignore = "timing-sensitive; run in release with `mise run timing-test`"]
 fn typing_records_its_nominal_duration_in_gif_and_webp() {
     let root = std::env::temp_dir().join(format!(
         "betamax-typing-timing-{}-{}",
@@ -68,6 +69,7 @@ fn typing_records_its_nominal_duration_in_gif_and_webp() {
 /// Typing goes into `cat`, so each keystroke redraws one echoed character and nothing else. The
 /// large canvas makes each render slow enough that losing it from the timeline would show.
 #[test]
+#[ignore = "timing-sensitive; run in release with `mise run timing-test`"]
 fn typing_duration_scales_with_typing_speed() {
     const TEXT: &str = "the quick brown fox jumps over the lazy dog";
     let chars = TEXT.chars().count() as u64;

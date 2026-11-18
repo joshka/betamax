@@ -26,6 +26,9 @@ use crate::Result;
 /// Eight kilobytes is large enough for typical terminal bursts while keeping each channel message
 /// cheap to allocate and copy.
 const PTY_READ_BUFFER_SIZE: usize = 8 * 1024;
+/// How far a run of paced commands may fall behind its schedule and still catch up.
+const MAX_PACING_LAG: Duration = Duration::from_millis(250);
+
 /// Longest a synchronized update holds back captures.
 ///
 /// Ghostty ends a synchronized update after one second even when the program never sends the
@@ -67,6 +70,12 @@ pub(super) struct PtySession {
     output_closed: bool,
     /// When captures first found the program inside its current synchronized update.
     sync_hold_started: Option<Instant>,
+    /// Where the previous paced command's time ended, so the next one starts there.
+    ///
+    /// Rendering and writing input take wall time after a deadline passes. Starting each command
+    /// from `Instant::now()` adds that overhead to every command, so a drag made of many short
+    /// `MouseMove`s ran far longer than the tape asked for.
+    paced_until: Option<Instant>,
 }
 
 /// Whether the shell is still running, reported in failure bundles.
@@ -152,6 +161,7 @@ impl PtySession {
             child,
             output_closed: false,
             sync_hold_started: None,
+            paced_until: None,
         })
     }
 
@@ -434,10 +444,20 @@ impl PtySession {
         for _ in self.reader.try_iter().take(MAX_QUEUED_CHUNKS) {}
     }
 
+    /// Start the next paced command from now rather than the previous command's deadline.
+    pub(super) fn reset_pacing(&mut self) {
+        self.paced_until = None;
+    }
+
     /// Drain PTY output for a fixed duration and append frames at the capture cadence.
     ///
     /// Output still arriving at the end is left for the next command, whose own timing decides
     /// when it is shown; a command boundary is not a reason to wait.
+    ///
+    /// Consecutive paced commands run back to back on one schedule, as `Type` paces its keys:
+    /// each starts at the previous one's deadline rather than when the previous one returned, so
+    /// per-command overhead does not accumulate. A schedule more than [`MAX_PACING_LAG`] behind
+    /// restarts from now instead of rushing input to catch up.
     pub(super) fn drain_for(
         &mut self,
         terminal: &mut impl TerminalSession,
@@ -445,7 +465,14 @@ impl PtySession {
         settings: &Settings,
         capture: &mut CaptureState,
     ) -> Result<()> {
-        self.drain_until(terminal, Instant::now() + duration, settings, capture)?;
+        let now = Instant::now();
+        let start = self
+            .paced_until
+            .filter(|&until| until + MAX_PACING_LAG >= now)
+            .unwrap_or(now);
+        let deadline = start + duration;
+        self.paced_until = Some(deadline);
+        self.drain_until(terminal, deadline, settings, capture)?;
         collect_title_changes(terminal, settings, capture)?;
         Ok(())
     }
@@ -596,6 +623,7 @@ impl PtySession {
         capture: &mut CaptureState,
         mut matches: impl FnMut(&mut T) -> Result<bool>,
     ) -> Result<PollOutcome> {
+        self.reset_pacing();
         let started = Instant::now();
         let capture_interval = settings.capture_interval();
         let mut last_capture_at = *capture.recorded_until.get_or_insert(started);
