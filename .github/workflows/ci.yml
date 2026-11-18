@@ -49,7 +49,7 @@ jobs:
         run: rustup toolchain install beta --component clippy
 
       - name: Install mise tools
-        uses: jdx/mise-action@v5.2.3
+        uses: jdx/mise-action@v5.2.7
         with:
           install: true
 
@@ -113,7 +113,7 @@ jobs:
           toolchain: stable
 
       - name: Install mise tools
-        uses: jdx/mise-action@v5.2.3
+        uses: jdx/mise-action@v5.2.7
         with:
           install: true
 
@@ -294,7 +294,7 @@ jobs:
         run: rustup toolchain install nightly --component rustfmt
 
       - name: Install mise tools
-        uses: jdx/mise-action@v5.2.3
+        uses: jdx/mise-action@v5.2.7
         with:
           install: true
 
@@ -352,7 +352,7 @@ jobs:
         id: previews
         if: runner.os == 'Linux'
         timeout-minutes: 5
-        uses: joshka/betamax-action@80d342bbcf8f8833a5422a8dfc53b5af298bf63b # bounded setup and progress
+        uses: joshka/betamax-action@6878527478636d0ff6a6d3be8e29754cb81254ab # bounded setup and progress
         with:
           binary: target/release/betamax
           install-dependencies: false
@@ -374,7 +374,7 @@ jobs:
         env:
           BETAMAX_FEATURE_ROOT: ${{ github.workspace }}
         timeout-minutes: 10
-        uses: joshka/betamax-action@80d342bbcf8f8833a5422a8dfc53b5af298bf63b # bounded setup and progress
+        uses: joshka/betamax-action@6878527478636d0ff6a6d3be8e29754cb81254ab # bounded setup and progress
         with:
           binary: target/release/betamax
           install-dependencies: false
@@ -459,7 +459,7 @@ jobs:
         run: rustup toolchain install nightly
 
       - name: Install mise tools
-        uses: jdx/mise-action@v5.2.3
+        uses: jdx/mise-action@v5.2.7
         with:
           install: true
 
@@ -472,7 +472,7 @@ jobs:
           cache-targets: true
 
       - name: Install cargo maintenance tools
-        uses: taiki-e/install-action@v2.87.32
+        uses: taiki-e/install-action@v2.90.3
         with:
           tool: ${{ matrix.tools }}
           fallback: none
