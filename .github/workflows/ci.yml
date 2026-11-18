@@ -154,6 +154,9 @@ jobs:
             fonts-dejavu-core fonts-noto-cjk
           cp /var/cache/apt/archives/*.deb ~/apt-archives/
 
+      - name: Test recorded timing
+        run: mise run timing-test
+
       - name: Test video timing
         if: runner.os == 'Linux'
         run: mise run video-test
