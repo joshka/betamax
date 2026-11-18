@@ -6,7 +6,7 @@ use cosmic_text::{
     Attrs, Buffer, CacheKey, Color, Family, FontSystem, Metrics, Shaping, Style as TextStyle,
     SwashCache, SwashContent, Weight,
 };
-use libghostty_vt::render::{CellIterator, RowIterator};
+use libghostty_vt::render::{CellIterator, Colors, Dirty, RowIterator, Snapshot};
 use libghostty_vt::screen::CellWide;
 use libghostty_vt::style::{RgbColor, Style, Underline};
 use libghostty_vt::terminal::ScrollViewport;
@@ -55,6 +55,12 @@ pub(super) struct RasterRenderer {
     cell_renderer: CellRenderer,
     /// Scaled inline-image cache.
     images: ImageCompositor,
+    /// The last frame before its cursor was drawn, and the colors it was drawn with.
+    ///
+    /// libghostty-vt marks the rows that changed since the last render, and most frames of a
+    /// recording change only a few. Starting from this frame and repainting only those rows
+    /// keeps a frame well under a millisecond however large the canvas is.
+    previous: Option<(Colors, PixelTarget)>,
 }
 
 impl RasterRenderer {
@@ -71,6 +77,7 @@ impl RasterRenderer {
             cells: CellIterator::new().expect("libghostty-vt cell iterator"),
             cell_renderer,
             images: ImageCompositor::default(),
+            previous: None,
         }
     }
 
@@ -96,7 +103,6 @@ impl RasterRenderer {
             cell.height = self.cell_height,
         );
         let _enter = span.enter();
-        let mut target = PixelTarget::new(self.request.canvas.width, self.request.canvas.height)?;
         tracing::trace!("updating libghostty-vt render state");
         let snapshot = self
             .render_state
@@ -114,7 +120,26 @@ impl RasterRenderer {
             colors.foreground,
             colors.palette,
         );
-        target.clear(theme.background);
+        // Reuse the last frame unless something beyond rows changed: the palette or default
+        // colors, the grid or viewport (a full dirty state), or images.
+        let reusable = snapshot
+            .dirty()
+            .map_err(vt_error("failed to read libghostty-vt dirty state"))?
+            != Dirty::Full
+            && !ImageCompositor::in_use(terminal)?;
+        let previous = self
+            .previous
+            .take()
+            .filter(|(drawn_with, _)| reusable && *drawn_with == colors);
+        let (mut target, repaint) = match previous {
+            Some((_, target)) => (target, Some(rows_to_repaint(&mut self.rows, &snapshot)?)),
+            None => {
+                let mut target =
+                    PixelTarget::new(self.request.canvas.width, self.request.canvas.height)?;
+                target.clear(theme.background);
+                (target, None)
+            }
+        };
 
         {
             tracing::trace!("iterating libghostty-vt render rows");
@@ -128,6 +153,25 @@ impl RasterRenderer {
             let mut placeholders: Vec<PlaceholderCell> = Vec::new();
             let mut placeholder_row = PlaceholderRow::default();
             while let Some(row) = row_iter.next() {
+                row.set_dirty(false)
+                    .map_err(vt_error("failed to clear libghostty-vt row dirty state"))?;
+                if repaint
+                    .as_ref()
+                    .is_some_and(|rows| !rows.get(usize::from(y)).copied().unwrap_or(true))
+                {
+                    y = y.saturating_add(1);
+                    continue;
+                }
+                if repaint.is_some() {
+                    // Clear the whole band, padding included, so nothing from the old row remains.
+                    target.fill_rect(
+                        0,
+                        self.request.text.padding + u32::from(y) * self.cell_height,
+                        self.request.canvas.width,
+                        self.cell_height,
+                        theme.background,
+                    );
+                }
                 let mut cell_iter = self
                     .cells
                     .update(row)
@@ -207,6 +251,10 @@ impl RasterRenderer {
             images.draw_above_text(&mut target, geometry, &placeholders);
             tracing::trace!(rows = y, "iterated libghostty-vt render rows");
         }
+        snapshot
+            .set_dirty(Dirty::Clean)
+            .map_err(vt_error("failed to clear libghostty-vt dirty state"))?;
+        self.previous = Some((colors.clone(), target.clone()));
 
         if cursor_visible
             && snapshot
@@ -765,6 +813,28 @@ impl CellRenderer {
             })
             .collect()
     }
+}
+
+/// Which rows to repaint when starting from the previous frame: each row libghostty-vt marks
+/// dirty, plus its neighbors, because glyphs and sprites may overhang into the rows above
+/// and below.
+fn rows_to_repaint(
+    rows: &mut RowIterator<'static>,
+    snapshot: &Snapshot<'static, '_>,
+) -> Result<Vec<bool>> {
+    let mut dirty = Vec::new();
+    let mut row_iter = rows
+        .update(snapshot)
+        .map_err(vt_error("failed to iterate libghostty-vt rows"))?;
+    while let Some(row) = row_iter.next() {
+        dirty.push(
+            row.dirty()
+                .map_err(vt_error("failed to read libghostty-vt row dirty state"))?,
+        );
+    }
+    Ok((0..dirty.len())
+        .map(|row| dirty[row.saturating_sub(1)..(row + 2).min(dirty.len())].contains(&true))
+        .collect())
 }
 
 fn vt_error(context: &'static str) -> impl Fn(libghostty_vt::Error) -> miette::Report {

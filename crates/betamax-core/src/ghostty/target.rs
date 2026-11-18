@@ -26,6 +26,7 @@ const UNDERLINE_CURSOR_HEIGHT: u32 = 3;
 /// The target is intentionally small and purpose-built: it supports opaque fills, glyph alpha
 /// blending, and cursor drawing. Higher-level frame decoration uses a separate target in
 /// `runner::canvas` so terminal rendering does not need to know about VHS-style chrome.
+#[derive(Clone)]
 pub(super) struct PixelTarget {
     /// Target width in pixels.
     width: u32,
