@@ -1,8 +1,10 @@
 //! Software renderer for libghostty-vt render state.
 
+use std::collections::HashMap;
+
 use cosmic_text::{
-    Attrs, Buffer, Color, Family, FontSystem, Metrics, Shaping, Style as TextStyle, SwashCache,
-    Weight,
+    Attrs, Buffer, CacheKey, Color, Family, FontSystem, Metrics, Shaping, Style as TextStyle,
+    SwashCache, SwashContent, Weight,
 };
 use libghostty_vt::render::{CellIterator, RowIterator};
 use libghostty_vt::screen::CellWide;
@@ -560,6 +562,19 @@ impl RasterRenderer {
 /// This type owns the font and sprite caches so terminal iteration can borrow render-state
 /// fields while text drawing mutates only this disjoint field. Keeping this as a real renderer
 /// concept avoids passing every font, metric, and cache value through each cell draw call.
+/// One shaped glyph, relative to the top-left of its cell.
+#[derive(Clone, Copy)]
+struct PlacedGlyph {
+    cache_key: CacheKey,
+    x: i32,
+    y: i32,
+}
+
+/// Slot in [`CellRenderer::shaped`] for a weight and slant.
+fn face_index(style: Style) -> usize {
+    usize::from(style.bold) | usize::from(style.italic) << 1
+}
+
 struct CellRenderer {
     /// Text metrics and font choice used for every terminal cell in this session.
     settings: TextSettings,
@@ -575,8 +590,15 @@ struct CellRenderer {
     family: Option<String>,
     /// Font database and shaping context.
     font_system: FontSystem,
-    /// Glyph raster cache.
+    /// Glyph images, keyed by font glyph and size, never by color.
     swash_cache: SwashCache,
+    /// Where each glyph of a shaped grapheme sits in its cell, indexed by [`face_index`].
+    ///
+    /// Shaping (font fallback, HarfRust) is by far the slowest step of drawing a cell, and its
+    /// result depends only on the grapheme and its weight and slant, never on color or position.
+    /// Shaping each grapheme once makes a cell a lookup plus a blend of cached glyph images.
+    /// Like `swash_cache`, it grows with the distinct text a session shows, not with frames.
+    shaped: HashMap<String, [Option<Vec<PlacedGlyph>>; 4]>,
     /// Procedural glyphs cached at this session's fixed cell metrics.
     sprites: SpriteRenderer,
 }
@@ -597,6 +619,7 @@ impl CellRenderer {
             cell_height,
             font_system,
             swash_cache: SwashCache::new(),
+            shaped: HashMap::new(),
             sprites: SpriteRenderer::new(cell_width, cell_height),
         }
     }
@@ -658,6 +681,47 @@ impl CellRenderer {
         if self.sprites.draw(target, text, (x, y), sprite_color) {
             return;
         }
+        let face = face_index(style);
+        if self
+            .shaped
+            .get(text)
+            .is_none_or(|faces| faces[face].is_none())
+        {
+            let glyphs = self.shape(text, style);
+            self.shaped.entry(text.to_owned()).or_default()[face] = Some(glyphs);
+        }
+        let glyphs = self.shaped[text][face].as_deref().unwrap_or_default();
+        for glyph in glyphs {
+            let Some(image) = self
+                .swash_cache
+                .get_image(&mut self.font_system, glyph.cache_key)
+            else {
+                continue;
+            };
+            let origin = (
+                x as i32 + glyph.x + image.placement.left,
+                y as i32 + glyph.y - image.placement.top,
+            );
+            let size = (image.placement.width, image.placement.height);
+            match image.content {
+                SwashContent::Mask => target.blend_alpha(
+                    origin,
+                    size,
+                    &image.data,
+                    Color::rgba(color.r, color.g, color.b, alpha),
+                ),
+                // Color glyphs (emoji) keep their own colors; faint text still fades them.
+                SwashContent::Color => target.blend_rgba_image(origin, size, &image.data, alpha),
+                SwashContent::SubpixelMask => {}
+            }
+        }
+    }
+
+    /// Lay out one grapheme with cosmic-text and record where each of its glyphs sits.
+    ///
+    /// The buffer is wider than one cell so glyphs with overhangs are not clipped. The terminal
+    /// still advances one cell, because libghostty-vt already decided cell occupancy.
+    fn shape(&mut self, text: &str, style: Style) -> Vec<PlacedGlyph> {
         let text_settings = &self.settings;
         let metrics = Metrics::new(text_settings.font_size, self.cell_height as f32);
         let family = self
@@ -682,28 +746,24 @@ impl CellRenderer {
             } else {
                 TextStyle::Normal
             });
-
         buffer.set_size(
             Some(self.cell_width as f32 * 2.0),
             Some(self.cell_height as f32),
         );
         buffer.set_text(text, &attrs, Shaping::Advanced, None);
-        buffer.draw(
-            &mut self.swash_cache,
-            Color::rgb(color.r, color.g, color.b),
-            |glyph_x, glyph_y, width, height, glyph_color| {
-                // Apply opacity to coverage, including glyphs with their own embedded colors.
-                let [r, g, b, coverage] = glyph_color.as_rgba();
-                let coverage = (u16::from(coverage) * u16::from(alpha) / 255) as u8;
-                target.blend_rect(
-                    x as i32 + glyph_x,
-                    y as i32 + glyph_y,
-                    width,
-                    height,
-                    Color::rgba(r, g, b, coverage),
-                );
-            },
-        );
+        buffer
+            .layout_runs()
+            .flat_map(|run| {
+                run.glyphs.iter().map(move |glyph| {
+                    let physical = glyph.physical((0., run.line_y), 1.0);
+                    PlacedGlyph {
+                        cache_key: physical.cache_key,
+                        x: physical.x,
+                        y: physical.y,
+                    }
+                })
+            })
+            .collect()
     }
 }
 
