@@ -625,14 +625,18 @@ Shift+MouseScroll Down 3
 Each mouse command waits one capture interval (20 ms at the default 50 FPS) after its action, so
 the recording shows a frame of it. `@<duration>` replaces that wait, as it does for keys: a drag
 that moves every 40 ms is a run of `MouseMove@40ms` commands, and `MouseMove@0ms` moves without
-waiting. A move still jumps straight to its target cell; write one move per cell for a smooth
-drag.
+waiting. A move jumps straight to its target cell unless it has a duration.
+
+`MouseMove <column> <row> duration: <time>` glides from the current pointer to the target over
+exactly that time. Like a real mouse, it reports one position per capture frame, each the cell on
+the straight line at that moment, and the last report lands on the target. With a button held the
+glide is a drag; without one it moves the pointer. The next command starts when the glide ends,
+unless `@<duration>` adds a wait after it.
 
 ```tape
+MouseMove 84 2
 MouseDown Left
-MouseMove@40ms 11 8
-MouseMove@40ms 12 8
-MouseMove@40ms 13 8
+MouseMove 152 36 duration: 500ms
 MouseUp Left
 ```
 

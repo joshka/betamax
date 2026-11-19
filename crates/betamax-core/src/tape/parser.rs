@@ -435,11 +435,27 @@ fn parse_tokens(
                 });
             }
             _ if name.split('+').any(|part| part.starts_with("Mouse")) => {
-                let (event, modifiers, consumed) = parse_mouse(line_number, name, tokens, cursor)?;
+                let (event, modifiers, mut consumed) =
+                    parse_mouse(line_number, name, tokens, cursor)?;
+                // A move may glide over a labeled duration, as gradients label `to:` and `angle:`.
+                let mut duration = None;
+                if matches!(event, MouseEvent::Move { .. })
+                    && tokens
+                        .get(cursor + consumed)
+                        .is_some_and(|token| !token.quoted && &**token == "duration:")
+                {
+                    let value =
+                        required_token(line_number, tokens, cursor + consumed + 1, "duration")?;
+                    duration = Some(parse_duration(value).map_err(|error| {
+                        miette!("line {line_number}: invalid MouseMove duration: {error}")
+                    })?);
+                    consumed += 2;
+                }
                 commands.push(Command::Mouse {
                     event,
                     modifiers,
                     delay,
+                    duration,
                 });
                 cursor += consumed;
             }
@@ -1200,6 +1216,26 @@ Wait+Screen ready WindowTitle final"#,
                 Command::Mouse { delay: None, .. },
             ] if delay == Duration::from_millis(40)
         ));
+    }
+
+    #[test]
+    fn mouse_move_takes_a_labeled_glide_duration() {
+        let tape = Tape::parse("MouseMove 60 8 duration: 500ms MouseUp Left").unwrap();
+        assert!(matches!(
+            tape.commands[..],
+            [
+                Command::Mouse {
+                    event: MouseEvent::Move { column: 60, row: 8 },
+                    duration: Some(duration),
+                    delay: None,
+                    ..
+                },
+                Command::Mouse { duration: None, .. },
+            ] if duration == Duration::from_millis(500)
+        ));
+        assert!(Tape::parse("MouseMove 60 8 duration:").is_err());
+        assert!(Tape::parse("MouseMove 60 8 duration: soon").is_err());
+        assert!(Tape::parse("MouseDown Left duration: 1s").is_err());
     }
 
     #[test]

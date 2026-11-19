@@ -37,6 +37,22 @@ fn mouse_move_delay_replaces_the_frame_wait() {
     assert_drag_time("delayed", &drag, MOVES * step_ms);
 }
 
+/// A glide takes exactly its `duration:` and still reaches every frame's cell; at 50 FPS a
+/// 60-cell glide over 1.2 s reports one new cell per frame.
+#[test]
+#[ignore = "timing-sensitive; run in release with `mise run timing-test`"]
+fn mouse_move_glides_over_its_duration() {
+    assert_drag_time(
+        "glide",
+        &format!(
+            "MouseMove {} 10 duration: {}ms",
+            MOVES + 1,
+            MOVES * FRAME_MS
+        ),
+        MOVES * FRAME_MS,
+    );
+}
+
 /// Record `drag` from cell (1, 10) with the left button held and check that it reaches cell
 /// `MOVES + 1` one report per cell, in `nominal` ms of recorded time.
 fn assert_drag_time(name: &str, drag: &str, nominal: u64) {

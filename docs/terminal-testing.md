@@ -18,7 +18,8 @@ For test-oriented tapes, prefer:
   `AssertAbsent@<duration>` to check that text never appears during a period.
 - `MouseMove`, `MouseDown`, `MouseUp`, and `MouseScroll` for application mouse input in terminal
   cells. Use `Wait+Screen` after the action to synchronize with redraw. Each waits one capture
-  interval; `MouseMove@40ms 12 8` waits 40 ms instead.
+  interval; `MouseMove@40ms 12 8` waits 40 ms instead. `MouseMove 60 8 duration: 500ms` glides
+  there over 500 ms, a drag when a button is held.
 - `Screenshot <path>.png` for debugging failed or changed terminal states.
 - `State <path>.json` for checkpoint snapshots that can be compared with snapshot-testing tools
   such as `insta`.
