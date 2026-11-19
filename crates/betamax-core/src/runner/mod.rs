@@ -849,6 +849,11 @@ where
                 }
                 session.apply_queued(terminal)?;
                 terminal.resize(TerminalGrid::new(*columns, *rows))?;
+                // The terminal clamps its pointer into the new grid; glides start from there.
+                session.pointer = (
+                    session.pointer.0.min(columns - 1),
+                    session.pointer.1.min(rows - 1),
+                );
                 session.resize(*columns, *rows, settings)?;
                 session.drain_for(terminal, settings.capture_interval(), settings, capture)?;
             }
@@ -876,16 +881,43 @@ where
                 event,
                 modifiers,
                 delay,
+                duration,
             } => {
                 session.apply_queued(terminal)?;
-                let bytes = terminal.mouse_input(*event, *modifiers)?;
-                session.write_all(&bytes)?;
-                session.drain_for(
-                    terminal,
-                    delay.unwrap_or(settings.capture_interval()),
-                    settings,
-                    capture,
-                )?;
+                if let (MouseEvent::Move { column, row }, Some(duration)) = (event, duration) {
+                    let path = glide_path(
+                        session.pointer,
+                        (*column, *row),
+                        *duration,
+                        settings.capture_interval(),
+                    );
+                    for (cell, hold) in path {
+                        if session.pointer != cell || cell == (*column, *row) {
+                            let step = MouseEvent::Move {
+                                column: cell.0,
+                                row: cell.1,
+                            };
+                            session.write_all(&terminal.mouse_input(step, *modifiers)?)?;
+                            session.pointer = cell;
+                        }
+                        session.drain_for(terminal, hold, settings, capture)?;
+                    }
+                    if let Some(delay) = delay {
+                        session.drain_for(terminal, *delay, settings, capture)?;
+                    }
+                } else {
+                    if let MouseEvent::Move { column, row } = event {
+                        session.pointer = (*column, *row);
+                    }
+                    let bytes = terminal.mouse_input(*event, *modifiers)?;
+                    session.write_all(&bytes)?;
+                    session.drain_for(
+                        terminal,
+                        delay.unwrap_or(settings.capture_interval()),
+                        settings,
+                        capture,
+                    )?;
+                }
             }
             Command::Wait {
                 target,
@@ -1206,7 +1238,8 @@ fn describe_command(command: &Command) -> String {
             event,
             modifiers,
             delay,
-        } => format!("Mouse {event:?} {modifiers:?} {delay:?}"),
+            duration,
+        } => format!("Mouse {event:?} {modifiers:?} {delay:?} {duration:?}"),
         Command::Hide => "Hide".to_string(),
         Command::Show => "Show".to_string(),
         Command::Env { key, .. } => format!("Env {key} <value>"),
@@ -1361,11 +1394,58 @@ fn describe_chars(text: &str, quoted: bool) -> String {
     output
 }
 
+/// The cells a glide reports and how long each holds, one step per capture frame.
+///
+/// A mouse reports its position at a fixed rate, so a glide takes one step per capture interval
+/// whatever its distance: each step is the cell on the straight line at that point in time, and
+/// the last lands exactly on the target. The holds add up to exactly `duration`.
+fn glide_path(
+    from: (u16, u16),
+    to: (u16, u16),
+    duration: Duration,
+    interval: Duration,
+) -> Vec<((u16, u16), Duration)> {
+    let interval = interval.as_nanos().max(1);
+    let steps = duration.as_nanos().div_ceil(interval).max(1);
+    let at = |start: u16, end: u16, step: u128| {
+        let (start, end) = (f64::from(start), f64::from(end));
+        (start + (end - start) * step as f64 / steps as f64).round() as u16
+    };
+    let elapsed = |step: u128| duration.mul_f64(step as f64 / steps as f64);
+    (1..=steps)
+        .map(|step| {
+            let cell = (at(from.0, to.0, step), at(from.1, to.1, step));
+            (cell, elapsed(step) - elapsed(step - 1))
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::media::Frame;
     use crate::runner::capture::{frames_equal, CapturedFrame};
+
+    #[test]
+    fn glide_takes_one_step_per_frame_and_ends_on_its_target() {
+        let frame = Duration::from_millis(20);
+        let path = glide_path((10, 5), (60, 5), Duration::from_millis(100), frame);
+        let cells: Vec<_> = path.iter().map(|(cell, _)| *cell).collect();
+        assert_eq!(cells, [(20, 5), (30, 5), (40, 5), (50, 5), (60, 5)]);
+        assert!(path.iter().all(|(_, hold)| *hold == frame));
+
+        // Short moves repeat cells rather than slowing down; the runner skips repeats.
+        let path = glide_path((0, 0), (2, 1), Duration::from_millis(100), frame);
+        assert_eq!(path.last().unwrap().0, (2, 1));
+        assert_eq!(path.len(), 5);
+
+        // Holds add up to the duration even when it is not a whole number of frames.
+        let path = glide_path((0, 0), (9, 9), Duration::from_millis(55), frame);
+        assert_eq!(path.len(), 3);
+        let total: Duration = path.iter().map(|(_, hold)| *hold).sum();
+        assert_eq!(total, Duration::from_millis(55));
+        assert_eq!(path.last().unwrap().0, (9, 9));
+    }
 
     #[test]
     fn assertions_are_described_in_tape_syntax() {

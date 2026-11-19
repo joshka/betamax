@@ -250,8 +250,12 @@ pub enum Command {
         event: MouseEvent,
         /// Modifiers active for this action only.
         modifiers: KeyModifiers,
-        /// Optional delay after the action; the capture interval applies when absent.
+        /// Optional delay after the action; the capture interval applies when absent, except
+        /// after a glide, which already takes its `duration`.
         delay: Option<Duration>,
+        /// For a move, glide from the current pointer to the target over this time instead of
+        /// jumping, reporting one position per capture frame (`MouseMove 9 4 duration: 500ms`).
+        duration: Option<Duration>,
     },
     /// Resize the live PTY and terminal grid while preserving the media canvas.
     Resize {

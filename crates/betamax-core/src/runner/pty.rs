@@ -76,6 +76,8 @@ pub(super) struct PtySession {
     /// from `Instant::now()` adds that overhead to every command, so a drag made of many short
     /// `MouseMove`s ran far longer than the tape asked for.
     paced_until: Option<Instant>,
+    /// Cell the last `MouseMove` reached, where a glide starts.
+    pub(super) pointer: (u16, u16),
 }
 
 /// Whether the shell is still running, reported in failure bundles.
@@ -162,6 +164,7 @@ impl PtySession {
             output_closed: false,
             sync_hold_started: None,
             paced_until: None,
+            pointer: (0, 0),
         })
     }
 
