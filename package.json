@@ -12,13 +12,14 @@
   "dependencies": {
     "@astrojs/check": "0.9.12",
     "@astrojs/starlight": "0.42.7",
-    "astro": "7.4.2",
+    "astro": "7.4.7",
     "typescript": "6.0.3"
   },
   "pnpm": {
     "overrides": {
       "esbuild": "0.28.1",
-      "yaml": "2.8.4"
+      "yaml": "2.8.4",
+      "@emnapi/runtime": "1.11.3"
     },
     "onlyBuiltDependencies": [
       "esbuild",
