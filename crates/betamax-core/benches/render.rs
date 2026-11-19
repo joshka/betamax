@@ -69,17 +69,37 @@ fn session() -> GhosttySession {
 }
 
 fn render(c: &mut Criterion) {
+    let screen = styled_screen();
+    let mut group = c.benchmark_group("styled screen");
+
+    // An animated app changes a little of the screen between frames; the rest stays as it was.
     let mut terminal = session();
-    terminal.write_vt(styled_screen().as_bytes());
-    // An animated app changes a little of the screen between frames; the rest is redrawn as is.
+    terminal.write_vt(screen.as_bytes());
     let mut tick = 0u32;
-    c.bench_function("styled screen frame", |b| {
+    group.bench_function("one line changes", |b| {
         b.iter(|| {
             tick += 1;
             terminal.write_vt(format!("\x1b[1;1H\x1b[0mTICK {tick:05}").as_bytes());
             black_box(terminal.capture_frame().unwrap())
         });
     });
+
+    // Scrolling or a full redraw repaints every row.
+    let mut terminal = session();
+    group.bench_function("every row changes", |b| {
+        b.iter(|| {
+            terminal.write_vt(screen.as_bytes());
+            black_box(terminal.capture_frame().unwrap())
+        });
+    });
+
+    // A paused screen still records frames at the capture rate.
+    let mut terminal = session();
+    terminal.write_vt(screen.as_bytes());
+    group.bench_function("nothing changes", |b| {
+        b.iter(|| black_box(terminal.capture_frame().unwrap()));
+    });
+    group.finish();
 }
 
 criterion_group! {

@@ -158,6 +158,20 @@ impl ImageCompositor {
     ///
     /// Placeholder cells collected while iterating rows are resolved here too, so all image data
     /// is read while the terminal is borrowed and drawing can proceed afterwards.
+    /// Whether the program has sent any kitty image this session.
+    ///
+    /// Images are not cells, so row dirty flags do not cover them; frames redraw in full once
+    /// any image exists.
+    pub(super) fn in_use(terminal: &Terminal<'static, 'static>) -> Result<bool> {
+        let storage = terminal
+            .kitty_graphics()
+            .map_err(vt_error("failed to read kitty graphics storage"))?;
+        Ok(storage
+            .generation()
+            .map_err(vt_error("failed to read kitty graphics generation"))?
+            != 0)
+    }
+
     pub(super) fn prepare(
         &mut self,
         terminal: &Terminal<'static, 'static>,
