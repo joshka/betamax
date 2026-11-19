@@ -18,7 +18,8 @@
   "pnpm": {
     "overrides": {
       "esbuild": "0.28.1",
-      "yaml": "2.8.4"
+      "yaml": "2.8.4",
+      "@emnapi/runtime": "1.11.3"
     },
     "onlyBuiltDependencies": [
       "esbuild",
