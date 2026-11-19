@@ -872,11 +872,20 @@ where
                     )?;
                 }
             }
-            Command::Mouse { event, modifiers } => {
+            Command::Mouse {
+                event,
+                modifiers,
+                delay,
+            } => {
                 session.apply_queued(terminal)?;
                 let bytes = terminal.mouse_input(*event, *modifiers)?;
                 session.write_all(&bytes)?;
-                session.drain_for(terminal, settings.capture_interval(), settings, capture)?;
+                session.drain_for(
+                    terminal,
+                    delay.unwrap_or(settings.capture_interval()),
+                    settings,
+                    capture,
+                )?;
             }
             Command::Wait {
                 target,
@@ -1193,7 +1202,11 @@ fn describe_command(command: &Command) -> String {
                 .unwrap_or_default();
             format!("{name}{suffix} {count}")
         }
-        Command::Mouse { event, modifiers } => format!("Mouse {event:?} {modifiers:?}"),
+        Command::Mouse {
+            event,
+            modifiers,
+            delay,
+        } => format!("Mouse {event:?} {modifiers:?} {delay:?}"),
         Command::Hide => "Hide".to_string(),
         Command::Show => "Show".to_string(),
         Command::Env { key, .. } => format!("Env {key} <value>"),
