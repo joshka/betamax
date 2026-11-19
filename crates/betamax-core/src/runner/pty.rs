@@ -276,9 +276,11 @@ impl PtySession {
     /// Whether the program on the PTY has left canonical mode, as a line editor does when it is
     /// ready to draw what is typed.
     fn line_editor_ready(&self) -> bool {
-        self.master
-            .get_termios()
-            .is_some_and(|termios| !termios.local_flags.contains(LocalFlags::ICANON))
+        self.master.get_termios().is_some_and(|termios| {
+            // portable-pty returns its own nix version's termios, so compare raw bits
+            // rather than nix types to keep the two nix versions independent.
+            termios.local_flags.bits() & LocalFlags::ICANON.bits() == 0
+        })
     }
 
     /// Check absence after each received chunk and at the end of a bounded observation period.
