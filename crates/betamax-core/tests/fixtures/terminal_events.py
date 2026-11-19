@@ -9,9 +9,14 @@ import tty
 import time
 
 
+def write(text):
+    # The SIGWINCH handler writes too, so bypass sys.stdout's buffer: a signal arriving during a
+    # buffered write raises "reentrant call inside BufferedWriter" and kills the fixture.
+    os.write(sys.stdout.fileno(), text.encode())
+
+
 def emit(message):
-    sys.stdout.write(message + "\r\n")
-    sys.stdout.flush()
+    write(message + "\r\n")
 
 
 def resize(_signum=None, _frame=None):
@@ -20,9 +25,9 @@ def resize(_signum=None, _frame=None):
 
 
 def configure(mode):
-    sys.stdout.write("\x1b[?1000l\x1b[?1002l\x1b[?1003l")
+    write("\x1b[?1000l\x1b[?1002l\x1b[?1003l")
     if mode != "0":
-        sys.stdout.write(f"\x1b[?{ {'1': 1000, '2': 1002, '3': 1003}[mode] }h")
+        write(f"\x1b[?{ {'1': 1000, '2': 1002, '3': 1003}[mode] }h")
     emit("mode " + mode)
 
 
@@ -42,7 +47,7 @@ original = termios.tcgetattr(sys.stdin.fileno())
 tty.setraw(sys.stdin.fileno())
 signal.signal(signal.SIGWINCH, resize)
 try:
-    sys.stdout.write("\x1b[?1006h\x1b[?1002h")
+    write("\x1b[?1006h\x1b[?1002h")
     emit("ready")
     resize()
     pending = b""
@@ -79,30 +84,25 @@ try:
                 elif key in (b"0", b"1", b"2", b"3"):
                     configure(key.decode())
                 elif key == b"h":
-                    sys.stdout.write("\x1b[2J\x1b[H\x1b[1;38;2;255;0;0mA界e\u0301\x1b[0m")
-                    sys.stdout.flush()
+                    write("\x1b[2J\x1b[H\x1b[1;38;2;255;0;0mA界e\u0301\x1b[0m")
                 elif key == b"d":
-                    sys.stdout.write("\x1b[2J\x1b[HTRANSIENT\x1b[2J\x1b[HFINAL")
-                    sys.stdout.flush()
+                    write("\x1b[2J\x1b[HTRANSIENT\x1b[2J\x1b[HFINAL")
                 elif key == b"o":
                     emit("armed")
                     # Write without pausing so the PTY never goes quiet, even on a busy CI runner.
                     deadline = time.monotonic() + 6
                     while time.monotonic() < deadline:
-                        sys.stdout.write("\rbusy")
-                        sys.stdout.flush()
+                        write("\rbusy")
                 elif key == b"b":
-                    sys.stdout.write("armed\r\nFORBIDDEN\r\n")
-                    sys.stdout.flush()
+                    write("armed\r\nFORBIDDEN\r\n")
                 elif key == b"x":
-                    sys.stdout.write("\x1b[?1006l")
+                    write("\x1b[?1006l")
                     emit("format x10")
                 elif key == b"s":
-                    sys.stdout.write("\x1b[?1006h")
+                    write("\x1b[?1006h")
                     emit("format sgr")
                 else:
                     emit("key " + key.hex())
 finally:
-    sys.stdout.write("\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l")
-    sys.stdout.flush()
+    write("\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l")
     termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, original)
