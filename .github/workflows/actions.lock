@@ -31,6 +31,7 @@ workflows:
         - 'jdx/packslip@v1.11.4'
         - 'release-plz/action@v0.5.148'
         - 'swatinem/rust-cache@v2.9.3'
+        - 'taiki-e/install-action@v2.90.3'
     '.github/workflows/renderer-comment.yml':
         - 'actions/checkout@v7.0.1'
         - 'actions/github-script@v9.0.0'
