@@ -22,7 +22,9 @@ Home
 End
 Type "c"
 Resize 250 25
-Wait+Screen "Text preview:"
+# The narrow frame already shows "Text preview:", so wait for the wide-only footer: it is the
+# last row the viewer draws, so the State capture sees the full redrawn frame.
+Wait+Screen "Esc clear selection"
 State target/terminal-input/unicode-title.json
 Resize 50 16
 Down
@@ -32,7 +34,9 @@ Down
 End
 Type "c"
 Resize 250 25
-Wait+Screen "Text preview:"
+# The narrow frame already shows "Text preview:", so wait for the wide-only footer: it is the
+# last row the viewer draws, so the State capture sees the full redrawn frame.
+Wait+Screen "Esc clear selection"
 State target/terminal-input/unicode-selection.json
 Resize 50 16
 AssertText "Text preview:"
