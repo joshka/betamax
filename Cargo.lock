@@ -180,7 +180,7 @@ dependencies = [
  "insta",
  "libghostty-vt",
  "miette",
- "nix 0.31.4",
+ "nix 0.32.0",
  "png 0.18.1",
  "portable-pty",
  "qwertty-term-sprite",
@@ -339,9 +339,9 @@ dependencies = [
 
 [[package]]
 name = "clap-stdin"
-version = "0.8.1"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c597a504c7d12819c50d2e1f78719afb6e01d4e14cbc94eb4c5f6a850494d1c"
+checksum = "8c2ac992a16c441fd881327203b5b59a06e23c359acbd7d7558db7f761711205"
 dependencies = [
  "thiserror 2.0.18",
 ]
@@ -1018,9 +1018,9 @@ dependencies = [
 
 [[package]]
 name = "nix"
-version = "0.31.4"
+version = "0.32.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2bc81ce8148d3b4f3274da811f11cdd824ae661ee4ef732cdb229825cf5be7f7"
+checksum = "77730ed34f01f4990cb2ea67fec715ecebc6fab9a6396cf83c5529b13f581bdc"
 dependencies = [
  "bitflags 2.11.1",
  "cfg-if",
