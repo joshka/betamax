@@ -19,6 +19,12 @@ fn main() -> Result<()> {
     let env_filter = EnvFilter::builder()
         .with_default_directive(LevelFilter::INFO.into())
         .from_env_lossy();
+    // libghostty-vt logs routine internals, such as page resizing, at INFO.
+    let env_filter = if std::env::var_os(EnvFilter::DEFAULT_ENV).is_none() {
+        EnvFilter::new("info,libghostty_vt=warn")
+    } else {
+        env_filter
+    };
     tracing_subscriber::fmt()
         .with_env_filter(env_filter)
         .with_timer(tracing_subscriber::fmt::time::uptime())
