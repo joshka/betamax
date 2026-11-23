@@ -78,14 +78,13 @@ fn is_separator(ch: char) -> bool {
 }
 
 /// Whether the next word is a regex argument: after `Wait`, `Wait+Line`, or `Wait+Screen` (with
-/// any `@duration`), or after `Set WaitPattern`.
+/// any `@duration`, attached or as its own word), or after `Set WaitPattern`.
 fn expects_regex(raw_words: &[&str]) -> bool {
+    let is_wait = |name: &str| name == "Wait" || name.starts_with("Wait+");
     match raw_words {
         [.., "Set", "WaitPattern"] => true,
-        [.., last] => {
-            let name = last.split_once('@').map_or(*last, |(name, _)| name);
-            name == "Wait" || name.starts_with("Wait+")
-        }
+        [.., wait, speed] if speed.starts_with('@') => is_wait(wait),
+        [.., last] => is_wait(last.split_once('@').map_or(*last, |(name, _)| name)),
         [] => false,
     }
 }
@@ -221,6 +220,7 @@ mod tests {
             split(r"Wait@5s /build ok/ Wait+Line /it's\s+done/"),
             ["Wait@5s", "/build ok/", "Wait+Line", r"/it's\s+done/"]
         );
+        assert_eq!(split(r"Wait @5s /a b/"), ["Wait", "@5s", "/a b/"]);
         assert_eq!(
             split(r"Set WaitPattern /\$ $/"),
             ["Set", "WaitPattern", r"/\$ $/"]

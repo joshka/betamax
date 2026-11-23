@@ -572,7 +572,9 @@ applies from shell start, with a warning.
 ### `Type[@duration] <text>`
 
 Types text into the PTY one Unicode scalar at a time. `Type@25ms "hello"` overrides the default
-typing speed for that command; otherwise the most recent `Set TypingSpeed` applies. Betamax drains
+typing speed for that command; otherwise the most recent `Set TypingSpeed` applies. A space before
+the speed (`Type @25ms "hello"`) also works, as in VHS; quote text that looks like a speed, such as
+`Type "@5s"`. Betamax drains
 output and captures frames after each typed character, so text appears progressively. Several
 strings are joined with one space, as in VHS: `Type "echo" "hi"` types `echo hi` and warns.
 Quoted strings that name a key or command are joined too, so `Type "press" "q"` types `press q`. Use
@@ -582,7 +584,8 @@ and interrupt.
 ### Key commands
 
 Key commands send terminal key sequences to the PTY. They accept an optional `@duration` suffix,
-which sleeps after each key press, and an optional repeat count after the key:
+which sleeps after each key press, and an optional repeat count after the key. As in VHS, a space may
+come before the duration (`Right @250ms 7`):
 
 ```tape
 Enter
