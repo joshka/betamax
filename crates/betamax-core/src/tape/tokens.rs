@@ -9,6 +9,8 @@
 //! does. Backslashes survive, so `/v[0-9]+\.[0-9]+/` matches a literal dot, and spaces stay
 //! inside the pattern, so `/build ok/` is one word. A `/` preceded by an odd number of
 //! backslashes does not close the literal.
+//!
+//! As in VHS, `Set Theme` also takes an unquoted `{...}` object on one line.
 
 use std::fmt;
 use std::ops::Deref;
@@ -52,7 +54,10 @@ pub(super) fn split_line(line: &str) -> Result<Vec<Token>, UnclosedQuote> {
         if rest.is_empty() || rest.starts_with('#') {
             break;
         }
-        let (token, len) = match regex_literal_len(rest).filter(|_| expects_regex(&raw_words)) {
+        let literal_len = regex_literal_len(rest)
+            .filter(|_| expects_regex(&raw_words))
+            .or_else(|| theme_object_len(rest).filter(|_| raw_words.ends_with(&["Set", "Theme"])));
+        let (token, len) = match literal_len {
             Some(len) => {
                 let token = Token {
                     text: rest[..len].to_string(),
@@ -88,6 +93,13 @@ fn expects_regex(raw_words: &[&str]) -> bool {
         }
         [] => false,
     }
+}
+
+/// Length of an unquoted `{...}` theme object at the start of `text`, if it closes on this line.
+///
+/// Themes are flat JSON objects, so as in VHS the first `}` closes the object.
+fn theme_object_len(text: &str) -> Option<usize> {
+    text.strip_prefix('{')?.find('}').map(|index| index + 2)
 }
 
 /// Length of a `/regex/` literal at the start of `text`, if it has a closing `/` at a word end.
@@ -236,6 +248,15 @@ mod tests {
             ["Wait", "/usr/bin/", "Enter"]
         );
         assert_eq!(split("Wait /a b/c/"), ["Wait", "/a b/c/"]);
+    }
+
+    #[test]
+    fn keeps_unquoted_theme_objects_as_written() {
+        assert_eq!(
+            split(r##"Set Theme {"background": "#141432"} # dark"##),
+            ["Set", "Theme", r##"{"background": "#141432"}"##]
+        );
+        assert_eq!(split(r#"Type {"a": 1}"#), ["Type", "{a:", "1}"]);
     }
 
     #[test]
