@@ -330,8 +330,22 @@ fn parse_tokens(
             )
             .into());
         }
-        let (name, delay) = parse_timed_name(token)?;
+        if token.starts_with('@') {
+            return Err(miette!(
+                "line {line_number}: expected a command, got `{}`",
+                token.text
+            )
+            .into());
+        }
+        let (name, mut delay) = parse_timed_name(token)?;
         cursor += 1;
+        // VHS allows a space before the speed: `Right @5s 7`, `Type @100ms "text"`.
+        if delay.is_none() && accepts_separate_speed(name) {
+            if let Some(speed) = tokens.get(cursor).and_then(parse_separate_speed) {
+                delay = Some(speed);
+                cursor += 1;
+            }
+        }
 
         match name {
             "Output" => {
@@ -743,6 +757,23 @@ fn parse_timed_name(token: &str) -> Result<(&str, Option<Duration>)> {
         return Ok((token, None));
     };
     Ok((name, Some(parse_duration(duration)?)))
+}
+
+/// Whether a command may take its `@duration` as a separate word.
+fn accepts_separate_speed(name: &str) -> bool {
+    matches!(name, "Type" | "ScrollUp" | "ScrollDown" | "Wait")
+        || name.starts_with("Wait+")
+        || parse_key(name).is_some()
+}
+
+/// Parse an unquoted `@duration` word.
+///
+/// Other words starting with `@` are left as text, so `Type @mention` still types the mention.
+fn parse_separate_speed(token: &Token) -> Option<Duration> {
+    if token.quoted {
+        return None;
+    }
+    parse_duration(token.strip_prefix('@')?).ok()
 }
 
 /// Parse a setting value using VHS-compatible loose typing.
@@ -1304,6 +1335,53 @@ Wait+Screen ready WindowTitle final"#,
                 Command::Sleep(Duration::ZERO),
             ]
         );
+    }
+
+    #[test]
+    fn accepts_a_space_before_the_speed() {
+        let key = |code, delay, count| Command::Key {
+            key: Key::Press {
+                key: code,
+                modifiers: KeyModifiers::default(),
+            },
+            delay,
+            count,
+        };
+        let tape = Tape::parse(
+            "Right @5s 7 Enter\nType @100ms \"jj\"\nType @mention\nType \"@5s\"\n\
+             Wait+Screen @2s /build ok/",
+        )
+        .unwrap();
+        assert_eq!(
+            tape.commands,
+            [
+                key(KeyCode::Right, Some(Duration::from_secs(5)), 7),
+                key(KeyCode::Enter, None, 1),
+                Command::Type {
+                    text: "jj".into(),
+                    delay: Some(Duration::from_millis(100)),
+                },
+                Command::Type {
+                    text: "@mention".into(),
+                    delay: None,
+                },
+                Command::Type {
+                    text: "@5s".into(),
+                    delay: None,
+                },
+                Command::Wait {
+                    target: WaitTarget::Screen,
+                    pattern: Some(WaitPattern::Regex("build ok".into())),
+                    timeout: Some(Duration::from_secs(2)),
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn names_the_word_when_a_command_is_missing() {
+        let error = Tape::parse("Right @soon").unwrap_err().to_string();
+        assert_eq!(error, "line 1: expected a command, got `@soon`");
     }
 
     #[test]
