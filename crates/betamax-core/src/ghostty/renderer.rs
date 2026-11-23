@@ -238,9 +238,19 @@ impl RasterRenderer {
             images.draw_below_text(&mut target, geometry);
             // Wide text and sprite diagonals can extend into neighboring cells, including
             // other rows. Paint all backgrounds first so none can erase that overhang.
-            for (text, x_px, y_px, foreground, style) in frame_text {
-                self.cell_renderer
-                    .draw_cell(&mut target, &text, x_px, y_px, foreground, style);
+            for (index, (text, x_px, y_px, foreground, style)) in frame_text.iter().enumerate() {
+                // A wide character's spacer cell holds no text, so it never counts as occupied.
+                let next_occupied = frame_text.get(index + 1).is_some_and(|(next, x, y, ..)| {
+                    (*x, *y) == (x_px + self.cell_width, *y_px) && !next.trim().is_empty()
+                });
+                self.cell_renderer.draw_cell(
+                    &mut target,
+                    text,
+                    (*x_px, *y_px),
+                    *foreground,
+                    *style,
+                    next_occupied,
+                );
             }
             // Decorate every occupied cell, including spaces and wide-glyph continuations.
             // Draw after glyphs so sprite fills and glyph overhang cannot erase the lines.
@@ -618,6 +628,9 @@ struct PlacedGlyph {
     y: i32,
 }
 
+/// VS16, which asks for the preceding character's color emoji form.
+const EMOJI_PRESENTATION_SELECTOR: char = '\u{fe0f}';
+
 /// Slot in [`CellRenderer::shaped`] for a weight and slant.
 fn face_index(style: Style) -> usize {
     usize::from(style.bold) | usize::from(style.italic) << 1
@@ -636,17 +649,20 @@ struct CellRenderer {
     /// Resolved once per session because the lookup scans every loaded face. Resolving it per
     /// cell made that scan most of the cost of a frame.
     family: Option<String>,
+    /// Installed color emoji family, used for graphemes that ask for emoji presentation.
+    emoji_family: Option<&'static str>,
     /// Font database and shaping context.
     font_system: FontSystem,
     /// Glyph images, keyed by font glyph and size, never by color.
     swash_cache: SwashCache,
-    /// Where each glyph of a shaped grapheme sits in its cell, indexed by [`face_index`].
+    /// Where each glyph of a shaped grapheme sits in its cell, indexed by [`face_index`], with
+    /// emoji fitted to one cell in the last four slots.
     ///
     /// Shaping (font fallback, HarfRust) is by far the slowest step of drawing a cell, and its
     /// result depends only on the grapheme and its weight and slant, never on color or position.
     /// Shaping each grapheme once makes a cell a lookup plus a blend of cached glyph images.
     /// Like `swash_cache`, it grows with the distinct text a session shows, not with frames.
-    shaped: HashMap<String, [Option<Vec<PlacedGlyph>>; 4]>,
+    shaped: HashMap<String, [Option<Vec<PlacedGlyph>>; 8]>,
     /// Procedural glyphs cached at this session's fixed cell metrics.
     sprites: SpriteRenderer,
 }
@@ -662,6 +678,7 @@ impl CellRenderer {
         };
         Self {
             family,
+            emoji_family: fonts::emoji_family(&font_system),
             settings,
             cell_width,
             cell_height,
@@ -719,23 +736,25 @@ impl CellRenderer {
         &mut self,
         target: &mut PixelTarget,
         text: &str,
-        x: u32,
-        y: u32,
+        (x, y): (u32, u32),
         color: RgbColor,
         style: Style,
+        next_occupied: bool,
     ) {
         let alpha = if style.faint { FAINT_ALPHA } else { 255 };
         let sprite_color = Color::rgba(color.r, color.g, color.b, alpha);
         if self.sprites.draw(target, text, (x, y), sprite_color) {
             return;
         }
-        let face = face_index(style);
+        // Without grapheme clustering (mode 2027) a VS16 emoji gets one cell but is two wide.
+        let fit = next_occupied && text.contains(EMOJI_PRESENTATION_SELECTOR);
+        let face = face_index(style) + if fit { 4 } else { 0 };
         if self
             .shaped
             .get(text)
             .is_none_or(|faces| faces[face].is_none())
         {
-            let glyphs = self.shape(text, style);
+            let glyphs = self.shape(text, style, fit);
             self.shaped.entry(text.to_owned()).or_default()[face] = Some(glyphs);
         }
         let glyphs = self.shaped[text][face].as_deref().unwrap_or_default();
@@ -769,12 +788,18 @@ impl CellRenderer {
     ///
     /// The buffer is wider than one cell so glyphs with overhangs are not clipped. The terminal
     /// still advances one cell, because libghostty-vt already decided cell occupancy.
-    fn shape(&mut self, text: &str, style: Style) -> Vec<PlacedGlyph> {
+    ///
+    /// `fit` shrinks text wider than one cell so it does not overlap the next cell.
+    fn shape(&mut self, text: &str, style: Style, fit: bool) -> Vec<PlacedGlyph> {
         let text_settings = &self.settings;
         let metrics = Metrics::new(text_settings.font_size, self.cell_height as f32);
-        let family = self
-            .family
-            .as_deref()
+        // Text fonts often carry a monochrome glyph for the base character (JetBrains Mono has
+        // U+2764 HEART), which font fallback would never look past.
+        let emoji_family = self
+            .emoji_family
+            .filter(|_| text.contains(EMOJI_PRESENTATION_SELECTOR));
+        let family = emoji_family
+            .or(self.family.as_deref())
             .map_or(Family::Monospace, Family::Name);
         let mut buffer = Buffer::new(&mut self.font_system, metrics);
         let mut buffer = buffer.borrow_with(&mut self.font_system);
@@ -799,6 +824,19 @@ impl CellRenderer {
             Some(self.cell_height as f32),
         );
         buffer.set_text(text, &attrs, Shaping::Advanced, None);
+        if fit {
+            let width = buffer
+                .layout_runs()
+                .map(|run| run.line_w)
+                .fold(0.0, f32::max);
+            let cell_width = self.cell_width as f32;
+            if width > cell_width {
+                buffer.set_metrics(Metrics::new(
+                    text_settings.font_size * cell_width / width,
+                    self.cell_height as f32,
+                ));
+            }
+        }
         buffer
             .layout_runs()
             .flat_map(|run| {
