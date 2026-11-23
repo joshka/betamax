@@ -43,7 +43,7 @@ jobs:
           persist-credentials: false
 
       - name: Install mise tools
-        uses: jdx/mise-action@v5.2.7
+        uses: jdx/mise-action@v5.2.9
         with:
           install: true
 
