@@ -574,7 +574,7 @@ applies from shell start, with a warning.
 Types text into the PTY one Unicode scalar at a time. `Type@25ms "hello"` overrides the default
 typing speed for that command; otherwise the most recent `Set TypingSpeed` applies. A space before
 the speed (`Type @25ms "hello"`) also works, as in VHS; quote text that looks like a speed, such as
-`Type "@5s"`. Betamax drains
+`Type "@5s"`. As in VHS, the space before a quoted string is optional: `Type"hello"`. Betamax drains
 output and captures frames after each typed character, so text appears progressively. Several
 strings are joined with one space, as in VHS: `Type "echo" "hi"` types `echo hi` and warns.
 Quoted strings that name a key or command are joined too, so `Type "press" "q"` types `press q`. Use
