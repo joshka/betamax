@@ -11,6 +11,8 @@
 //! backslashes does not close the literal.
 //!
 //! As in VHS, `Set Theme` also takes an unquoted `{...}` object on one line.
+//!
+//! As in VHS, a command that takes a string may be followed directly by it: `Type"text"`.
 
 use std::fmt;
 use std::ops::Deref;
@@ -56,7 +58,8 @@ pub(super) fn split_line(line: &str) -> Result<Vec<Token>, UnclosedQuote> {
         }
         let literal_len = regex_literal_len(rest)
             .filter(|_| expects_regex(&raw_words))
-            .or_else(|| theme_object_len(rest).filter(|_| raw_words.ends_with(&["Set", "Theme"])));
+            .or_else(|| theme_object_len(rest).filter(|_| raw_words.ends_with(&["Set", "Theme"])))
+            .or_else(|| command_before_string_len(rest));
         let (token, len) = match literal_len {
             Some(len) => {
                 let token = Token {
@@ -99,6 +102,17 @@ fn expects_regex(raw_words: &[&str]) -> bool {
 /// Themes are flat JSON objects, so as in VHS the first `}` closes the object.
 fn theme_object_len(text: &str) -> Option<usize> {
     text.strip_prefix('{')?.find('}').map(|index| index + 2)
+}
+
+/// Length of a string-taking command written directly before its quoted string.
+fn command_before_string_len(text: &str) -> Option<usize> {
+    let len = text.find(|ch| is_separator(ch) || matches!(ch, '"' | '\'' | '\\'))?;
+    let name = text[..len].split('@').next()?;
+    let takes_string = matches!(
+        name,
+        "Type" | "Output" | "Require" | "Copy" | "Source" | "Screenshot"
+    );
+    (takes_string && text[len..].starts_with(['"', '\''])).then_some(len)
 }
 
 /// Length of a `/regex/` literal at the start of `text`, if it has a closing `/` at a word end.
@@ -257,6 +271,13 @@ mod tests {
             ["Set", "Theme", r##"{"background": "#141432"}"##]
         );
         assert_eq!(split(r#"Type {"a": 1}"#), ["Type", "{a:", "1}"]);
+    }
+
+    #[test]
+    fn splits_commands_from_strings_without_a_space() {
+        assert_eq!(split(r#"Type"a b" Enter"#), ["Type", "a b", "Enter"]);
+        assert_eq!(split("Type@100ms'a b'"), ["Type@100ms", "a b"]);
+        assert_eq!(split(r#"En"ter" "Type"x"#), ["Enter", "Typex"]);
     }
 
     #[test]
