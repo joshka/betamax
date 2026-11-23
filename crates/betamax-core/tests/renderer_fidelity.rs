@@ -443,6 +443,30 @@ fn wide_glyph_retains_ink_in_both_cells() {
     assert_ink(&cell(&frame, 1, 0), BACKGROUND);
 }
 
+/// Only macOS always has a color emoji font installed.
+#[cfg(target_os = "macos")]
+#[test]
+fn emoji_presentation_is_colored_and_stays_clear_of_the_next_cell() {
+    let is_red = |pixels: &[[u8; 4]]| {
+        pixels
+            .iter()
+            .any(|[r, g, b, _]| *r > 180 && *g < 90 && *b < 90)
+    };
+    let capture = |text: &str| {
+        let mut terminal = session();
+        terminal.write_vt(format!("\x1b[?25l{text}").as_bytes());
+        checkpoint(&mut terminal, "emoji").0
+    };
+    let crowded = capture("\u{2764}\u{fe0f}X");
+    assert!(is_red(&cell(&crowded, 0, 0)));
+    assert_eq!(cell(&crowded, 1, 0), cell(&capture(" X"), 1, 0));
+    assert!(
+        is_red(&cell(&capture("\u{2764}\u{fe0f} "), 1, 0)),
+        "uses the blank cell"
+    );
+    assert!(!is_red(&cell(&capture("\u{2764}X"), 0, 0)));
+}
+
 #[test]
 fn wide_glyph_preserves_adjacent_styles_and_cursor() {
     let mut terminal = session();

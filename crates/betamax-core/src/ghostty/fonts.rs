@@ -60,6 +60,13 @@ pub(crate) fn resolve_family<'a>(
     }
 }
 
+/// First installed color emoji family, in order of preference.
+pub(crate) fn emoji_family(font_system: &FontSystem) -> Option<&'static str> {
+    ["Apple Color Emoji", "Noto Color Emoji", "Segoe UI Emoji"]
+        .into_iter()
+        .find(|name| has_family(font_system, name))
+}
+
 /// Warn once per renderer when the requested `FontFamily` does not resolve to a loaded face.
 ///
 /// The warning names the family used instead, so a missing font in CI is visible in the log
