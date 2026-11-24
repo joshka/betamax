@@ -5,6 +5,20 @@ versions and identify the core version shipped in the release lockfile.
 
 ## [Unreleased]
 
+## [0.4.1](https://github.com/joshka/betamax/compare/betamax-v0.4.0...betamax-v0.4.1) - 2026-11-23
+
+### Added
+
+- accept a string directly after its command ([#314](https://github.com/joshka/betamax/pull/314))
+- accept a space before a command's @duration ([#313](https://github.com/joshka/betamax/pull/313))
+- accept unquoted theme JSON in Set Theme ([#315](https://github.com/joshka/betamax/pull/315))
+
+### Fixed
+
+- hide libghostty-vt info logs by default ([#318](https://github.com/joshka/betamax/pull/318))
+- report every failed tape in betamax validate ([#316](https://github.com/joshka/betamax/pull/316))
+- draw VS16 emoji in color ([#317](https://github.com/joshka/betamax/pull/317))
+
 ## [0.4.0](https://github.com/joshka/betamax/compare/betamax-v0.3.1...betamax-v0.4.0) - 2026-11-19
 
 ### Added
