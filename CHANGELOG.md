@@ -5,6 +5,12 @@ versions and identify the core version shipped in the release lockfile.
 
 ## [Unreleased]
 
+## [0.4.2](https://github.com/joshka/betamax/compare/betamax-v0.4.1...betamax-v0.4.2) - 2026-11-26
+
+### Other
+
+- update Cargo.toml dependencies
+
 ## [0.4.1](https://github.com/joshka/betamax/compare/betamax-v0.4.0...betamax-v0.4.1) - 2026-11-23
 
 ### Added
